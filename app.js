@@ -735,11 +735,12 @@ function setupAuth() {
   });
   document.getElementById("auth-signout").addEventListener("click", () => signOut());
 
-  // 세션 변화 → UI/기록 갱신 (등록 직후 INITIAL_SESSION 도 여기로 들어옴)
+  // 세션 변화 → UI/기록/저장된 지도 갱신 (등록 직후 INITIAL_SESSION 도 여기로 들어옴)
   supabase.auth.onAuthStateChange((_ev, session) => {
     currentUser = session?.user || null;
     updateAuthUI();
     renderRecords();
+    renderSavedMaps(); // 로그아웃 → 숨김, 로그인 → 본인 계정 목록만
   });
 }
 
@@ -802,6 +803,13 @@ async function refreshMapBtn() {
 
 // 확인 모달: 용량 경고 (mountains 카탈로그에서 실제 용량 조회)
 async function openDlConfirm() {
+  if (!currentUser) {
+    // 지도 다운로드는 계정 기준(saved_packs) — 로그인 유도
+    const msg = document.getElementById("auth-msg");
+    if (msg) msg.textContent = "지도 다운로드는 로그인 후 이용할 수 있습니다.";
+    showTab("girok");
+    return;
+  }
   if (downloading || (await idbGet(currentPark).catch(() => null))) return;
   const msg = document.getElementById("dc-msg");
   document.getElementById("dc-title").textContent = `${PARKS[currentPark].label} 지도 다운로드`;
@@ -894,13 +902,24 @@ async function downloadPack(park) {
   }
 }
 
-// ── 저장된 지도 (등반 탭) ────────────────────────────
+// ── 저장된 지도 (등반 탭) — 로그인 계정 기준 노출 ─────
 async function renderSavedMaps() {
   const wrap = document.getElementById("saved-maps");
   const ul = document.getElementById("sm-list");
   if (!wrap || !ul) return;
+  // 로그아웃 상태: 목록 숨김 (팩 파일 자체는 기기에 유지 — 재로그인 시 다시 표시)
+  if (!currentUser) { wrap.hidden = true; ul.innerHTML = ""; return; }
   let recs = [];
   try { recs = await idbList(); } catch (_) {}
+  // 본인 계정의 saved_packs 와 교차 — 다른 계정이 받은 팩은 노출하지 않음
+  // (오프라인 등으로 조회 실패 시엔 기기 목록 그대로 표시: 오프라인 우선)
+  try {
+    const { data, error } = await supabase.from("saved_packs").select("mountain_id");
+    if (!error && data) {
+      const mine = new Set(data.map((r) => r.mountain_id));
+      recs = recs.filter((r) => mine.has(r.id));
+    }
+  } catch (_) {}
   wrap.hidden = !recs.length;
   ul.innerHTML = "";
   recs.forEach((rec) => {
