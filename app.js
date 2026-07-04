@@ -44,7 +44,7 @@ const map = new maplibregl.Map({
   // 대한민국으로 이동/축소 범위 제한 (제주·독도가 잘리지 않도록 여백 포함, 한 단계 더 축소 허용)
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], // [SW, NE] — 남한 전역 + 주변 여백
   minZoom: 5,
-  localIdeographFontFamily: "'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"
+  localIdeographFontFamily: "'KakaoSmallSans', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"
 });
 // 확대/축소 버튼 없이 나침반만 + 현재위치 — 지도 하단 우측에 배치
 // (bottom 코너는 나중에 추가한 컨트롤이 위로 쌓임 → 나침반을 위, 현재위치를 아래로)

@@ -1,3 +1,7 @@
+/* ── 폰트: Kakao Small Sans (Light 300 / Regular 400 / Bold 700) ──
+   ⚠️ 외부 폰트 CDN 의존 — iOS 네이티브 이식 시 woff2/otf 를 앱 번들에 포함할 것 */
+@import url("https://font.ksthink.com/f/kakaosmallsans.css");
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── 흑백 테마 (화이트 / 다크) ─────────────────────────
@@ -33,7 +37,7 @@
   --card-badge: rgba(255, 255, 255, 0.14);
 }
 
-html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; color: var(--text); }
+html, body { height: 100%; font-family: "KakaoSmallSans", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; font-weight: 400; color: var(--text); }
 
 /* ── 데스크톱: 시뮬레이터 배경 (무채색) ─────────────── */
 #frame-bg {
@@ -53,7 +57,7 @@ html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "M
 .traffic { display: flex; gap: 8px; }
 .traffic .tl { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.25); }
 .traffic .red { background: #ff5f57; } .traffic .yellow { background: #febc2e; } .traffic .green { background: #28c840; }
-.sim-title { color: #d8d8dd; font-size: 12.5px; font-weight: 500; letter-spacing: .2px; }
+.sim-title { color: #d8d8dd; font-size: 12.5px; font-weight: 400; letter-spacing: .2px; }
 
 .device {
   width: var(--dev-w); height: var(--dev-h); flex: 0 0 auto;
@@ -66,7 +70,7 @@ html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "M
 .statusbar {
   position: absolute; top: 0; left: 0; right: 0; height: 54px; z-index: 30;
   display: flex; align-items: center; justify-content: space-between; padding: 0 30px;
-  font-size: 15px; font-weight: 600; color: var(--text); pointer-events: none;
+  font-size: 15px; font-weight: 700; color: var(--text); pointer-events: none;
   background: linear-gradient(to bottom, var(--bg), transparent);
 }
 .sb-time { letter-spacing: .5px; padding-top: 6px; }
@@ -123,7 +127,7 @@ html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "M
 :root[data-theme="dark"] .title-block .divider { color: rgba(255, 255, 255, .6); }
 .title-block .divider { color: var(--muted); font-weight: 400; }
 .title-block .divider[hidden] { display: none; }
-.title-block .cur-mtn, .title-block .cur-course { font-weight: 800; color: var(--text); }
+.title-block .cur-mtn, .title-block .cur-course { font-weight: 700; color: var(--text); }
 .park-tabs { display: inline-flex; background: var(--panel); backdrop-filter: blur(10px); border-radius: 12px; padding: 3px; box-shadow: 0 2px 10px rgba(0,0,0,.15); pointer-events: auto; }
 .park-tabs .tab { border: none; background: transparent; cursor: pointer; padding: 8px 20px; border-radius: 9px; font-size: 14px; font-weight: 700; color: var(--muted); font-family: inherit; }
 .park-tabs .tab.active { background: var(--accent); color: var(--on-accent); }
@@ -163,7 +167,7 @@ html, body { height: 100%; font-family: -apple-system, "Apple SD Gothic Neo", "M
 .t-prof { flex: 0 0 auto; width: 96px; }
 .t-prof .prof-svg { height: 44px; }
 
-.dl-btn { display: flex; align-items: center; width: 100%; text-align: left; gap: 8px; padding: 13px 15px; margin-bottom: 9px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text); font-family: inherit; }
+.dl-btn { display: flex; align-items: center; width: 100%; text-align: left; gap: 8px; padding: 13px 15px; margin-bottom: 9px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text); font-family: inherit; }
 .dl-btn:active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
 .hint.small { font-size: 11px; margin-top: 8px; }
@@ -190,7 +194,7 @@ footer .warn { margin-top: 6px; }
 #tabbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 35; height: 72px; padding-bottom: 18px; display: flex; background: var(--panel); backdrop-filter: blur(18px); border-top: .5px solid var(--line); }
 .tabbtn { flex: 1; border: none; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--muted); font-family: inherit; padding-top: 8px; }
 .tabbtn .ico { width: 26px; height: 26px; } .tabbtn .ico svg { width: 100%; height: 100%; }
-.tabbtn .lbl { font-size: 10.5px; font-weight: 600; }
+.tabbtn .lbl { font-size: 10.5px; font-weight: 700; }
 .tabbtn.active { color: var(--text); }
 
 /* ── 뷰 전환 (탐험 외 탭) ───────────────────────────── */
@@ -198,7 +202,7 @@ footer .warn { margin-top: 6px; }
 .view { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 72px; z-index: 18; background: var(--surface); flex-direction: column; }
 .view.active { display: flex; }
 .view-head { flex: 0 0 auto; padding: 62px 20px 14px; background: var(--bg); border-bottom: .5px solid var(--line); }
-.view-head h1 { font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
+.view-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
 .view-head p { font-size: 13px; color: var(--muted); margin-top: 3px; }
 .view-body { flex: 1; overflow-y: auto; padding: 16px 18px 24px; -webkit-overflow-scrolling: touch; }
 
@@ -207,7 +211,7 @@ footer .warn { margin-top: 6px; }
 .famous-btn {
   width: 100%; padding: 15px 16px; border: none; border-radius: 14px; cursor: pointer;
   background: var(--card-bg); color: var(--card-text); font-family: inherit;
-  font-size: 16px; font-weight: 800; text-align: left; position: relative;
+  font-size: 16px; font-weight: 700; text-align: left; position: relative;
 }
 .famous-btn::after { content: "+"; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 20px; font-weight: 400; opacity: .8; }
 .famous-btn.open::after { content: "-"; }
@@ -226,8 +230,8 @@ footer .warn { margin-top: 6px; }
 /* 추천 카드 (무채색) */
 .reco-card { border-radius: 16px; padding: 16px; margin-bottom: 12px; background: var(--card-bg); color: var(--card-text); position: relative; overflow: hidden; cursor: pointer; min-height: 108px; display: flex; flex-direction: column; justify-content: flex-end; box-shadow: 0 6px 16px rgba(0,0,0,.2); }
 .reco-card:active { transform: scale(.99); }
-.reco-card .rc-park { font-size: 12px; opacity: .8; font-weight: 600; }
-.reco-card .rc-name { font-size: 19px; font-weight: 800; margin-top: 2px; }
+.reco-card .rc-park { font-size: 12px; opacity: .8; font-weight: 700; }
+.reco-card .rc-name { font-size: 19px; font-weight: 700; margin-top: 2px; }
 .reco-card .rc-why { font-size: 12.5px; opacity: .85; margin-top: 6px; line-height: 1.5; }
 .reco-card .rc-badge { position: absolute; top: 14px; right: 14px; background: var(--card-badge); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
 .reco-card .rc-badge .dmeter i { background: rgba(255,255,255,.35); }
@@ -235,12 +239,12 @@ footer .warn { margin-top: 6px; }
 
 /* 등반 */
 .climb-card { background: var(--elevated); border: 1px solid var(--line); border-radius: 18px; padding: 22px; text-align: center; }
-.climb-course { font-size: 18px; font-weight: 800; margin-bottom: 18px; }
+.climb-course { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
 .climb-stats { display: flex; justify-content: space-around; margin-bottom: 20px; }
 .climb-stats > div { display: flex; flex-direction: column; align-items: center; }
-.climb-stats span { font-size: 22px; font-weight: 800; color: var(--text); display: flex; }
+.climb-stats span { font-size: 22px; font-weight: 700; color: var(--text); display: flex; }
 .climb-stats small { font-size: 11px; color: var(--muted); margin-top: 4px; }
-.start-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; cursor: pointer; background: var(--accent); color: var(--on-accent); font-size: 16px; font-weight: 800; font-family: inherit; }
+.start-btn { width: 100%; padding: 15px; border: none; border-radius: 14px; cursor: pointer; background: var(--accent); color: var(--on-accent); font-size: 16px; font-weight: 700; font-family: inherit; }
 .start-btn:active { transform: scale(.98); }
 .start-btn:disabled { background: var(--line); color: var(--muted); cursor: default; }
 .start-btn.recording { background: var(--elevated); color: var(--text); border: 1.5px solid var(--accent); }
@@ -254,7 +258,7 @@ footer .warn { margin-top: 6px; }
 /* 기록 */
 .rec-summary { display: flex; background: var(--elevated); border: 1px solid var(--line); border-radius: 16px; padding: 18px 0; margin-bottom: 16px; }
 .rec-summary > div { flex: 1; display: flex; flex-direction: column; align-items: center; }
-.rec-summary span { font-size: 22px; font-weight: 800; color: var(--text); }
+.rec-summary span { font-size: 22px; font-weight: 700; color: var(--text); }
 .rec-summary small { font-size: 11px; color: var(--muted); margin-top: 3px; }
 .rec-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
 .rec-item { background: var(--elevated); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
@@ -289,3 +293,17 @@ footer .warn { margin-top: 6px; }
 .auth-in .auth-btn { flex: 0 0 auto; width: auto; padding: 8px 16px; }
 .rec-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 12px; line-height: 1.6; }
 .dl-btn.saved { background: var(--accent); color: var(--on-accent); border-color: var(--accent); cursor: default; opacity: .92; }
+
+/* ── 타이포그래피: Kakao Small Sans weight 구분 ───────
+   Bold(700)   제목·코스명·버튼·수치 강조
+   Regular(400) 본문·메타·입력·캡션 (기본값)
+   Light(300)  설명·힌트·안내 등 보조 서술 텍스트 */
+.hint,
+.t-desc,
+.view-head p,
+.rc-why,
+.popup-meta,
+.rec-empty,
+.auth-msg,
+.famous-item .fm-meta,
+.sheet-content footer { font-weight: 300; }
