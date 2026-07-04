@@ -1,0 +1,14 @@
+# 배포에 불필요한 것 제외 (정적 자산만 배포)
+# 유지: index.html, app.js, style.css, basemap-style.js, supabase-client.js, data/*.geojson, vercel.json
+
+scripts/          # Python 콘텐츠 파이프라인 + serve.py (Vercel 미사용)
+supabase/         # schema.sql (배포 불필요)
+.omc/
+__pycache__/
+*.pyc
+
+# 문서 (서빙 불필요)
+CLAUDE.md
+WORKLOG.md
+QA.md
+README.md
