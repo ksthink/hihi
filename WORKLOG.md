@@ -53,5 +53,21 @@
 - 작업: Vercel 배포(A안) — `https://hihi.metaphr.dev` 가동. 정적 파일 200·pmtiles 리라이트 206·신규 키 반영·제외 파일 404 전부 검증. main 푸시 시 자동 재배포
 - 설정: Supabase Authentication URL Configuration 에 `https://hihi.metaphr.dev` 리다이렉트 URL 추가(가입 확인 메일 복귀 경로)
 
+### 폰트 · 문서 · 등반 트래킹
+- 수정: 전체 UI 폰트를 **Kakao Small Sans** 로 교체 — weight 3단계 구분(Bold 700 제목·버튼·수치 / Regular 400 본문·메타 / Light 300 설명·힌트), 지도 한글 라벨(localIdeographFontFamily)도 통일 (style.css, app.js)
+- 생성: `fonts/KakaoSmallSans-{Light,Regular,Bold}.woff2` — CDN @import 를 **로컬 번들 @font-face** 로 교체(외부 폰트 의존 해소, iOS 번들 그대로 사용) (style.css)
+- 수정: `README.md` 전면 개편 — 취지/기능/아키텍처 다이어그램/파이프라인/로드맵/셋업 + **§7 저장소 구조 정밀화**(파일별 이관·치환·폐기 표기, GeoJSON 스키마 표, app.js↔iOS 매핑) + **팩 업로드 규격(Pack Specification)**
+- 수정: `QA.md` 에 "Vercel env 안전성", "등산 팩 추가 방법" 항목 추가
+- 생성: **등반 모드 — 지도 기반 실시간 트래킹** (index.html #climb-hud, app.js, style.css): 등반 시작→지도 전환(선택 코스만)+현재위치 추적, HUD(경과시간·실측 이동거리·GPS 지점), watchPosition 트랙 기록(5m 필터·최대 2000지점)→`climb_records.track` 저장, 현재위치 점 흑백화. **폰 실측 테스트로 GPS 정확 동작 확인**
+
+### 오프라인 지도 다운로드 (핵심 기능)
+- 생성: 시트 헤더 **"지도 다운"** 버튼 + Wi-Fi 경고 모달(카탈로그 실측 용량 표시) + 다운로드 진행 패널(산 이름·용량·**프로그레스바**, base.pmtiles 바이트 단위) (index.html, app.js, style.css)
+- 생성: **IndexedDB 로컬 팩 저장소**(`hiheight-packs`) — base.pmtiles Blob + routes/spots/contours 저장, 완료 시 `saved_packs` 기록 + **등반 탭 자동 이동**
+- 생성: 등반 탭 **"저장된 지도"** 목록(용량·저장일·삭제) — 클릭 시 `pmtiles://local-<id>` 로컬 Blob 소스로 **네트워크 없이 지도 렌더** + 최근 코스 자동선택 → 바로 등반 시작 (app.js: downloadPack/openSavedMap/renderSavedMaps/useBaseFor)
+- 수정: 스팟·등고선 **북한산 하드코딩 → 산별 오버레이(parkOverlays) 일반화**, 기존 "오프라인 저장" 버튼(dl-save)은 새 플로우로 대체 (app.js)
+- 생성: 북한산 기저 타일 추출 `data/tiles/bukhansan-base.pmtiles` (go-pmtiles, bbox z0~15, 8.5MB, gitignore) → Storage `packs/bukhansan/base.pmtiles` 업로드, `upload_packs.py` 에 base.pmtiles + Content-Type 분기 추가, 카탈로그 용량 8,959KB 갱신
+- 수정: 저장된 지도·다운로드를 **로그인 계정 기준 게이트** — 로그아웃 시 숨김(팩은 기기 유지), 로그인 시 본인 saved_packs 교차 목록만, 비로그인 다운로드는 로그인 유도. **폰 테스트 정상 동작 확인**
+- 수정: README 팩 규격에 base.pmtiles 반영(§4), 구조도·CDN 의존 현황 갱신(§7)
+
 ### 비고
 - 이 항목은 초기 구축 백필(세션 전체 요약). 이후는 날짜별로 그날 변경분만 기록.
