@@ -1,10 +1,12 @@
 import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm";
-import { Protocol } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
+import { Protocol, PMTiles, FileSource } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
 import { buildStyle } from "./basemap-style.js";
 import { supabase, signUp, signIn, signOut } from "./supabase-client.js";
 
 // ── 설정 ──────────────────────────────────────────────
 const PMTILES_URL = `${location.origin}/pmtiles/v4.pmtiles`; // 로컬 프록시 경유 (CORS 회피)
+// 현재 기저 소스: 온라인(PMTILES_URL) 또는 로컬 팩("local-<산id>", IndexedDB Blob 등록 후)
+let baseUrl = PMTILES_URL;
 
 const PARKS = {
   bukhansan: { label: "북한산", center: [126.990, 37.672], zoom: 11.3, bbox: [126.90, 37.59, 127.06, 37.75], file: "data/bukhansan-routes.geojson" },
@@ -37,7 +39,7 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 // ── 지도 초기화 ──────────────────────────────────────
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle(PMTILES_URL, theme),
+  style: buildStyle(baseUrl, theme),
   center: PARKS.bukhansan.center,
   zoom: PARKS.bukhansan.zoom,
   hash: true,
@@ -77,12 +79,14 @@ map.addControl(new ThemeControl(), "bottom-right");
 // ── 상태 ─────────────────────────────────────────────
 let currentPark = "bukhansan";
 let peaksData = null;
-let spotsData = null;
-let contoursData = null;
 let selectedTrail = null;
 let selectedName = null;
 let interactionsBound = false;
 const trailCache = {};
+// 산별 오버레이 데이터: { <park>: { spots, contours } } — 시작 시 북한산은 fetch, 저장 팩은 IndexedDB
+const parkOverlays = {};
+// pmtiles Protocol 에 로컬 Blob 소스가 등록된 산: { <park>: true }
+const localRegistered = {};
 
 // 지도에 표시할 경로 지점 종류
 const SHOWN = ["분기점", "시종점"];
@@ -104,11 +108,13 @@ function ensureOverlays() {
     16, ["match", ["get", "difficulty"], "초급", 3.5, "중급", 5, "고급", 7, 4.5]
   ];
 
-  if (!map.getSource("contours") && contoursData) {
+  const ov = parkOverlays[currentPark] || {};
+
+  if (!map.getSource("contours")) {
     const cc = theme === "dark"
       ? { line: "#3a3a3a", label: "#8a8a8a", halo: "#000000" }
       : { line: "#c4bfb5", label: "#8a857c", halo: "#ffffff" };
-    map.addSource("contours", { type: "geojson", data: contoursData });
+    map.addSource("contours", { type: "geojson", data: ov.contours || EMPTY_FC });
     // 50m 보조 등고선 (확대 시)
     map.addLayer({
       id: "contour-line", type: "line", source: "contours", minzoom: 12.5,
@@ -151,8 +157,8 @@ function ensureOverlays() {
     });
   }
 
-  if (!map.getSource("spots") && spotsData) {
-    map.addSource("spots", { type: "geojson", data: spotsData });
+  if (!map.getSource("spots")) {
+    map.addSource("spots", { type: "geojson", data: ov.spots || EMPTY_FC });
     map.addLayer({
       id: "spots-dots", type: "circle", source: "spots", minzoom: 10.5,
       filter: ["in", ["get", "category"], ["literal", SHOWN]],
@@ -201,15 +207,14 @@ function ensureOverlays() {
   applyTrailFilter();
 }
 
-// 스팟은 북한산에서만, 그리고 토글이 켜졌을 때만 표시
+// 스팟/등고선은 현재 산의 데이터가 있을 때만 표시 (산별 일반화)
 function applySpotsVisibility() {
-  const vis = currentPark === "bukhansan" ? "visible" : "none";
+  const vis = (parkOverlays[currentPark] || {}).spots ? "visible" : "none";
   if (map.getLayer("spots-dots")) map.setLayoutProperty("spots-dots", "visibility", vis);
 }
 
-// 등고선은 북한산(데이터 보유 지역)에서만 표시
 function applyContourVisibility() {
-  const vis = currentPark === "bukhansan" ? "visible" : "none";
+  const vis = (parkOverlays[currentPark] || {}).contours ? "visible" : "none";
   ["contour-line", "contour-index", "contour-label"].forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
   });
@@ -243,10 +248,19 @@ function clearSelection() {
   document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
 }
 
-// setStyle(테마 변경) 후 오버레이 재부착
+// setStyle(테마/기저 변경) 후 오버레이 재부착
 map.on("styledata", () => {
-  if (!map.getSource("trails") || (peaksData && !map.getSource("peaks")) || (spotsData && !map.getSource("spots")) || (contoursData && !map.getSource("contours"))) ensureOverlays();
+  if (!map.getSource("trails") || (peaksData && !map.getSource("peaks")) || !map.getSource("spots") || !map.getSource("contours")) ensureOverlays();
 });
+
+// ── 기저 소스 선택: 로컬 팩이 등록된 산이면 로컬, 아니면 온라인 ──
+function useBaseFor(park) {
+  const target = localRegistered[park] ? "local-" + park : PMTILES_URL;
+  if (target !== baseUrl) {
+    baseUrl = target;
+    map.setStyle(buildStyle(baseUrl, theme)); // styledata 가 오버레이 재부착
+  }
+}
 
 // ── 산 데이터 로드 ───────────────────────────────────
 async function loadPark(park) {
@@ -255,17 +269,22 @@ async function loadPark(park) {
   const cfg = PARKS[park];
   const cur = document.getElementById("cur-mtn");
   if (cur) cur.textContent = cfg.label;
+  useBaseFor(park);
   let geojson = trailCache[park];
   if (!geojson) { geojson = await fetch(cfg.file).then((r) => r.json()); trailCache[park] = geojson; }
 
   ensureOverlays();
   if (map.getSource("trails")) map.getSource("trails").setData(geojson);
+  // 산별 오버레이(스팟/등고선) 데이터 주입
+  const ov = parkOverlays[park] || {};
+  if (map.getSource("spots")) map.getSource("spots").setData(ov.spots || EMPTY_FC);
+  if (map.getSource("contours")) map.getSource("contours").setData(ov.contours || EMPTY_FC);
   applySpotsVisibility();
   applyContourVisibility();
   applyTrailFilter();
   map.flyTo({ center: cfg.center, zoom: cfg.zoom, duration: 900 });
   renderTrailList(geojson);
-  refreshSaveButton();
+  refreshMapBtn();
 }
 
 // ── 사이드바(시트) 등산로 목록 ───────────────────────
@@ -292,6 +311,7 @@ function renderTrailList(geojson) {
 function focusTrail(feature) {
   selectedTrail = feature;
   selectedName = feature.properties.name;
+  localStorage.setItem("hiheight-last-course:" + currentPark, selectedName); // 저장 지도 열 때 자동선택용
   applyTrailFilter();
   updateClimb(feature);
   const g = feature.geometry;
@@ -715,12 +735,11 @@ function setupAuth() {
   });
   document.getElementById("auth-signout").addEventListener("click", () => signOut());
 
-  // 세션 변화 → UI/기록/저장버튼 갱신 (등록 직후 INITIAL_SESSION 도 여기로 들어옴)
+  // 세션 변화 → UI/기록 갱신 (등록 직후 INITIAL_SESSION 도 여기로 들어옴)
   supabase.auth.onAuthStateChange((_ev, session) => {
     currentUser = session?.user || null;
     updateAuthUI();
     renderRecords();
-    refreshSaveButton();
   });
 }
 
@@ -737,62 +756,192 @@ document.getElementById("dl-geojson").addEventListener("click", () => {
   if (g) download(`${currentPark}-trails.geojson`, JSON.stringify(g, null, 2));
 });
 
-// 오프라인 저장: Supabase Storage 에서 팩을 취득(배포 검증) + saved_packs 에 기록.
-// (브라우저 진짜 오프라인 캐싱은 iOS 파일시스템 단계에서 구현 — 여기선 배포+저장표시)
-document.getElementById("dl-save").addEventListener("click", async () => {
-  const note = document.getElementById("dl-note");
-  if (!currentUser) {
-    note.textContent = "오프라인 저장은 로그인 후 이용할 수 있습니다.";
-    showTab("girok");
-    return;
-  }
-  const park = currentPark;
-  const btn = document.getElementById("dl-save");
-  btn.disabled = true;
-  note.textContent = "저장 중…";
+// ── 로컬 팩 저장소 (IndexedDB) ───────────────────────
+// 온라인일 때 지도(타일)+팩 데이터를 기기에 저장 → 등반 시 오프라인 사용.
+// 웹 한계(iOS 파일시스템에서 해소): IndexedDB 는 브라우저 저장소라 용량 압박 시 퇴거될 수 있고,
+// 앱 셸(html/js)·글리프 폰트는 네트워크 필요 → 완전 오프라인 "실행"은 iOS 로컬 번들 단계.
+const IDB_NAME = "hiheight-packs", IDB_STORE = "packs";
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open(IDB_NAME, 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore(IDB_STORE, { keyPath: "id" });
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbTx(mode, fn) {
+  const db = await idbOpen();
   try {
-    // 팩 파일 취득(존재/접근 확인)
-    const files = ["routes.geojson", "spots.geojson", "contours.geojson"];
-    let got = 0;
-    for (const f of files) {
-      const { data, error } = await supabase.storage.from("packs").download(`${park}/${f}`);
-      if (!error && data) got++;
-    }
-    // 저장 표시
-    const { error } = await supabase.from("saved_packs").upsert({
-      user_id: currentUser.id, mountain_id: park, pack_version: 1
+    return await new Promise((res, rej) => {
+      const rq = fn(db.transaction(IDB_STORE, mode).objectStore(IDB_STORE));
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
     });
-    if (error) throw error;
-    btn.textContent = "저장됨 ✓";
-    btn.classList.add("saved");
-    note.textContent = `${PARKS[park].label} 오프라인 저장 완료 (팩 ${got}/${files.length}개 확인)`;
-  } catch (e) {
-    console.error("오프라인 저장 실패:", e);
-    note.textContent = "저장 실패: " + (e.message || e);
-    btn.disabled = false;
-  }
+  } finally { db.close(); }
+}
+const idbGet = (id) => idbTx("readonly", (st) => st.get(id));
+const idbPut = (rec) => idbTx("readwrite", (st) => st.put(rec));
+const idbDelete = (id) => idbTx("readwrite", (st) => st.delete(id));
+const idbList = () => idbTx("readonly", (st) => st.getAll());
+
+// ── 지도 다운로드 (Storage → IndexedDB) ─────────────
+const packUrl = (park, file) =>
+  supabase.storage.from("packs").getPublicUrl(`${park}/${file}`).data.publicUrl;
+
+let downloading = false;
+
+// 시트 헤더 "지도 다운" 버튼 상태
+async function refreshMapBtn() {
+  const btn = document.getElementById("dl-map");
+  if (!btn) return;
+  const has = !!(await idbGet(currentPark).catch(() => null));
+  btn.textContent = has ? "지도 저장됨 ✓" : "지도 다운";
+  btn.classList.toggle("saved", has);
+  btn.disabled = has || downloading;
+}
+
+// 확인 모달: 용량 경고 (mountains 카탈로그에서 실제 용량 조회)
+async function openDlConfirm() {
+  if (downloading || (await idbGet(currentPark).catch(() => null))) return;
+  const msg = document.getElementById("dc-msg");
+  document.getElementById("dc-title").textContent = `${PARKS[currentPark].label} 지도 다운로드`;
+  msg.innerHTML = "지도 용량이 클 수 있어요.<br>Wi-Fi 상태에서 진행해 주세요.";
+  document.getElementById("dl-confirm").hidden = false;
+  try {
+    const { data } = await supabase.from("mountains")
+      .select("pack_size_kb").eq("id", currentPark).maybeSingle();
+    if (data && data.pack_size_kb)
+      msg.innerHTML = `지도 용량이 클 수 있어요 (약 ${(data.pack_size_kb / 1024).toFixed(1)}MB).<br>Wi-Fi 상태에서 진행해 주세요.`;
+  } catch (_) {}
+}
+document.getElementById("dl-map").addEventListener("click", openDlConfirm);
+document.getElementById("dc-cancel").addEventListener("click", () => {
+  document.getElementById("dl-confirm").hidden = true;
+});
+document.getElementById("dc-ok").addEventListener("click", () => {
+  document.getElementById("dl-confirm").hidden = true;
+  downloadPack(currentPark);
 });
 
-// 현재 산의 저장 여부에 맞춰 저장 버튼 상태 갱신
-async function refreshSaveButton() {
-  const btn = document.getElementById("dl-save");
-  if (!btn) return;
-  const reset = () => {
-    btn.textContent = "이 산 오프라인 저장";
-    btn.classList.remove("saved");
-    btn.disabled = false;
-  };
-  if (!currentUser) { reset(); return; }
-  const { data } = await supabase
-    .from("saved_packs").select("mountain_id")
-    .eq("mountain_id", currentPark).maybeSingle();
-  if (data) {
-    btn.textContent = "저장됨 ✓";
-    btn.classList.add("saved");
-    btn.disabled = true;
-  } else {
-    reset();
+async function downloadPack(park) {
+  if (downloading) return;
+  downloading = true;
+  refreshMapBtn();
+  const cfg = PARKS[park];
+  const prog = document.getElementById("dl-progress");
+  const fill = document.getElementById("dp-fill");
+  const status = document.getElementById("dp-status");
+  document.getElementById("dp-name").textContent = cfg.label;
+  document.getElementById("dp-size").textContent = "";
+  prog.hidden = false;
+  fill.style.width = "0%";
+  status.textContent = "기저 지도 내려받는 중…";
+  try {
+    // 1) base.pmtiles — 바이트 단위 진행률 (전체의 90%)
+    const res = await fetch(packUrl(park, "base.pmtiles"));
+    if (!res.ok) throw new Error("기저 지도 파일 없음 (HTTP " + res.status + ")");
+    const total = +res.headers.get("Content-Length") || 0;
+    if (total) document.getElementById("dp-size").textContent = (total / 1048576).toFixed(1) + " MB";
+    const chunks = [];
+    let got = 0;
+    const reader = res.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      got += value.length;
+      if (total) fill.style.width = Math.min(90, (got / total) * 90).toFixed(1) + "%";
+    }
+    const base = new Blob(chunks, { type: "application/octet-stream" });
+
+    // 2) 팩 데이터 (routes 필수, spots/contours 선택)
+    status.textContent = "등산로·시설·등고선 내려받는 중…";
+    const fetchJson = async (file) => {
+      const r = await fetch(packUrl(park, file));
+      return r.ok ? r.json() : null;
+    };
+    const routes = await fetchJson("routes.geojson");
+    fill.style.width = "94%";
+    if (!routes) throw new Error("등산로 데이터 없음");
+    const spots = await fetchJson("spots.geojson");
+    fill.style.width = "97%";
+    const contours = await fetchJson("contours.geojson");
+    fill.style.width = "99%";
+
+    // 3) 기기 저장 + 계정 표시
+    const rec = {
+      id: park, label: cfg.label, base, routes, spots, contours,
+      size_bytes: base.size, pack_version: 1, downloaded_at: new Date().toISOString()
+    };
+    await idbPut(rec);
+    fill.style.width = "100%";
+    if (currentUser) {
+      await supabase.from("saved_packs").upsert({
+        user_id: currentUser.id, mountain_id: park, pack_version: rec.pack_version
+      });
+    }
+    status.textContent = "다운로드 완료 — 저장된 지도가 등반 탭에 추가되었습니다.";
+    downloading = false;
+    refreshMapBtn();
+    await renderSavedMaps();
+    setTimeout(() => { prog.hidden = true; showTab("deung"); }, 900);
+  } catch (e) {
+    console.error("지도 다운로드 실패:", e);
+    status.textContent = "다운로드 실패: " + (e.message || e) + " — 다시 시도해 주세요.";
+    fill.style.width = "0%";
+    downloading = false;
+    refreshMapBtn();
   }
+}
+
+// ── 저장된 지도 (등반 탭) ────────────────────────────
+async function renderSavedMaps() {
+  const wrap = document.getElementById("saved-maps");
+  const ul = document.getElementById("sm-list");
+  if (!wrap || !ul) return;
+  let recs = [];
+  try { recs = await idbList(); } catch (_) {}
+  wrap.hidden = !recs.length;
+  ul.innerHTML = "";
+  recs.forEach((rec) => {
+    const li = document.createElement("li");
+    li.className = "sm-item";
+    li.innerHTML = `
+      <div class="sm-info">
+        <span class="sm-name">${rec.label}</span>
+        <span class="sm-meta">${(rec.size_bytes / 1048576).toFixed(1)}MB · ${fmtDate(rec.downloaded_at)} 저장 · 오프라인 사용 가능</span>
+      </div>
+      <button class="sm-del">삭제</button>`;
+    li.querySelector(".sm-del").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await idbDelete(rec.id);
+      delete localRegistered[rec.id];
+      if (currentUser) await supabase.from("saved_packs").delete().eq("mountain_id", rec.id);
+      if (baseUrl === "local-" + rec.id) useBaseFor(currentPark); // 사용 중이던 로컬 소스면 온라인으로 복귀
+      renderSavedMaps();
+      refreshMapBtn();
+    });
+    li.addEventListener("click", () => openSavedMap(rec.id));
+    ul.appendChild(li);
+  });
+}
+
+// 저장된 지도 열기: 로컬 타일 + 로컬 데이터로 지도 표시, 최근 코스 자동선택
+async function openSavedMap(id) {
+  const rec = await idbGet(id).catch(() => null);
+  if (!rec || !PARKS[id]) return;
+  if (!localRegistered[id]) {
+    // IndexedDB Blob 을 pmtiles 소스로 등록 → "pmtiles://local-<id>" (네트워크 불필요)
+    protocol.add(new PMTiles(new FileSource(new File([rec.base], "local-" + id))));
+    localRegistered[id] = true;
+  }
+  trailCache[id] = rec.routes;
+  parkOverlays[id] = { spots: rec.spots || null, contours: rec.contours || null };
+  await loadPark(id); // useBaseFor 가 로컬 소스로 스타일 전환
+  const last = localStorage.getItem("hiheight-last-course:" + id);
+  const f = rec.routes.features.find((x) => x.properties.name === last) || rec.routes.features[0];
+  if (f) focusTrail(f); // 최근(없으면 첫) 코스 자동선택 → 등반 시작 버튼 활성
+  showTab("tam");
 }
 
 // ── 테마 토글 ────────────────────────────────────────
@@ -800,7 +949,7 @@ function applyTheme(t) {
   theme = t;
   localStorage.setItem(THEME_KEY, t);
   document.documentElement.dataset.theme = t;
-  map.setStyle(buildStyle(PMTILES_URL, t)); // styledata 핸들러가 오버레이 재부착
+  map.setStyle(buildStyle(baseUrl, t)); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
 }
 
 // ── 바텀시트 드래그/탭 ───────────────────────────────
@@ -853,16 +1002,19 @@ document.getElementById("show-all").addEventListener("click", (e) => {
 setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
 
 map.on("load", async () => {
-  [peaksData, spotsData, contoursData] = await Promise.all([
+  let spots, contours;
+  [peaksData, spots, contours] = await Promise.all([
     fetch("data/peaks.geojson").then((r) => r.json()),
     fetch("data/bukhansan-spots.geojson").then((r) => r.json()),
     fetch("data/bukhansan-contours.geojson").then((r) => r.json())
   ]);
+  parkOverlays.bukhansan = { spots, contours };
   ensureOverlays();
   await loadPark("bukhansan");
   renderFamous();
   renderReco();
   renderRecords();
+  renderSavedMaps(); // IndexedDB 에 저장된 지도 목록 (등반 탭)
   document.getElementById("loading").classList.add("hidden");
 });
 map.on("error", (e) => console.error("Map error:", e && e.error));

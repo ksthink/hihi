@@ -28,13 +28,19 @@ if not URL or not KEY:
     sys.exit("환경변수 SUPABASE_URL, SUPABASE_SECRET_KEY 를 설정하세요.")
 
 # 명산 팩: mountain_id -> {로컬파일: Storage 파일명}
+# base.pmtiles 재생성: pmtiles extract <v4 소스> data/tiles/<id>-base.pmtiles --bbox=<bbox> --maxzoom=15
 PACKS = {
     "bukhansan": {
+        "data/tiles/bukhansan-base.pmtiles": "base.pmtiles",
         "data/bukhansan-routes.geojson": "routes.geojson",
         "data/bukhansan-spots.geojson": "spots.geojson",
         "data/bukhansan-contours.geojson": "contours.geojson",
     },
 }
+
+def content_type(name):
+    return ("application/octet-stream" if name.endswith(".pmtiles")
+            else "application/geo+json")
 
 # mountains 카탈로그 (app.js 의 PARKS/FAMOUS 와 일치)
 MOUNTAINS = [
@@ -76,7 +82,7 @@ def upload(local, dest):
     with open(os.path.join(ROOT, local), "rb") as f:
         content = f.read()
     st, out = req("POST", f"/storage/v1/object/packs/{dest}", content,
-                  {"Content-Type": "application/geo+json", "x-upsert": "true"}, raw=True)
+                  {"Content-Type": content_type(dest), "x-upsert": "true"}, raw=True)
     ok = st in (200, 201)
     print(("업로드 OK   " if ok else f"업로드 실패({st}) ") + dest +
           ("" if ok else f"  {out[:150]}"))

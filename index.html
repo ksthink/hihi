@@ -58,13 +58,23 @@
             <div class="grabber" id="grabber"></div>
             <div class="sheet-content">
               <div class="section">
-                <h2>등산로 <button id="show-all" hidden>전체 보기</button></h2>
+                <h2>등산로
+                  <span class="h2-btns">
+                    <button id="dl-map">지도 다운</button>
+                    <button id="show-all" hidden>전체 보기</button>
+                  </span>
+                </h2>
+                <!-- 다운로드 진행 패널 -->
+                <div id="dl-progress" hidden>
+                  <div class="dp-top"><span class="dp-name" id="dp-name"></span><span class="dp-size" id="dp-size"></span></div>
+                  <div class="pbar"><div class="pbar-fill" id="dp-fill"></div></div>
+                  <p class="dp-status" id="dp-status"></p>
+                </div>
                 <ul id="trail-list"></ul>
               </div>
 
               <div class="section">
-                <h2>오프라인 저장</h2>
-                <button class="dl-btn" id="dl-save">이 산 오프라인 저장</button>
+                <h2>데이터 내보내기</h2>
                 <button class="dl-btn" id="dl-geojson">등산로 데이터 내보내기 (GeoJSON)</button>
                 <p class="hint small" id="dl-note"></p>
               </div>
@@ -94,6 +104,12 @@
           <section class="view" id="view-deung">
             <div class="view-head"><h1>등반</h1><p>코스를 골라 산행을 시작하세요</p></div>
             <div class="view-body">
+              <!-- 저장된 지도 (오프라인 팩) -->
+              <div class="saved-maps" id="saved-maps" hidden>
+                <h2 class="sm-h2">저장된 지도</h2>
+                <ul id="sm-list"></ul>
+              </div>
+
               <div class="climb-card">
                 <div class="climb-course" id="climb-course">선택된 코스가 없습니다</div>
                 <div class="climb-stats">
@@ -179,6 +195,18 @@
               <span class="lbl">기록</span>
             </button>
           </nav>
+
+          <!-- 지도 다운로드 확인 모달 -->
+          <div class="modal" id="dl-confirm" hidden>
+            <div class="modal-card">
+              <h3 id="dc-title">지도 다운로드</h3>
+              <p id="dc-msg">지도 용량이 클 수 있어요.<br>Wi-Fi 상태에서 진행해 주세요.</p>
+              <div class="modal-actions">
+                <button class="modal-btn" id="dc-cancel">취소</button>
+                <button class="modal-btn primary" id="dc-ok">다운로드</button>
+              </div>
+            </div>
+          </div>
 
           <div id="loading">지도를 불러오는 중…</div>
         </div>

@@ -18,3 +18,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# 기저 타일 추출본 (대용량) — Supabase Storage 로 배포, 재생성: pmtiles extract
+data/tiles/

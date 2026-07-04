@@ -55,11 +55,15 @@
 - 등반 기록 목록 + 요약 통계(총 산행·총 거리·누적 고도)
 - 기록은 서버(Postgres + RLS)에 저장 — **본인만 조회 가능**, 새로고침/재접속에도 유지
 
-### 오프라인 저장
-- 탐험 시트의 **"이 산 오프라인 저장"** — 서버(Supabase Storage)에서 그 산의 팩
-  (routes/spots/contours GeoJSON)을 받아오고, 계정에 "저장한 산"으로 기록
-- 웹 단계에서는 **배포 경로 검증 + 저장 표시**까지 구현
-  (실제 기기 캐싱은 iOS 파일시스템 단계에서 완성 — §5 로드맵 참고)
+### 오프라인 지도 저장 (핵심 기능)
+- 코스 목록 상단 **"지도 다운"** → Wi-Fi 경고 모달(실제 팩 용량 표시) → 확인 시 다운로드
+- 다운로드 중: 산 이름·용량·**프로그레스바**(타일은 바이트 단위 진행률)
+- 팩(기저 타일 base.pmtiles + 등산로·시설·등고선)이 **기기(IndexedDB)에 저장**되고,
+  완료 시 **등반 탭으로 자동 이동** → **"저장된 지도" 목록**에 추가(용량·저장일·삭제)
+- 저장된 지도 클릭 → **네트워크 없이 로컬 타일로 지도 렌더**(`pmtiles://local-<id>`) +
+  최근 코스 자동선택 → 바로 **등반 시작** 가능
+- 웹 한계(iOS 파일시스템에서 해소): 앱 셸·글리프 폰트는 네트워크 필요 → 페이지가 열린
+  상태의 오프라인 지도 사용까지 지원. IndexedDB 는 브라우저 용량 정책에 따라 퇴거될 수 있음
 
 ---
 
@@ -134,12 +138,19 @@ python3 scripts/upload_packs.py
 **② Storage 파일 레이아웃** — 버킷 `packs` (공개 읽기), **파일명 고정**
 
 ```
+packs/<mountain_id>/base.pmtiles       필수 — 기저 벡터 타일 (bbox 추출본, z0~15)
 packs/<mountain_id>/routes.geojson     필수 — 등산로 코스
-packs/<mountain_id>/spots.geojson      선택 — 경로 지점 (없으면 앱이 "팩 n/3"으로 표시)
+packs/<mountain_id>/spots.geojson      선택 — 경로 지점
 packs/<mountain_id>/contours.geojson   선택 — 등고선
 ```
-- Content-Type: `application/geo+json`, 덮어쓰기 업로드(`x-upsert: true`)
-- 파일명은 앱(`app.js` `dl-save` 핸들러)이 위 3개 이름을 그대로 조회하므로 변경 금지
+- Content-Type: pmtiles = `application/octet-stream`, GeoJSON = `application/geo+json` (`x-upsert: true`)
+- 파일명은 앱(`app.js` `downloadPack`)이 위 이름을 그대로 조회하므로 변경 금지
+- `base.pmtiles` 생성(go-pmtiles CLI):
+  ```bash
+  pmtiles extract https://demo-bucket.protomaps.com/v4.pmtiles \
+    data/tiles/<id>-base.pmtiles --bbox=<minLon>,<minLat>,<maxLon>,<maxLat> --maxzoom=15
+  ```
+  (북한산 기준 약 8.5MB. `data/tiles/` 는 gitignore — Storage 로만 배포)
 
 **③ GeoJSON 본문 규격**
 - 좌표계: **WGS84(EPSG:4326)**, 좌표 순서 **[경도, 위도]** — 국내 좌표계(EPSG:5186 등)는
@@ -278,7 +289,8 @@ hihi/
 │   ├── bukhansan-contours.geojson  등고선 343개: 50m 간격 (397KB)
 │   ├── peaks.geojson               주요 봉우리 7개 (북한산+설악산 공용)
 │   ├── seoraksan.geojson           설악산 샘플 4코스 (⚠️ 실데이터 교체 예정)
-│   └── bukhansan.geojson           (레거시 샘플 3코스 — 미사용, 삭제 후보)
+│   ├── bukhansan.geojson           (레거시 샘플 3코스 — 미사용, 삭제 후보)
+│   └── tiles/                      (gitignore) base.pmtiles 추출본 — Storage 로만 배포
 │
 ├── supabase/
 │   └── schema.sql          [이관] DB 스키마 + RLS + packs 버킷. 새 환경 셋업 시 1회 실행
@@ -356,7 +368,7 @@ hihi/
 | 인증 | `setupAuth()`, `currentUser`, onAuthStateChange | supabase-swift Auth |
 | 등반 | `climbSession`, `saveClimb()` → climb_records INSERT | CoreLocation 트래킹 + 저장 |
 | 기록 | `renderRecords()` — SELECT + 요약 집계 | SwiftUI + supabase-swift |
-| 오프라인 | `dl-save` 핸들러 — Storage 팩 취득 + saved_packs upsert | 파일시스템 실저장으로 승격 |
+| 오프라인 | `downloadPack()`(프로그레스 다운로드)·`idb*`(IndexedDB)·`openSavedMap()`(로컬 타일 렌더)·`renderSavedMaps()` | 파일시스템 저장 + 번들 타일로 승격 |
 | 시트 | `setupSheet()` 드래그 바텀시트 | `.presentationDetents` |
 
 ### 7.4 Supabase 리소스 (백엔드 — iOS 와 공유)
@@ -377,7 +389,7 @@ hihi/
 | `maplibre-gl@4.7.1` ESM | jsdelivr CDN (app.js import) | MapLibre Native SDK |
 | `pmtiles@3.2.1` ESM | jsdelivr CDN | Native PMTiles 리더 |
 | `@supabase/supabase-js@2` ESM | jsdelivr CDN | supabase-swift |
-| 기저 타일 | Protomaps demo bucket (리라이트 경유) | 산별 `pmtiles extract` 번들 |
+| 기저 타일 | 온라인 탐색: Protomaps demo(리라이트) / **오프라인: Storage 팩 base.pmtiles → IndexedDB** ✅ | 산별 추출본 번들·파일시스템 |
 | 지도 글리프 폰트 | protomaps.github.io (basemap-style.js `glyphs`) | 앱 번들 PBF |
 | ~~UI 폰트~~ | ~~CDN~~ → **fonts/ 로컬 번들 완료** ✅ | 번들 그대로 복사 |
 
