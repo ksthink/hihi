@@ -7,11 +7,12 @@
 
 사용:
   export SUPABASE_URL=https://durnojryhhsajnlwvdzt.supabase.co
-  export SUPABASE_SERVICE_ROLE=<service_role(secret) 키>   # ⚠️ 비밀! 커밋 금지
+  export SUPABASE_SECRET_KEY=sb_secret_...        # ⚠️ 비밀! 커밋 금지 (로컬 .env 로만)
   python3 scripts/upload_packs.py
 
-service_role 키는 RLS 를 우회하므로 절대 저장소/클라이언트 코드에 두지 말 것.
-(env 로만 주입하고, 이 스크립트는 서버/로컬에서만 실행)
+Secret 키(sb_secret_…, 구 service_role)는 RLS 를 우회하므로 절대 저장소/클라이언트 코드에
+두지 말 것. env 로만 주입하고, 이 스크립트는 서버/로컬에서만 실행.
+(레거시 service_role 키는 2026-07-04 폐기 → 신규 Secret 키 사용)
 """
 import json
 import os
@@ -20,11 +21,11 @@ import urllib.error
 import urllib.request
 
 URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
-KEY = os.environ.get("SUPABASE_SERVICE_ROLE", "")
+KEY = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE", "")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if not URL or not KEY:
-    sys.exit("환경변수 SUPABASE_URL, SUPABASE_SERVICE_ROLE 를 설정하세요.")
+    sys.exit("환경변수 SUPABASE_URL, SUPABASE_SECRET_KEY 를 설정하세요.")
 
 # 명산 팩: mountain_id -> {로컬파일: Storage 파일명}
 PACKS = {

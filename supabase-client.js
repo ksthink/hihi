@@ -6,13 +6,13 @@
 // 스키마·RLS·Storage 버킷은 그대로 재사용된다.
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-// anon(public) 키 — RLS 로 보호되어 클라이언트 노출이 안전하다.
-// ⚠️ service_role(secret) 키는 절대 이 파일에 두지 말 것 (RLS 우회 → 전체 DB 노출).
+// Publishable 키 (신규 API 키 체계) — 브라우저용 공개키. RLS 로 보호되어 노출이 안전하다.
+// (레거시 anon/service_role 키는 2026-07-04 폐기됨.)
+// ⚠️ Secret 키(sb_secret_…)는 절대 이 파일에 두지 말 것 (RLS 우회 → 전체 DB 노출). 시드는 로컬 .env 로만.
 const SUPABASE_URL = "https://durnojryhhsajnlwvdzt.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR1cm5vanJ5aGhzYWpubHd2ZHp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDkwMzAsImV4cCI6MjA5ODYyNTAzMH0.58S7heEpebOWFITj5tXymYtJMO79wDO8B_X39gDLWtw";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_qltsOvZhvVwPF5YNQARgCg_6KcV6Km5";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true }
 });
 
