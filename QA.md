@@ -4,6 +4,46 @@
 
 ---
 
+## 2026-07-04 · Vercel에 Supabase URL/anon/service_role 을 env 로 등록하면 안전한가?
+
+**Q.** Vercel에 Supabase url, anon, role key 등의 환경변수를 등록하도록 해줘. 그게 안전한 게 맞지?
+
+**A.** 지금 구조(빌드 없는 순수 정적 앱)에선 그 방식이 안전하지 않거나(특히 service_role) 의미가 없다.
+
+- **정적 앱은 env가 브라우저로 자동 전달 안 됨** — Vercel env는 서버(서버리스 함수)·빌드 과정에서만 읽힘. `supabase-client.js` 는 브라우저에서 실행되고 브라우저엔 `process.env` 가 없다. 값을 넣으려면 번들러(빌드) 도입이 필요하고, 그러면 결국 브라우저 번들에 그대로 노출됨.
+- **anon 키·URL은 원래 공개값** — 모든 요청에 실려 나감. env로 옮겨도 보안 이득 0. 현재처럼 `supabase-client.js` 에 두는 게 정상(RLS가 보호).
+- **⚠️ service_role 은 프런트/Vercel 클라이언트에 절대 금지** — RLS 를 우회하는 관리자 전권 키. 브라우저가 닿는 곳에 두면 전체 DB 탈취 위험. 지금 앱엔 서버 사이드 코드가 없어 Vercel에 둘 이유 자체가 없음. service_role 은 로컬 `.env`(시드 스크립트) 또는 미래의 서버리스 백엔드(서버 전용 env, 클라이언트 미노출) 에서만 사용.
+
+- **정리**: 지금 Vercel에 env 등록 불필요(anon/URL은 코드에, service_role은 프런트 금지). 진짜 보안 조치는 노출된 service_role 키 재발급.
+- **언제 env가 의미 있나**: 나중에 Vercel Functions(서버리스 API) 를 붙여 관리자 작업을 서버에서 처리할 때, service_role 을 "서버 전용" env로 넣고 함수에서만 사용(클라이언트엔 안 내려감) — 그건 안전.
+
+---
+
+## 2026-07-04 · 등산 팩 데이터는 어떻게 추가하나?
+
+**Q.** 그럼 등산 팩 데이터는 어떻게 추가하면 되는거야?
+
+**A.** 팩 = 한 산의 데이터 파일 3종(등산로·시설·등고선). 새 산 추가는 3단계.
+
+- **① 데이터 생성 (콘텐츠 파이프라인, `scripts/*.py`)** — 제일 손이 가는 부분
+  - 등산로: Overpass(OSM)에서 그 산 영역 `route=hiking`/`highway=path` → `data/<id>-routes.geojson` (`osm_trails.py`/`osm_routes.py`). 산마다 bbox·코스 선별 튜닝 필요
+  - 등고선: SRTM DEM → `data/<id>-contours.geojson` (`make_contours.py`, venv)
+  - 고도 프로파일: `add_elevation.py` 로 각 코스 `profile/ascent/max_elev` 채움
+  - 시설(spots)은 있으면 추가, 없으면 생략
+
+- **② 앱에 등록 (`app.js`)**
+  - `PARKS`(app.js:9)에 `id, label, center, zoom, bbox, file:"data/<id>-routes.geojson"` 추가
+  - `FAMOUS`(app.js:308)에 `{park, name, elev, region}` 추가 → 검색·추천·100대 명산 목록에 노출
+  - ⚠️ 현재 한계: 스팟/등고선이 **북한산 하드코딩**(`map.on("load")` 직접 fetch + `applySpotsVisibility`/`applyContourVisibility` 가 `currentPark==="bukhansan"` 게이트). 그래서 새 산은 **등산로만 뜨고 등고선·스팟은 안 보임** → 두 번째 산부터는 **산별 로드로 일반화** 작업이 1회 필요
+
+- **③ Supabase 시드 (`scripts/upload_packs.py`)**
+  - `PACKS` dict + `MOUNTAINS` 리스트에 새 산 항목 추가
+  - service_role 키(env)로 실행 → Storage `packs/<id>/` 업로드 + `mountains` 시드 → 오프라인 저장 자동 "3/3"
+
+- **권장 진행:** 산 하나(예: 지리산·한라산)를 정해 ①생성 → ②등록(+스팟/등고선 일반화) → ③시드까지 한 번에 완성. 한 산으로 파이프라인을 굳히면 다음 산부터 빨라짐.
+
+---
+
 ## 2026-07-04 · "팩 파일 시드", "팩 3/3" 이 무슨 뜻인가?
 
 **Q.** "팩 파일 시드(선택) — service_role 키로 `python3 scripts/upload_packs.py` 실행 시 오프라인 저장이 '팩 3/3'으로 완성" — 이게 무슨 소리야?
