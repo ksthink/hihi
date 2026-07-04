@@ -180,22 +180,137 @@ python3 scripts/serve.py          # 정적 서버 + PMTiles CORS 프록시 (포�
 
 ---
 
-## 7. 저장소 구조
+## 7. 저장소 구조 (상세)
 
-| 경로 | 설명 |
+> iOS 이식 시 시행착오를 줄이기 위한 **정밀 구조도**입니다. 각 항목에 이식 처리 방식을 표기합니다.
+> **[이관]** 그대로 재사용 · **[치환]** 네이티브 대응물로 교체 · **[폐기]** 웹 전용 · **[도구]** 콘텐츠 빌드용(앱 외부)
+
+### 7.1 전체 트리
+
+```
+hihi/
+├── index.html              [치환→SwiftUI] 앱 셸. ⚠️ 시뮬레이터 크롬(.sim-window/.statusbar/
+│                             .island/.home-indicator)은 목업 — iOS 에서 전량 폐기
+├── app.js                  [치환→Swift]  전체 앱 로직 (§7.3 내부 구조 참고 — 인터랙션 스펙으로 사용)
+├── basemap-style.js        [이관]        buildStyle(url, theme) → 흑백 MapLibre 스타일 JSON.
+│                             출력 JSON 을 MapLibre Native 가 그대로 소비 (glyphs URL 만 로컬로 교체)
+├── style.css               [치환→SwiftUI] 흑백 디자인 시스템. CSS 변수(:root/--*)가 디자인 토큰 원본
+├── supabase-client.js      [치환→supabase-swift] URL·publishable 키·인증 헬퍼.
+│                             스키마/RLS/버킷은 그대로 재사용 (백엔드 재작업 없음)
+│
+├── fonts/                  [이관] UI 폰트 — iOS 앱 번들에 그대로 포함 (CDN 미의존)
+│   ├── KakaoSmallSans-Light.woff2     (300 — 설명·힌트)
+│   ├── KakaoSmallSans-Regular.woff2   (400 — 본문·메타)
+│   └── KakaoSmallSans-Bold.woff2      (700 — 제목·버튼·수치)
+│
+├── data/                   [이관] 명산 팩 원본 — MLNShapeSource 로 그대로 로드 (§7.2 스키마)
+│   ├── bukhansan-routes.geojson    북한산 등산로 40코스 (OSM, 190KB)
+│   ├── bukhansan-spots.geojson     경로 지점 221개: 분기점·시종점 (38KB)
+│   ├── bukhansan-contours.geojson  등고선 343개: 50m 간격 (397KB)
+│   ├── peaks.geojson               주요 봉우리 7개 (북한산+설악산 공용)
+│   ├── seoraksan.geojson           설악산 샘플 4코스 (⚠️ 실데이터 교체 예정)
+│   └── bukhansan.geojson           (레거시 샘플 3코스 — 미사용, 삭제 후보)
+│
+├── supabase/
+│   └── schema.sql          [이관] DB 스키마 + RLS + packs 버킷. 새 환경 셋업 시 1회 실행
+│
+├── scripts/                [도구] 콘텐츠 파이프라인 — 앱에 포함되지 않음, 맥북에서도 그대로 사용
+│   ├── serve.py                    [폐기 예정] 로컬 개발 서버(정적+PMTiles CORS 프록시, :8890).
+│   │                                 iOS 는 로컬 파일 접근이라 프록시 개념 자체가 없음
+│   ├── osm_trails.py               ★ 등산로 생성(현행): Overpass 결과 → routes.geojson
+│   ├── make_contours.py            ★ 등고선 생성: SRTM DEM → contours.geojson (venv: numpy/contourpy)
+│   ├── add_elevation.py            ★ 고도 주입: 코스에 profile/ascent/min·max_elev (venv)
+│   ├── convert_spots.py            ★ 스팟 변환: 산림청 Esri JSON, EPSG:5186→WGS84 (의존성 없음)
+│   ├── upload_packs.py             ★ Supabase 시드: 팩 업로드 + mountains 카탈로그
+│   │                                 (env: SUPABASE_URL, SUPABASE_SECRET_KEY)
+│   ├── osm_routes.py               (대안) OSM route=hiking 릴레이션 → 코스
+│   ├── extract_routes.py           (대안) 산림청 네트워크에서 Dijkstra 로 코스 추출
+│   ├── convert_baegundae.py        (대안) 백운대 Esri JSON 변환
+│   ├── convert_routes.py           (대안) 홍은동 자락길 변환
+│   ├── osm_dulle.json / osm_named.json / osm_named_geom.json   Overpass 원본 캐시
+│   ├── route_raw.json / spots_raw_북한산.json / baegundae_*.json 산림청 원본 캐시
+│   └── (gitignore: *.hgt DEM 원본, dl_gpx.bin, __pycache__/)
+│
+├── vercel.json             [폐기] 배포 설정 — /pmtiles/* → Protomaps 리라이트 (웹 전용)
+├── .vercelignore           [폐기] 배포 제외 목록 (⚠️ gitignore 문법 — 인라인 주석 금지)
+├── .gitignore              공통 (.env 시크릿 차단 포함)
+│
+├── README.md · WORKLOG.md(작업일지) · QA.md(질문/답변) · CLAUDE.md(개발 지침)
+└── (외부) ~/.claude/plans/moonlit-rolling-tulip.md   iOS 이식 계획서 + 부록 A(Supabase)
+```
+
+### 7.2 데이터 스키마 (GeoJSON properties) — iOS 모델 정의 시 그대로 사용
+
+**`data/<산>-routes.geojson`** — geometry: `MultiLineString`
+
+| 필드 | 타입 | 의미 |
+|---|---|---|
+| `name` | string | 코스명 (앱 전역에서 **코스 식별자**로 사용 — 선택/필터/기록) |
+| `difficulty` | string | 데이터 값 `초급`/`중급`/`고급` — **표시 라벨은 별도**(보통/어려움/매우 어려움, app.js `DIFF_LABEL`) |
+| `distance_km` | number | 코스 길이(km) |
+| `time_hr` | number | 예상 소요(시간) |
+| `kind` | string | 코스 유형 (능선·계곡 등산로 / 둘레길) |
+| `desc` | string | 설명 |
+| `segments` | number | 병합된 OSM way 수 (참고용) |
+| `min_elev` / `max_elev` | number | 최저/최고 고도(m) |
+| `ascent` / `descent` | number | 누적 상승/하강(m) |
+| `profile` | number[48] | 등간격 고도 샘플 — 스파크라인 그래프용 |
+
+**`data/<산>-spots.geojson`** — geometry: `Point`
+
+| 필드 | 타입 | 의미 |
+|---|---|---|
+| `id` | string | 원본 스팟 ID |
+| `category` | string | `분기점`/`시종점` 등 — 지도 표시는 app.js `SHOWN` 목록으로 필터 |
+| `detail` / `etc` | string | 팝업 상세 텍스트 |
+
+**`data/<산>-contours.geojson`** — geometry: `LineString`
+
+| 필드 | 타입 | 의미 |
+|---|---|---|
+| `elev` | number | 등고선 고도(m) |
+| `idx` | 0\|1 | `0`=50m 보조선(줌 12.5+), `1`=100m 주선(줌 10.5+, 라벨 13.5+) |
+
+**`data/peaks.geojson`** — geometry: `Point` — `name`, `elev`(m), `park`(소속 산 id)
+
+### 7.3 `app.js` 내부 구조 (이식용 인터랙션 스펙)
+
+| 블록 | 핵심 심볼 | iOS 대응 |
+|---|---|---|
+| 설정 | `PMTILES_URL`, `PARKS{center,zoom,bbox,file}`, `DIFF_LEVEL/DIFF_LABEL`, `SHOWN` | 상수/Config 구조체 |
+| 테마 | `theme`, `applyTheme()`, localStorage `hiheight-theme` | UserDefaults + ColorScheme |
+| 지도 | `map`(maxBounds 한국, minZoom 5, hash), `ThemeControl` | MLNMapView 카메라 제한 |
+| 오버레이 | `ensureOverlays()` — 등고선 3레이어·trail casing/line(난이도별 굵기)·spots·peaks | MLNStyleLayer 1:1 이식 |
+| 코스 상태 | `currentPark`, `selectedName`, `trailCache`, `applyTrailFilter()`, `focusTrail()` | 앱 상태(@Observable) |
+| 목록/추천 | `renderTrailList()`, `FAMOUS`, `RECO`, `profileSVG()` | SwiftUI List + Path 스파크라인 |
+| 검색 | `setupSearch()` — 접두 우선 매칭, 한글 IME 조합 대응 자동완성 | 네이티브 검색(IME 이슈 없음) |
+| 인증 | `setupAuth()`, `currentUser`, onAuthStateChange | supabase-swift Auth |
+| 등반 | `climbSession`, `saveClimb()` → climb_records INSERT | CoreLocation 트래킹 + 저장 |
+| 기록 | `renderRecords()` — SELECT + 요약 집계 | SwiftUI + supabase-swift |
+| 오프라인 | `dl-save` 핸들러 — Storage 팩 취득 + saved_packs upsert | 파일시스템 실저장으로 승격 |
+| 시트 | `setupSheet()` 드래그 바텀시트 | `.presentationDetents` |
+
+### 7.4 Supabase 리소스 (백엔드 — iOS 와 공유)
+
+| 리소스 | 내용 |
 |---|---|
-| `index.html` | 앱 셸 — 시뮬레이터 프레임, 4개 뷰(탐험/추천/등반/기록), 탭바 |
-| `app.js` | 지도·오버레이·코스 선택·검색·인증·기록·오프라인 저장 로직 |
-| `basemap-style.js` | Protomaps v4 스키마용 흑백 MapLibre 스타일(라이트/다크) |
-| `style.css` | 흑백 테마 변수 + 모바일 레이아웃 |
-| `supabase-client.js` | Supabase 클라이언트 + 인증 헬퍼 |
-| `supabase/schema.sql` | DB 스키마(테이블·RLS·버킷) — SQL Editor 에서 1회 실행 |
-| `data/*.geojson` | 등산로·경로지점·등고선·봉우리 (산별 팩 원본) |
-| `scripts/*.py` | 데이터 파이프라인 + 로컬 서버 + 시드 |
-| `vercel.json` / `.vercelignore` | 배포 설정 |
-| `WORKLOG.md` | 작업일지 (날짜별 생성/수정 기록) |
-| `QA.md` | 프로젝트 질문/답변 기록 |
-| `CLAUDE.md` | 개발 지침 (iOS 이식 염두 규칙 등) |
+| `mountains` | 공개 카탈로그 (id/name/region/elev/center/zoom/bbox/pack_version/pack_size_kb) |
+| `profiles` | 사용자 프로필 (RLS: 본인만) |
+| `climb_records` | 등반 기록 (started/ended_at, distance_km, ascent_m, duration_s, track jsonb — RLS: 본인만) |
+| `saved_packs` | 저장한 산 (user_id+mountain_id PK — RLS: 본인만) |
+| Storage `packs/` | `packs/<산id>/routes.geojson`·`spots.geojson`·`contours.geojson` (공개 읽기) |
+| 키 정책 | 클라이언트 = **publishable 키만**. secret 키는 시드 스크립트 env 전용(커밋 금지) |
+
+### 7.5 외부(CDN) 의존 현황 — iOS 이식 시 전부 해소 대상
+
+| 의존 | 현재(웹) | iOS 처리 |
+|---|---|---|
+| `maplibre-gl@4.7.1` ESM | jsdelivr CDN (app.js import) | MapLibre Native SDK |
+| `pmtiles@3.2.1` ESM | jsdelivr CDN | Native PMTiles 리더 |
+| `@supabase/supabase-js@2` ESM | jsdelivr CDN | supabase-swift |
+| 기저 타일 | Protomaps demo bucket (리라이트 경유) | 산별 `pmtiles extract` 번들 |
+| 지도 글리프 폰트 | protomaps.github.io (basemap-style.js `glyphs`) | 앱 번들 PBF |
+| ~~UI 폰트~~ | ~~CDN~~ → **fonts/ 로컬 번들 완료** ✅ | 번들 그대로 복사 |
 
 ---
 
