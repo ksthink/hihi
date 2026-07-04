@@ -12,6 +12,9 @@ const PARKS = {
 };
 
 const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
+// 데이터 값(초급/중급/고급) → 화면 표시 라벨
+const DIFF_LABEL = { 초급: "보통", 중급: "어려움", 고급: "매우 어려움" };
+const difLabel = (d) => DIFF_LABEL[d] || d;
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
 // ── 테마 (흑백 화이트 / 다크) ────────────────────────
@@ -47,7 +50,28 @@ const map = new maplibregl.Map({
 // (bottom 코너는 나중에 추가한 컨트롤이 위로 쌓임 → 나침반을 위, 현재위치를 아래로)
 map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: true }), "bottom-right");
 map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), "bottom-right");
-map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: "metric" }), "top-left");
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: "metric" }), "bottom-left");
+
+// 화이트/다크 토글 — MapLibre 컨트롤 버튼(나침반과 동일 프레임), 나침반 위에 배치
+class ThemeControl {
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "theme-toggle";
+    btn.setAttribute("aria-label", "테마 전환");
+    btn.innerHTML =
+      '<svg class="icn moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.3A8.2 8.2 0 0 1 9.7 3.5a8.2 8.2 0 1 0 10.8 10.8z"/></svg>' +
+      '<svg class="icn sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>';
+    btn.addEventListener("click", () => applyTheme(theme === "dark" ? "light" : "dark"));
+    div.appendChild(btn);
+    this._c = div;
+    return div;
+  }
+  onRemove() { this._c.remove(); }
+}
+map.addControl(new ThemeControl(), "bottom-right");
 
 // ── 상태 ─────────────────────────────────────────────
 let currentPark = "bukhansan";
@@ -198,6 +222,10 @@ function applyTrailFilter() {
   });
   const btn = document.getElementById("show-all");
   if (btn) btn.hidden = !selectedName;
+  const cc = document.getElementById("cur-course");
+  const dv = document.getElementById("title-div");
+  if (cc) cc.textContent = selectedName || "";
+  if (dv) dv.hidden = !selectedName;
   document.querySelectorAll(".trail-item").forEach((x) =>
     x.classList.toggle("selected", x.dataset.name === selectedName)
   );
@@ -249,7 +277,7 @@ function renderTrailList(geojson) {
     li.dataset.name = p.name;
     li.innerHTML = `
       <div class="t-left">
-        <div class="t-name">${p.name} <span class="badge">${p.difficulty} ${difMeter(p.difficulty)}</span></div>
+        <div class="t-name">${p.name} <span class="badge">${difLabel(p.difficulty)} ${difMeter(p.difficulty)}</span></div>
         <div class="t-meta">${p.peak ? `<span>${p.peak}</span>` : ""}<span>${p.distance_km}km</span>${p.time_hr ? `<span>${p.time_hr}h</span>` : ""}${p.surface ? `<span>${p.surface}</span>` : ""}</div>
         <div class="t-desc">${p.desc || ""}</div>
       </div>
@@ -302,6 +330,66 @@ function selectMountain(park) {
   loadPark(park);
 }
 
+// ── 산 검색 (좌상단 돋보기) + 자동완성 ───────────────
+(function setupSearch() {
+  const btn = document.getElementById("search-btn");
+  const panel = document.getElementById("search-panel");
+  const input = document.getElementById("search-input");
+  const results = document.getElementById("search-results");
+  let composing = false;
+
+  // 접두 우선, 없으면 포함 매치 (가장 유사한 산부터)
+  function matches(q) {
+    if (!q) return FAMOUS.slice();
+    const pre = FAMOUS.filter((m) => m.name.startsWith(q));
+    const inc = FAMOUS.filter((m) => !m.name.startsWith(q) && m.name.includes(q));
+    return [...pre, ...inc];
+  }
+  function highlight(name, q) {
+    const i = q ? name.indexOf(q) : -1;
+    return i < 0 ? name : name.slice(0, i) + "<strong>" + name.slice(i, i + q.length) + "</strong>" + name.slice(i + q.length);
+  }
+  function render(q) {
+    const query = (q || "").trim();
+    const list = matches(query);
+    if (!list.length) { results.innerHTML = '<li class="sr-empty">검색 결과 없음</li>'; return; }
+    results.innerHTML = list
+      .map((m, i) => `<li data-park="${m.park}" class="${i === 0 ? "active" : ""}">${highlight(m.name, query)}<span class="sr-meta">${m.elev} · ${m.region}</span></li>`)
+      .join("");
+    results.querySelectorAll("li[data-park]").forEach((li) =>
+      li.addEventListener("click", () => { selectMountain(li.dataset.park); close(); })
+    );
+  }
+  // 입력창에 가장 유사한 산 이름을 인라인 자동완성(나머지 글자 선택 표시)
+  function autocomplete() {
+    const typed = input.value;
+    if (!typed) return;
+    const m = FAMOUS.find((x) => x.name.startsWith(typed) && x.name !== typed);
+    if (m) { input.value = m.name; input.setSelectionRange(typed.length, m.name.length); }
+  }
+  function pick() {
+    const q = input.value.trim();
+    const m = FAMOUS.find((x) => x.name === q) || matches(q)[0];
+    if (m) { selectMountain(m.park); close(); }
+  }
+  function open() { panel.hidden = false; render(""); input.focus(); }
+  function close() { panel.hidden = true; input.value = ""; }
+
+  btn.addEventListener("click", (e) => { e.stopPropagation(); panel.hidden ? open() : close(); });
+  input.addEventListener("compositionstart", () => { composing = true; });
+  input.addEventListener("compositionend", () => { composing = false; render(input.value); autocomplete(); });
+  input.addEventListener("input", (e) => {
+    if (composing) return;                 // 한글 조합 중에는 조합 종료 후 처리
+    render(input.value);
+    const del = e.inputType && e.inputType.startsWith("delete");
+    if (!del) autocomplete();
+  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pick(); } });
+  document.addEventListener("click", (e) => {
+    if (!panel.hidden && !document.getElementById("search").contains(e.target)) close();
+  });
+})();
+
 // ── 하단 탭바 (탐험/추천/등반/기록) ──────────────────
 const appEl = document.getElementById("app");
 function showTab(name) {
@@ -327,7 +415,7 @@ function renderReco() {
     const el = document.createElement("div");
     el.className = "reco-card";
     el.innerHTML = `
-      <span class="rc-badge">${r.diff} ${difMeter(r.diff)}</span>
+      <span class="rc-badge">${difLabel(r.diff)} ${difMeter(r.diff)}</span>
       <div class="rc-park">${r.parkLabel}</div>
       <div class="rc-name">${r.name}</div>
       <div class="rc-why">${r.why}</div>`;
@@ -444,9 +532,6 @@ function applyTheme(t) {
   document.documentElement.dataset.theme = t;
   map.setStyle(buildStyle(PMTILES_URL, t)); // styledata 핸들러가 오버레이 재부착
 }
-document.getElementById("theme-toggle").addEventListener("click", () => {
-  applyTheme(theme === "dark" ? "light" : "dark");
-});
 
 // ── 바텀시트 드래그/탭 ───────────────────────────────
 (function setupSheet() {
