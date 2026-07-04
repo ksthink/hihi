@@ -144,6 +144,22 @@
             </div>
           </section>
 
+          <!-- 등반 중 HUD (실시간 트래킹) -->
+          <div id="climb-hud" hidden>
+            <div class="ch-top">
+              <span class="ch-live"></span>
+              <span class="ch-course" id="ch-course"></span>
+              <span class="ch-time" id="ch-time">0:00:00</span>
+            </div>
+            <div class="ch-stats">
+              <div><span id="ch-dist">0.00</span><small>이동(km)</small></div>
+              <div><span id="ch-course-dist">–</span><small>코스(km)</small></div>
+              <div><span id="ch-pts">0</span><small>GPS 지점</small></div>
+            </div>
+            <button id="ch-stop">등반 종료</button>
+            <p class="ch-note" id="ch-note"></p>
+          </div>
+
           <!-- 하단 탭바 -->
           <nav id="tabbar">
             <button class="tabbtn active" data-tab="tam">

@@ -48,7 +48,8 @@ const map = new maplibregl.Map({
 });
 // 확대/축소 버튼 없이 나침반만 + 현재위치 — 지도 하단 우측에 배치
 // (bottom 코너는 나중에 추가한 컨트롤이 위로 쌓임 → 나침반을 위, 현재위치를 아래로)
-map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: true }), "bottom-right");
+const geolocate = new maplibregl.GeolocateControl({ trackUserLocation: true });
+map.addControl(geolocate, "bottom-right");
 map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), "bottom-right");
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: "metric" }), "bottom-left");
 
@@ -465,64 +466,149 @@ function profileSVG(prof, W, H) {
 function renderProfile(prof) {
   document.getElementById("climb-profile").innerHTML = profileSVG(prof, 300, 72);
 }
-// 등반 세션: 시작~종료 시간을 재고, 종료 시 climb_records 로 저장.
-// (실시간 GPS 트랙 기록은 iOS 네이티브 단계 기능 — 웹은 코스 통계로 기록)
-let climbSession = null; // { startedAt: Date, feature }
+// ── 등반 세션: 지도 기반 실시간 트래킹 ────────────────
+// 시작 → 지도 화면(선택 코스만 표시) + 현재위치 추적 + HUD(경과·이동거리·GPS 트랙).
+// 종료 → 실측(시간·이동거리·트랙)을 climb_records 로 저장.
+// 웹 한계(iOS 에서 해소): 화면이 꺼지면 GPS 중단(백그라운드 추적은 CoreLocation 단계),
+// 기저 타일은 온라인 소스(진짜 오프라인 지도는 iOS 로컬 팩 단계).
+let climbSession = null; // { startedAt, feature, park, watchId, timer, track:[[lng,lat,t]], dist }
+
+const R_EARTH = 6371000;
+function haversine(a, b) { // [lng,lat] 두 점 거리(m)
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]), dLng = toRad(b[0] - a[0]);
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R_EARTH * Math.asin(Math.sqrt(s));
+}
+
+function fmtClock(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function setStartBtn(on) {
+  const btn = document.getElementById("start-btn");
+  btn.dataset.on = on ? "1" : "0";
+  btn.textContent = on ? "등반 중 · 종료" : "등반 시작";
+  btn.classList.toggle("recording", on);
+}
+
+function startClimb() {
+  const p = selectedTrail.properties;
+  climbSession = {
+    startedAt: new Date(), feature: selectedTrail, park: currentPark,
+    watchId: null, timer: null, track: [], dist: 0
+  };
+  setStartBtn(true);
+
+  // 지도 화면으로 전환: 선택 코스만 표시(이미 필터됨) + 코스 범위로 이동
+  showTab("tam");
+  appEl.classList.add("climbing");
+  const hud = document.getElementById("climb-hud");
+  hud.hidden = false;
+  document.getElementById("ch-course").textContent = p.name;
+  document.getElementById("ch-course-dist").textContent = p.distance_km ?? "–";
+  document.getElementById("ch-dist").textContent = "0.00";
+  document.getElementById("ch-pts").textContent = "0";
+  document.getElementById("ch-note").textContent = "";
+
+  // 경과 시간 타이머
+  climbSession.timer = setInterval(() => {
+    if (!climbSession) return;
+    const sec = Math.floor((Date.now() - climbSession.startedAt.getTime()) / 1000);
+    document.getElementById("ch-time").textContent = fmtClock(sec);
+  }, 1000);
+
+  // 현재위치 점(파랑 점) 표시 + 지도 추적
+  try { geolocate.trigger(); } catch (_) {}
+
+  // GPS 트랙 기록 (5m 이상 이동 시 지점 추가)
+  if (navigator.geolocation) {
+    climbSession.watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (!climbSession) return;
+        const pt = [pos.coords.longitude, pos.coords.latitude];
+        const last = climbSession.track[climbSession.track.length - 1];
+        if (last) {
+          const d = haversine(last, pt);
+          if (d < 5) return;                    // 잡음 제거
+          climbSession.dist += d;
+        }
+        climbSession.track.push([+pt[0].toFixed(6), +pt[1].toFixed(6), Math.floor(Date.now() / 1000)]);
+        document.getElementById("ch-dist").textContent = (climbSession.dist / 1000).toFixed(2);
+        document.getElementById("ch-pts").textContent = climbSession.track.length;
+      },
+      (err) => {
+        document.getElementById("ch-note").textContent =
+          "위치 접근 불가(" + err.message + ") — 시간 기준으로 기록됩니다.";
+      },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+    );
+  } else {
+    document.getElementById("ch-note").textContent = "이 브라우저는 위치를 지원하지 않습니다.";
+  }
+}
+
+async function stopClimb() {
+  if (!climbSession) return;
+  if (climbSession.watchId != null) navigator.geolocation.clearWatch(climbSession.watchId);
+  if (climbSession.timer) clearInterval(climbSession.timer);
+  appEl.classList.remove("climbing");
+  document.getElementById("climb-hud").hidden = true;
+  setStartBtn(false);
+  await saveClimb();
+}
 
 document.getElementById("start-btn").disabled = true;
-document.getElementById("start-btn").addEventListener("click", async () => {
+document.getElementById("start-btn").addEventListener("click", () => {
   if (!selectedTrail) return;
-  const btn = document.getElementById("start-btn");
-  const tracking = btn.dataset.on === "1";
-
-  if (!tracking) {
-    // ── 등반 시작 ──
-    if (!currentUser) {
-      const hint = document.getElementById("climb-hint");
-      if (hint) hint.textContent = "등반 기록을 저장하려면 기록 탭에서 로그인하세요.";
-      showTab("girok");
-      return;
-    }
-    climbSession = { startedAt: new Date(), feature: selectedTrail };
-    btn.dataset.on = "1";
-    btn.textContent = "등반 중 · 종료";
-    btn.classList.add("recording");
-  } else {
-    // ── 등반 종료 → 기록 저장 ──
-    btn.dataset.on = "0";
-    btn.textContent = "등반 시작";
-    btn.classList.remove("recording");
-    btn.disabled = true;
-    await saveClimb();
-    btn.disabled = false;
+  if (climbSession) { stopClimb(); return; }
+  if (!currentUser) {
+    const hint = document.getElementById("climb-hint");
+    if (hint) hint.textContent = "등반 기록을 저장하려면 기록 탭에서 로그인하세요.";
+    showTab("girok");
+    return;
   }
+  startClimb();
 });
+document.getElementById("ch-stop").addEventListener("click", () => stopClimb());
 
 async function saveClimb() {
   if (!climbSession || !currentUser) { climbSession = null; return; }
-  const p = climbSession.feature.properties;
+  const s = climbSession;
+  climbSession = null;
+  const p = s.feature.properties;
   const ended = new Date();
+  const measuredKm = s.dist / 1000;
+  // 트랙이 너무 크면 균등 솎아내기 (기록당 최대 2000지점)
+  let track = s.track;
+  if (track.length > 2000) {
+    const step = track.length / 2000;
+    track = Array.from({ length: 2000 }, (_, i) => s.track[Math.floor(i * step)]);
+  }
   const rec = {
     user_id: currentUser.id,
-    mountain_id: currentPark,
+    mountain_id: s.park,
     course_name: p.name,
-    started_at: climbSession.startedAt.toISOString(),
+    started_at: s.startedAt.toISOString(),
     ended_at: ended.toISOString(),
-    distance_km: p.distance_km ?? null,
+    // 실측 이동거리가 유의미하면(50m+) 실측, 아니면 코스 거리로 기록
+    distance_km: measuredKm >= 0.05 ? +measuredKm.toFixed(2) : (p.distance_km ?? null),
     ascent_m: p.ascent ?? null,
-    duration_s: Math.max(1, Math.round((ended - climbSession.startedAt) / 1000)),
-    track: null
+    duration_s: Math.max(1, Math.round((ended - s.startedAt) / 1000)),
+    track: track.length >= 2 ? { points: track } : null
   };
-  climbSession = null;
   const { error } = await supabase.from("climb_records").insert(rec);
+  const hint = document.getElementById("climb-hint");
   if (error) {
     console.error("기록 저장 실패:", error);
-    const hint = document.getElementById("climb-hint");
     if (hint) hint.textContent = "기록 저장 실패: " + error.message;
     return;
   }
-  const hint = document.getElementById("climb-hint");
-  if (hint) hint.textContent = "등반 기록이 저장되었습니다. 기록 탭에서 확인하세요.";
+  if (hint) hint.textContent =
+    `등반 기록 저장 완료 — ${rec.distance_km}km · ${fmtClock(rec.duration_s)}` +
+    (rec.track ? ` · GPS ${rec.track.points.length}지점` : "") + ". 기록 탭에서 확인하세요.";
   renderRecords();
 }
 

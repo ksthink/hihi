@@ -321,3 +321,30 @@ footer .warn { margin-top: 6px; }
 .auth-msg,
 .famous-item .fm-meta,
 .sheet-content footer { font-weight: 300; }
+
+/* ── 등반 중 HUD (실시간 트래킹) ─────────────────────
+   등반 모드: 지도만 남기고 시트/검색을 숨겨 집중 화면 구성 */
+#app.climbing #sheet, #app.climbing .search { display: none; }
+#climb-hud {
+  position: absolute; left: 14px; right: 14px; bottom: 84px; z-index: 34;
+  background: var(--panel); backdrop-filter: blur(14px);
+  border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+#climb-hud[hidden] { display: none; }
+.ch-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ch-live { width: 8px; height: 8px; border-radius: 50%; background: var(--text); animation: ch-blink 1.2s ease-in-out infinite; }
+@keyframes ch-blink { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+.ch-course { flex: 1; font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-time { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+.ch-stats { display: flex; margin-bottom: 12px; }
+.ch-stats > div { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.ch-stats span { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ch-stats small { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-weight: 300; }
+#ch-stop { width: 100%; padding: 12px; border: none; border-radius: 12px; cursor: pointer; background: var(--accent); color: var(--on-accent); font-size: 15px; font-weight: 700; font-family: inherit; }
+#ch-stop:active { transform: scale(.98); }
+.ch-note { font-size: 11.5px; color: var(--muted); font-weight: 300; margin-top: 8px; line-height: 1.4; }
+.ch-note:empty { display: none; }
+
+/* 현재위치 점 — 흑백 테마에 맞춤 (MapLibre 기본 파랑 대체) */
+.maplibregl-user-location-dot, .maplibregl-user-location-dot::before { background-color: var(--text); }
