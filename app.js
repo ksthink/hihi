@@ -1017,6 +1017,18 @@ document.getElementById("show-all").addEventListener("click", (e) => {
   clearSelection();
 });
 
+// ── 인트로 스플래시 ──────────────────────────────────
+// 태그라인(0.25s) → 브랜드(1.15s) 순차 페이드인, 2.8s 에 페이드아웃 → 탐험 화면.
+// 지도 초기 로딩을 자연스럽게 가려주는 역할도 겸한다.
+(function splash() {
+  const el = document.getElementById("splash");
+  if (!el) return;
+  setTimeout(() => {
+    el.classList.add("hide");
+    setTimeout(() => el.remove(), 700);
+  }, 2800);
+})();
+
 // ── 시작 ─────────────────────────────────────────────
 setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
 
