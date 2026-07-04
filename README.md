@@ -121,6 +121,75 @@ python3 scripts/upload_packs.py
 > ⚠️ 현재 스팟·등고선 로드는 북한산 하드코딩 상태라, 두 번째 산부터는
 > 산별 로드 일반화 작업이 1회 필요합니다 (`QA.md` 2026-07-04 항목 참고).
 
+### 팩 업로드 규격 (Pack Specification)
+
+팩을 업로드/추가할 때 반드시 아래 규격을 따릅니다. 웹앱·시드 스크립트·(향후) iOS 가
+모두 이 규격을 전제로 동작합니다.
+
+**① 식별자 (`mountain_id`)**
+- 영문 소문자 로마자 표기, 공백 없음 — 예: `bukhansan`, `seoraksan`, `jirisan`
+- 이 id 가 Storage 폴더명 · `mountains.id` · `app.js` `PARKS` 키 · `saved_packs.mountain_id` ·
+  `climb_records.mountain_id` 로 **전부 공유**됩니다 (한 곳이라도 다르면 연결이 끊어짐)
+
+**② Storage 파일 레이아웃** — 버킷 `packs` (공개 읽기), **파일명 고정**
+
+```
+packs/<mountain_id>/routes.geojson     필수 — 등산로 코스
+packs/<mountain_id>/spots.geojson      선택 — 경로 지점 (없으면 앱이 "팩 n/3"으로 표시)
+packs/<mountain_id>/contours.geojson   선택 — 등고선
+```
+- Content-Type: `application/geo+json`, 덮어쓰기 업로드(`x-upsert: true`)
+- 파일명은 앱(`app.js` `dl-save` 핸들러)이 위 3개 이름을 그대로 조회하므로 변경 금지
+
+**③ GeoJSON 본문 규격**
+- 좌표계: **WGS84(EPSG:4326)**, 좌표 순서 **[경도, 위도]** — 국내 좌표계(EPSG:5186 등)는
+  업로드 전 반드시 변환 (`convert_spots.py` 참고)
+- 최상위: `FeatureCollection`
+- geometry / properties 필드 정의는 **§7.2 데이터 스키마** 를 그대로 준수
+  - `routes`: `MultiLineString` + 필수 `name`(고유)·`difficulty`(초급/중급/고급)·`distance_km`,
+    권장 `time_hr`·`kind`·`desc`·`min_elev`·`max_elev`·`ascent`·`descent`·`profile[48]`
+  - `spots`: `Point` + `category`(분기점/시종점 …)·`detail`·`etc`
+  - `contours`: `LineString` + `elev`(m)·`idx`(0=50m 보조, 1=100m 주선)
+- `routes` 의 `name` 은 **산 내에서 고유**해야 함 (코스 선택·필터·기록이 name 기준)
+
+**④ `mountains` 카탈로그 행 규격** — 팩 업로드와 함께 upsert
+
+| 필드 | 타입 | 규격 | 예시 |
+|---|---|---|---|
+| `id` | text | ① 의 mountain_id | `"bukhansan"` |
+| `name` | text | 한글 산 이름 | `"북한산"` |
+| `region` | text | 지역 표기 | `"서울·경기"` |
+| `elev` | int | 최고봉 고도(m) | `836` |
+| `center` | jsonb | `[경도, 위도]` — 지도 초기 중심 | `[126.990, 37.672]` |
+| `zoom` | real | 지도 초기 줌 | `11.3` |
+| `bbox` | jsonb | `[minLon, minLat, maxLon, maxLat]` — 타일 추출·카메라 제한용 | `[126.90, 37.59, 127.06, 37.75]` |
+| `pack_version` | int | 팩 버전 — **내용 변경 시 +1** (클라이언트가 saved_packs 의 버전과 비교해 갱신 감지) | `1` |
+| `pack_size_kb` | int | 팩 총 용량(KB) — 시드 스크립트가 자동 계산 | `627` |
+
+**⑤ `scripts/upload_packs.py` 등록 형식** — 새 산은 두 곳에 추가
+
+```python
+PACKS = {
+    "jirisan": {   # ← mountain_id
+        "data/jirisan-routes.geojson":   "routes.geojson",    # 로컬 경로: Storage 파일명
+        "data/jirisan-spots.geojson":    "spots.geojson",     # (없으면 줄 생략)
+        "data/jirisan-contours.geojson": "contours.geojson",
+    },
+}
+MOUNTAINS = [
+    {"id": "jirisan", "name": "지리산", "region": "전남·전북·경남", "elev": 1915,
+     "center": [127.731, 35.337], "zoom": 11.0,
+     "bbox": [127.62, 35.27, 127.83, 35.42], "pack_version": 1},
+]
+```
+
+**⑥ 체크리스트 (업로드 전)**
+- [ ] 좌표가 WGS84 [lng, lat] 인가? (한국이면 lng 124~132, lat 33~39 범위)
+- [ ] `routes` 의 코스 `name` 이 산 내 고유한가?
+- [ ] `difficulty` 값이 `초급/중급/고급` 중 하나인가? (표시 라벨과 혼동 금지)
+- [ ] `mountain_id` 가 `PARKS`(app.js)·`PACKS`/`MOUNTAINS`(시드)에서 동일한가?
+- [ ] 내용이 바뀐 재업로드라면 `pack_version` 을 올렸는가?
+
 ---
 
 ## 5. 개발 계획 (로드맵)
