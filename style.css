@@ -1,6 +1,20 @@
 /* ── 폰트: Kakao Small Sans (Light 300 / Regular 400 / Bold 700) ──
-   ⚠️ 외부 폰트 CDN 의존 — iOS 네이티브 이식 시 woff2/otf 를 앱 번들에 포함할 것 */
-@import url("https://font.ksthink.com/f/kakaosmallsans.css");
+   로컬 번들(fonts/) — CDN 미의존. iOS 네이티브 이식 시 이 파일들을 앱 번들에 그대로 포함. */
+@font-face {
+  font-family: "KakaoSmallSans";
+  src: url("fonts/KakaoSmallSans-Light.woff2") format("woff2");
+  font-weight: 300; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "KakaoSmallSans";
+  src: url("fonts/KakaoSmallSans-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "KakaoSmallSans";
+  src: url("fonts/KakaoSmallSans-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
