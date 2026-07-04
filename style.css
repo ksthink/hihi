@@ -297,6 +297,8 @@ footer .warn { margin-top: 6px; }
 /* ── 계정 (Supabase Auth) ─────────────────────────── */
 .auth-bar { margin-bottom: 16px; }
 .auth-out { display: flex; flex-direction: column; gap: 8px; }
+/* display:flex 가 hidden 속성을 덮어쓰지 않도록 명시 (로그인 후 폼 숨김) */
+.auth-out[hidden], .auth-in[hidden] { display: none; }
 .auth-out input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px; outline: none; }
 .auth-out input:focus { border-color: var(--accent); }
 .auth-actions { display: flex; gap: 8px; }
