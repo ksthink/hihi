@@ -104,12 +104,6 @@
           <section class="view" id="view-deung">
             <div class="view-head"><h1>등반</h1><p>코스를 골라 산행을 시작하세요</p></div>
             <div class="view-body">
-              <!-- 저장된 지도 (오프라인 팩) -->
-              <div class="saved-maps" id="saved-maps" hidden>
-                <h2 class="sm-h2">저장된 지도</h2>
-                <ul id="sm-list"></ul>
-              </div>
-
               <div class="climb-card">
                 <div class="climb-course" id="climb-course">선택된 코스가 없습니다</div>
                 <div class="climb-stats">
@@ -125,6 +119,12 @@
                 <div id="climb-profile" class="profile"></div>
                 <button class="start-btn" id="start-btn">등반 시작</button>
                 <p class="hint" id="climb-hint">탐험 탭에서 등산로를 선택하면 여기에 표시됩니다.</p>
+              </div>
+
+              <!-- 저장된 지도 (오프라인 팩) — 카드 아래, 목록만 스크롤 -->
+              <div class="saved-maps" id="saved-maps" hidden>
+                <h2 class="sm-h2">저장된 지도</h2>
+                <ul id="sm-list"></ul>
               </div>
             </div>
           </section>
