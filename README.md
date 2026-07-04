@@ -47,15 +47,25 @@
 - 추천 코스 카드 → 탭하면 해당 코스로 바로 이동
 
 ### 등반
-- 선택 코스의 거리·예상 시간·난이도·**고도 정보**(최고/최저/누적상승) + 고도 프로파일 그래프
-- **등반 시작/종료** — 종료 시 등반 기록이 계정에 저장됨(웹 단계: 시간·코스 통계 기준)
+- 상단 고정 카드: 선택 코스의 거리·예상 시간·난이도·**고도 정보**(최고/최저/누적상승) + 프로파일 그래프
+- 카드 아래 **"저장된 지도"** 목록(용량·저장일·삭제) — 여러 개면 목록만 스크롤
+- **등반 시작 → 지도 기반 실시간 트래킹**: 선택 코스만 표시된 지도로 전환 + 현재위치 추적,
+  HUD(경과 시간·실측 이동거리·GPS 지점 수), 5m 필터로 GPS 트랙 기록
+- **종료 시 실측 기록 저장** — 실측 거리(50m+)·소요 시간·GPS 트랙(`track` jsonb, 최대 2000지점)
+- 웹 한계(iOS CoreLocation 에서 해소): 화면이 꺼지면 GPS 중단(백그라운드 추적 불가)
 
 ### 기록 (계정)
 - **이메일 + 비밀번호 회원가입/로그인** (Supabase Auth)
 - 등반 기록 목록 + 요약 통계(총 산행·총 거리·누적 고도)
 - 기록은 서버(Postgres + RLS)에 저장 — **본인만 조회 가능**, 새로고침/재접속에도 유지
 
+### 인트로
+- 접속 시 스플래시: "끊임없이 걷다, 오롯이 몰입하다" → **하이-하잇(HI-Hike)** 순차 페이드인
+  → 탐험 화면 진입 (라이트/다크 대응, 초기 지도 로딩 가림 겸용)
+
 ### 오프라인 지도 저장 (핵심 기능)
+- **로그인 필요** — 저장된 지도 목록은 본인 계정(`saved_packs`) 기준으로만 노출,
+  로그아웃 시 숨김(팩 파일은 기기에 유지되어 재로그인 시 재표시)
 - 코스 목록 상단 **"지도 다운"** → Wi-Fi 경고 모달(실제 팩 용량 표시) → 확인 시 다운로드
 - 다운로드 중: 산 이름·용량·**프로그레스바**(타일은 바이트 단위 진행률)
 - 팩(기저 타일 base.pmtiles + 등산로·시설·등고선)이 **기기(IndexedDB)에 저장**되고,
@@ -218,8 +228,8 @@ UI/UX·데이터 모델·백엔드를 웹에서 빠르게 설계·검증한 뒤,
 ### iOS 에서 새로 구현되는 것 (현재 웹은 스텁/부분 구현)
 | 기능 | 웹(현재) | iOS(계획) |
 |---|---|---|
-| 등반 GPS 트래킹 | 시작/종료 시간만 기록 | CoreLocation 실시간 트랙 + 백그라운드 위치 |
-| 오프라인 저장 | 배포 검증 + 저장 표시 | 파일시스템에 팩 실저장 (Application Support) |
+| 등반 GPS 트래킹 | watchPosition 실시간 트랙(화면 켠 상태만) | CoreLocation + **백그라운드 위치** |
+| 오프라인 저장 | IndexedDB 팩 실저장 + 로컬 타일 렌더(퇴거 가능) | 파일시스템 영구 저장 (Application Support) |
 | 기저 타일 | Protomaps CDN (리라이트 경유) | 산별 `pmtiles extract` 로컬 번들 |
 | 글리프 폰트 | protomaps.github.io CDN | 앱 번들 포함 |
 | 테마/상태 저장 | localStorage | UserDefaults / SwiftData |
@@ -366,7 +376,7 @@ hihi/
 | 목록/추천 | `renderTrailList()`, `FAMOUS`, `RECO`, `profileSVG()` | SwiftUI List + Path 스파크라인 |
 | 검색 | `setupSearch()` — 접두 우선 매칭, 한글 IME 조합 대응 자동완성 | 네이티브 검색(IME 이슈 없음) |
 | 인증 | `setupAuth()`, `currentUser`, onAuthStateChange | supabase-swift Auth |
-| 등반 | `climbSession`, `saveClimb()` → climb_records INSERT | CoreLocation 트래킹 + 저장 |
+| 등반 | `startClimb()/stopClimb()`(HUD·watchPosition 트랙), `saveClimb()` → climb_records INSERT | CoreLocation 백그라운드 트래킹 |
 | 기록 | `renderRecords()` — SELECT + 요약 집계 | SwiftUI + supabase-swift |
 | 오프라인 | `downloadPack()`(프로그레스 다운로드)·`idb*`(IndexedDB)·`openSavedMap()`(로컬 타일 렌더)·`renderSavedMaps()` | 파일시스템 저장 + 번들 타일로 승격 |
 | 시트 | `setupSheet()` 드래그 바텀시트 | `.presentationDetents` |
