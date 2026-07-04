@@ -1,0 +1,77 @@
+{
+  "type": "FeatureCollection",
+  "name": "bukhansan",
+  "properties": {
+    "park": "북한산국립공원",
+    "bbox": [126.94, 37.61, 127.00, 37.67],
+    "note": "샘플/개략 데이터입니다. 실제 산행 시 공식 지도를 확인하세요."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "kind": "trail",
+        "name": "백운대 코스",
+        "difficulty": "고급",
+        "distance_km": 4.2,
+        "time_hr": 3.0,
+        "start": "도선사 · 우이분소",
+        "peak": "백운대 (836m)",
+        "desc": "북한산 최고봉 백운대에 오르는 대표 코스. 후반부 암릉과 쇠난간 구간이 있습니다."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.9975, 37.6655],
+          [126.9945, 37.6640],
+          [126.9915, 37.6620],
+          [126.9895, 37.6605],
+          [126.9880, 37.6591]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "kind": "trail",
+        "name": "비봉 능선 코스",
+        "difficulty": "중급",
+        "distance_km": 3.5,
+        "time_hr": 2.5,
+        "start": "구기동 · 이북5도청",
+        "peak": "비봉 (560m)",
+        "desc": "진흥왕순수비가 있던 비봉으로 이어지는 능선길. 조망이 뛰어납니다."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.9560, 37.6210],
+          [126.9575, 37.6260],
+          [126.9590, 37.6320],
+          [126.9600, 37.6360]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "kind": "trail",
+        "name": "대남문 코스",
+        "difficulty": "초급",
+        "distance_km": 3.8,
+        "time_hr": 2.0,
+        "start": "구기동 분소",
+        "peak": "대남문 (663m)",
+        "desc": "계곡을 따라 완만하게 오르는 입문용 코스. 산성 성곽과 대남문을 만납니다."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [126.9560, 37.6210],
+          [126.9640, 37.6250],
+          [126.9720, 37.6300]
+        ]
+      }
+    }
+  ]
+}

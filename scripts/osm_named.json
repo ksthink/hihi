@@ -1,0 +1,3931 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.4 2390de5a",
+  "osm3s": {
+    "timestamp_osm_base": "2026-07-03T14:24:02Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "way",
+  "id": 104368367,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:48",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 121993701,
+  "tags": {
+    "highway": "path",
+    "name": "0.2Km 00:08",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 178086854,
+  "tags": {
+    "highway": "path",
+    "name": "삼천사길",
+    "route": "hiking",
+    "sac_scale": "hiking",
+    "trail_visibility": "excellent"
+  }
+},
+{
+  "type": "way",
+  "id": 178251865,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "route": "hiking",
+    "sac_scale": "hiking",
+    "trail_visibility": "bad"
+  }
+},
+{
+  "type": "way",
+  "id": 178251867,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "route": "hiking",
+    "sac_scale": "hiking",
+    "trail_visibility": "bad"
+  }
+},
+{
+  "type": "way",
+  "id": 178251875,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "route": "hiking",
+    "sac_scale": "demanding_alpine_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 310057471,
+  "tags": {
+    "highway": "path",
+    "name": "서벽밴드",
+    "sac_scale": "mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 329240389,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "name": "원효길",
+    "sac_scale": "demanding_mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 329590476,
+  "tags": {
+    "highway": "path",
+    "name": "여우굴길",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 329592211,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "name": "원효길",
+    "sac_scale": "demanding_mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 329614899,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "route": "hiking",
+    "sac_scale": "hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 345476665,
+  "tags": {
+    "highway": "footway",
+    "material": "stone",
+    "name": "참도",
+    "name:en": "Worship road",
+    "source": "survey"
+  }
+},
+{
+  "type": "way",
+  "id": 357582188,
+  "tags": {
+    "bicycle": "yes",
+    "bridge": "yes",
+    "highway": "footway",
+    "layer": "1",
+    "motor_vehicle": "yes",
+    "name": "간이다리"
+  }
+},
+{
+  "type": "way",
+  "id": 374756907,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756913,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:47",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756926,
+  "tags": {
+    "highway": "path",
+    "name": "진달래길",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756928,
+  "tags": {
+    "highway": "path",
+    "name": "응봉능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756933,
+  "tags": {
+    "distance_and_average_time:ko": "9분 < 0.3Km > 9분",
+    "highway": "path",
+    "name": "비봉능선",
+    "name:ko": "비봉능선",
+    "sac_scale": "mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756952,
+  "tags": {
+    "distance_and_average_time:ko": "11분 < 0.3Km > 11분",
+    "highway": "path",
+    "name": "비봉능선",
+    "name:ko": "비봉능선",
+    "sac_scale": "mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756964,
+  "tags": {
+    "distance_and_average_time:ko": "9분 < 0.3Km > 9분",
+    "highway": "path",
+    "name": "향로봉능선",
+    "name:ko": "향로봉능선",
+    "sac_scale": "mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756988,
+  "tags": {
+    "highway": "path",
+    "name": "의상능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374756998,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757028,
+  "tags": {
+    "highway": "path",
+    "name": "칼바위능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757033,
+  "tags": {
+    "distance_and_average_time:ko": "11분 < 0.4Km > 15분",
+    "highway": "path",
+    "name": "가사당 길",
+    "name:ko": "가사당 길",
+    "sac_scale": "mountain_hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 374757047,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "칼바위능선",
+    "sac_scale": "demanding_mountain_hiking",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 374757055,
+  "tags": {
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "칼바위능선",
+    "sac_scale": "demanding_mountain_hiking",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 374757058,
+  "tags": {
+    "bicycle": "no",
+    "distance_and_average_time:ko": "26분 < 0.8Km > 26분",
+    "foot": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "paving_stones",
+    "trail_visibility": "excellent",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 374757060,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "name": "진관사계곡",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757067,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "0.3Km 00:11",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757069,
+  "tags": {
+    "highway": "path",
+    "name": "0.6Km 00:19",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757078,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "incline": "up",
+    "name": "계곡탐방로",
+    "sac_scale": "hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 374757079,
+  "tags": {
+    "distance_and_average_time:ko": "39분 < 1.2Km > 39분",
+    "foot": "yes",
+    "highway": "path",
+    "incline": "up",
+    "name": "계곡탐방로",
+    "sac_scale": "hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 374757080,
+  "tags": {
+    "highway": "path",
+    "name": "구기계곡 길",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757081,
+  "tags": {
+    "highway": "path",
+    "name": "노적봉길",
+    "sac_scale": "mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757082,
+  "tags": {
+    "ford": "yes",
+    "highway": "path",
+    "name": "대동문길",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757083,
+  "tags": {
+    "distance_and_average_time:ko": "11분 < 0.3Km > 11분",
+    "highway": "path",
+    "incline": "down",
+    "name": "백운동계곡",
+    "sac_scale": "hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 374757084,
+  "tags": {
+    "ford": "yes",
+    "highway": "path",
+    "name": "부왕동계곡",
+    "route": "hiking",
+    "sac_scale": "hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 374757085,
+  "tags": {
+    "highway": "path",
+    "name": "북장대지길",
+    "sac_scale": "mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757087,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 7구간 옛성길",
+    "name:en": "[Bukhansan Dulle-gil] Route 7 - Yetseong-gil",
+    "name:ko": "[북한산둘레길] 7구간 옛성길",
+    "sac_scale": "hiking",
+    "surface": "paving_stones",
+    "trail_visibility": "excellent",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 374757089,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 374757095,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "incline": "up",
+    "name": "염초봉 릿지",
+    "sac_scale": "demanding_alpine_hiking",
+    "trail_visibility": "dangerous"
+  }
+},
+{
+  "type": "way",
+  "id": 374757096,
+  "tags": {
+    "distance_and_average_time:ko": "10분 < 0.3Km > 10분",
+    "highway": "path",
+    "incline": "down",
+    "name": "옥류동길",
+    "sac_scale": "mountain_hiking",
+    "trail_visibility": "intermediate"
+  }
+},
+{
+  "type": "way",
+  "id": 374757097,
+  "tags": {
+    "distance_and_average_time:ko": "19분 < 0.6Km > 21분",
+    "foot": "yes",
+    "highway": "path",
+    "incline": "down",
+    "name": "옥류동길",
+    "sac_scale": "mountain_hiking",
+    "trail_visibility": "intermediate"
+  }
+},
+{
+  "type": "way",
+  "id": 374757098,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "용암길",
+    "sac_scale": "demanding_mountain_hiking",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 374757099,
+  "tags": {
+    "distance_and_average_time:ko": "14분 < 0.4Km > 20분",
+    "foot": "yes",
+    "highway": "path",
+    "incline": "up",
+    "name": "원효길",
+    "sac_scale": "mountain_hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 375055076,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "의상능선",
+    "sac_scale": "demanding_mountain_hiking",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 377023748,
+  "tags": {
+    "highway": "path",
+    "name": "0.3Km 00:09",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377023749,
+  "tags": {
+    "highway": "path",
+    "name": "0.5Km 00:15",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 377024822,
+  "tags": {
+    "highway": "path",
+    "name": "0.7Km 00:27",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377024823,
+  "tags": {
+    "highway": "path",
+    "name": "0.5Km 00:16",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377024827,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.3Km 00:12",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 377024830,
+  "tags": {
+    "highway": "path",
+    "name": "0.4Km 00:12",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377030262,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 18구간 도봉옛길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 377030268,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.6Km 00:20",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 377030269,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.8Km 00:28",
+    "sac_scale": "hiking",
+    "surface": "earth"
+  }
+},
+{
+  "type": "way",
+  "id": 377030270,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.3Km 00:11",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 377030271,
+  "tags": {
+    "highway": "path",
+    "name": "0.8Km 00:27",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377030272,
+  "tags": {
+    "highway": "path",
+    "name": "0.5Km 00:18",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 377032236,
+  "tags": {
+    "highway": "path",
+    "name": "0.4Km 00:14",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377035622,
+  "tags": {
+    "highway": "path",
+    "name": "1.1Km 00:27",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377036179,
+  "tags": {
+    "highway": "path",
+    "name": "0.7Km 00:23",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377036725,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.4Km 00:13",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377037356,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.6Km 00:23",
+    "sac_scale": "hiking",
+    "surface": "earth"
+  }
+},
+{
+  "type": "way",
+  "id": 377037357,
+  "tags": {
+    "highway": "path",
+    "name": "0.1Km 00:03",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377037967,
+  "tags": {
+    "highway": "path",
+    "name": "0.8Km 00:27",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377039736,
+  "tags": {
+    "highway": "path",
+    "name": "1.1Km 00:37",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377039743,
+  "tags": {
+    "highway": "path",
+    "name": "무수골 매표소-원통사 2Km 1:007",
+    "sac_scale": "hiking",
+    "surface": "asphalt",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 377042994,
+  "tags": {
+    "highway": "path",
+    "name": "0.9Km 00:29",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377044786,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:49",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377044787,
+  "tags": {
+    "highway": "path",
+    "name": "1.7Km 00:54",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377044789,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "0.1Km 00:02",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377044836,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "0.3Km 00:11",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 377045399,
+  "tags": {
+    "highway": "path",
+    "name": "0.3Km 00:10",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 379553689,
+  "tags": {
+    "highway": "footway",
+    "name": "월곡로11길",
+    "name:en": "Wolgok-ro 11-gil",
+    "name:ko": "월곡로11길"
+  }
+},
+{
+  "type": "way",
+  "id": 380312394,
+  "tags": {
+    "footway": "sidewalk",
+    "highway": "footway",
+    "name": "큰돌산길"
+  }
+},
+{
+  "type": "way",
+  "id": 380843983,
+  "tags": {
+    "bicycle": "no",
+    "highway": "footway",
+    "name": "솔샘로25길",
+    "name:ko": "솔샘로25길",
+    "surface": "asphalt",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 380873906,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "name": "정릉로24길",
+    "name:en": "Jeongneung-ro 24-gil",
+    "name:ko": "정릉로24길"
+  }
+},
+{
+  "type": "way",
+  "id": 381344677,
+  "tags": {
+    "highway": "footway",
+    "name": "도당로2길",
+    "name:en": "Dodang-ro 2-gil",
+    "name:ko": "도당로2길",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 417758832,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "note": "Access to the top of Bohyeonbong is forbidden.",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 468201511,
+  "tags": {
+    "covered": "yes",
+    "highway": "path",
+    "name": "진달래길",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 468201512,
+  "tags": {
+    "highway": "path",
+    "name": "진달래길",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 469902769,
+  "tags": {
+    "highway": "footway",
+    "name": "솔매로",
+    "name:en": "Solmae-ro",
+    "name:ko": "솔매로"
+  }
+},
+{
+  "type": "way",
+  "id": 469902771,
+  "tags": {
+    "highway": "footway",
+    "name": "솔매로",
+    "name:en": "Solmae-ro",
+    "name:ko": "솔매로"
+  }
+},
+{
+  "type": "way",
+  "id": 484471787,
+  "tags": {
+    "highway": "footway",
+    "name": "도봉로139길",
+    "name:en": "Dobong-ro 139-gil",
+    "name:ko": "도봉로139길",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 484471788,
+  "tags": {
+    "highway": "footway",
+    "name": "도봉로139길",
+    "name:en": "Dobong-ro 139-gil",
+    "name:ko": "도봉로139길",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 513680512,
+  "tags": {
+    "footway": "sidewalk",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "덕릉로",
+    "name:en": "Deongneung-ro",
+    "name:ko": "덕릉로"
+  }
+},
+{
+  "type": "way",
+  "id": 536373743,
+  "tags": {
+    "footway": "sidewalk",
+    "highway": "footway",
+    "name": "솔샘로25가길",
+    "name:en": "Solsaem-ro 25ga-gil",
+    "name:ko": "솔샘로25가길"
+  }
+},
+{
+  "type": "way",
+  "id": 536373747,
+  "tags": {
+    "footway": "sidewalk",
+    "highway": "footway",
+    "name": "자락길"
+  }
+},
+{
+  "type": "way",
+  "id": 536373749,
+  "tags": {
+    "footway": "sidewalk",
+    "highway": "footway",
+    "name": "자락길"
+  }
+},
+{
+  "type": "way",
+  "id": 548673567,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 550657614,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "name": "원효길",
+    "sac_scale": "demanding_mountain_hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 550830055,
+  "tags": {
+    "bridge": "yes",
+    "highway": "path",
+    "layer": "1",
+    "name": "[북한산둘레길] 12구간 - 충의길",
+    "name:en": "[Bukhansan Dulle-gil] Section 12 - Chungui-gil",
+    "name:ko": "[북한산둘레길] 12구간 - 충의길",
+    "sac_scale": "hiking",
+    "surface": "wood"
+  }
+},
+{
+  "type": "way",
+  "id": 550833718,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 11구간 효자길",
+    "name:en": "[Bukhansan Dulle-gil] Section 11 - Hyoja-gil",
+    "name:ko": "[북한산둘레길] 11구간 효자길",
+    "sac_scale": "hiking",
+    "stroller": "no",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "wheelchair": "no",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 570190903,
+  "tags": {
+    "highway": "path",
+    "name": "와이계곡 우회길",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 629055194,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "lit": "no",
+    "name": "북악터널 보행통로",
+    "surface": "paving_stones"
+  }
+},
+{
+  "type": "way",
+  "id": 629055197,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "horse": "no",
+    "lit": "yes",
+    "name": "평창문화로",
+    "name:en": "Pyeongchangmunhwa-ro",
+    "name:ko": "평창문화로",
+    "surface": "paving_stones",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 629055208,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "진흥로",
+    "name:en": "Jinheung-ro",
+    "name:ko": "진흥로",
+    "name:ko-Latn": "Jinheungno",
+    "surface": "paved",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 629055213,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "layer": "-1",
+    "lit": "yes",
+    "name": "구기터널 자전거/보행자통로",
+    "surface": "paved",
+    "tunnel": "yes"
+  }
+},
+{
+  "type": "way",
+  "id": 689045873,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 7구간 옛성길",
+    "name:en": "[Bukhansan Dulle-gil] Route 7 - Yetseong-gil",
+    "name:ko": "[북한산둘레길] 7구간 옛성길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 780139468,
+  "tags": {
+    "highway": "footway",
+    "name": "정릉로8다길",
+    "name:en": "Jeongneung-ro 8da-gil",
+    "name:ko": "정릉로8다길"
+  }
+},
+{
+  "type": "way",
+  "id": 780914098,
+  "tags": {
+    "bridge": "yes",
+    "highway": "path",
+    "layer": "1",
+    "name": "비봉남능선",
+    "sac_scale": "hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 791984788,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 5구간 명상길",
+    "name:en": "[Bukhansan Dulle-gil] Route 5 - Myeongsang-gil",
+    "name:ko": "[북한산둘레길] 5구간 명상길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 792319804,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "석굴암길",
+    "name:en": "Seokguram-gil",
+    "name:ko": "석굴암길",
+    "official_ref": "16",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 792319805,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 21구간 우이령길",
+    "name:en": "[Bukhansan Dulle-gil] Route 21 - Uiryeong-gil",
+    "name:ja": "[北漢山ドゥルレギル] 21区間 牛耳嶺ギル",
+    "name:ko": "[북한산둘레길] 21구간 우이령길",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 807765107,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 17구간 다락원길",
+    "name:ko": "[북한산둘레길] 17구간 다락원길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 809332519,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "무수골 매표소-원통사 2Km 1:007",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 822232019,
+  "tags": {
+    "bicycle": "no",
+    "handrail": "yes",
+    "highway": "footway",
+    "name": "북한산둘레길 18구간 도봉옛길",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "width": "1.6"
+  }
+},
+{
+  "type": "way",
+  "id": 823193767,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 20구간 왕실묘역길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 823223530,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 16구간 보루길",
+    "name:en": "[Bukhanasan Dulle-gil] Route 16 - Boru-gil",
+    "name:ko": "[북한산둘레길] 16구간 보루길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 824655023,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 4구간 솔샘길",
+    "name:en": "[Bukhansan Dulle-gil] Route 4 - Solsaem-gil",
+    "name:ko": "[북한산둘레길] 4구간 솔샘길",
+    "surface": "paving_stones",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 824655025,
+  "tags": {
+    "bicycle": "no",
+    "highway": "footway",
+    "name": "솔샘로25길",
+    "name:ko": "솔샘로25길",
+    "surface": "asphalt",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 824655027,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 827141155,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 827141156,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 827143556,
+  "tags": {
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 829390614,
+  "tags": {
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 829390619,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "lit": "no",
+    "mtb:scale:imba": "0",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 829395376,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 2구간 순례길",
+    "name:en": "[Bukhansan Dulle-gil] Sullye-gil",
+    "name:ko": "[북한산둘레길] 2구간 순례길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 829395378,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 2구간 순례길",
+    "name:en": "[Bukhansan Dulle-gil] Sullye-gil",
+    "name:ko": "[북한산둘레길] 2구간 순례길",
+    "surface": "asphalt",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 829395380,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 2구간 순례길",
+    "name:en": "[Bukhansan Dulle-gil] Sullye-gil",
+    "name:ko": "[북한산둘레길] 2구간 순례길",
+    "surface": "paving_stones",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 829397529,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 2구간 순례길",
+    "name:en": "[Bukhansan Dulle-gil] Sullye-gil",
+    "name:ko": "[북한산둘레길] 2구간 순례길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 829397530,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 1구간 소나무숲길",
+    "name:en": "[Bukhansan Dulle-gil] Sonamusup-gil",
+    "name:ko": "[북한산둘레길] 1구간 소나무숲길",
+    "surface": "asphalt",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 829397532,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 1구간 소나무숲길",
+    "name:en": "[Bukhansan Dulle-gil] Sonamusup-gil",
+    "name:ko": "[북한산둘레길] 1구간 소나무숲길",
+    "surface": "ground",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 829397535,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 1구간 소나무숲길",
+    "name:en": "[Bukhansan Dulle-gil] Sonamusup-gil",
+    "name:ko": "[북한산둘레길] 1구간 소나무숲길",
+    "surface": "concrete",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 829399659,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 1구간 소나무숲길",
+    "name:en": "[Bukhansan Dulle-gil] Sonamusup-gil",
+    "name:ko": "[북한산둘레길] 1구간 소나무숲길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 829399662,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 1구간 소나무숲길",
+    "name:en": "[Bukhansan Dulle-gil] Sonamusup-gil",
+    "name:ko": "[북한산둘레길] 1구간 소나무숲길",
+    "surface": "paving_stones",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 836200021,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "여울",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 842044988,
+  "tags": {
+    "bicycle": "yes",
+    "foot": "yes",
+    "highway": "footway",
+    "horse": "no",
+    "incline": "0",
+    "name": "우이천변 제방길(가을단풍길,벚꽃길)"
+  }
+},
+{
+  "type": "way",
+  "id": 844841819,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 15구간 송추마을길",
+    "name:en": "[Bukhansan Dulle-gil] Section 15 - Songchumaeul-gil",
+    "name:ko": "[북한산둘레길] 15구간 송추마을길",
+    "sac_scale": "hiking",
+    "surface": "paving_stones",
+    "trail_visibility": "good",
+    "wheelchair": "yes",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 844841822,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 15구간 송추마을길",
+    "name:en": "[Bukhansan Dulle-gil] Section 15 - Songchumaeul-gil",
+    "name:ko": "[북한산둘레길] 15구간 송추마을길",
+    "sac_scale": "hiking",
+    "surface": "paving_stones",
+    "trail_visibility": "good",
+    "wheelchair": "yes",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 844856708,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 15구간 송추마을길",
+    "name:en": "[Bukhansan Dulle-gil] Section 15 - Songchumaeul-gil",
+    "name:ko": "[북한산둘레길] 15구간 송추마을길",
+    "sac_scale": "hiking",
+    "surface": "concrete",
+    "trail_visibility": "good",
+    "wheelchair": "yes",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 844856709,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 15구간 송추마을길",
+    "name:en": "[Bukhansan Dulle-gil] Route 15 - Songchumaeul-gil",
+    "name:ko": "[북한산둘레길] 15구간 송추마을길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "wheelchair": "yes",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 846363562,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 11구간 효자길",
+    "name:en": "[Bukhansan Dulle-gil] Section 11 - Hyoja-gil",
+    "name:ko": "[북한산둘레길] 11구간 효자길",
+    "sac_scale": "hiking",
+    "stroller": "no",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "wheelchair": "no",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 846363563,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 11구간 효자길",
+    "name:en": "[Bukhansan Dulle-gil] Section 11 - Hyoja-gil",
+    "name:ko": "[북한산둘레길] 11구간 효자길",
+    "sac_scale": "hiking",
+    "stroller": "no",
+    "surface": "concrete",
+    "trail_visibility": "good",
+    "wheelchair": "no",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 846363564,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 11구간 효자길",
+    "name:en": "[Bukhansan Dulle-gil] Section 11 - Hyoja-gil",
+    "name:ko": "[북한산둘레길] 11구간 효자길",
+    "sac_scale": "hiking",
+    "stroller": "no",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "wheelchair": "no",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 846363568,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "name": "[북한산둘레길] 12구간 - 충의길",
+    "name:en": "[Bukhansan Dulle-gil] Section 12 - Chungui-gil",
+    "name:ko": "[북한산둘레길] 12구간 - 충의길",
+    "sac_scale": "hiking",
+    "stroller": "no",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "wheelchair": "no",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 846363573,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 12구간 - 충의길",
+    "name:en": "[Bukhansan Dulle-gil] Section 12 - Chungui-gil",
+    "name:ko": "[북한산둘레길] 12구간 - 충의길",
+    "sac_scale": "hiking",
+    "stroller": "yes",
+    "surface": "paving_stones",
+    "trail_visibility": "good",
+    "wheelchair": "yes",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 846365667,
+  "tags": {
+    "highway": "path",
+    "name": "[북한산둘레길] 15구간 송추마을길",
+    "name:en": "[Bukhansan Dulle-gil] Route 15 - Songchumaeul-gil",
+    "name:ko": "[북한산둘레길] 15구간 송추마을길",
+    "sac_scale": "hiking",
+    "surface": "paving_stones",
+    "trail_visibility": "good",
+    "wheelchair": "yes",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 847557810,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 21구간 우이령길",
+    "name:en": "[Bukhansan Dulle-gil] Route 21 - Uiryeong-gil",
+    "name:ko": "[북한산둘레길] 21구간 우이령길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 847557813,
+  "tags": {
+    "bicycle": "no",
+    "covered": "no",
+    "highway": "path",
+    "motor_vehicle": "yes",
+    "name": "삼양로181길",
+    "name:en": "Samyang-ro 181-gil",
+    "name:ko": "삼양로181길",
+    "oneway": "no",
+    "surface": "asphalt",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 847557818,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "석굴암길",
+    "name:en": "Seokguram-gil",
+    "name:ko": "석굴암길",
+    "official_ref": "16",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 848767972,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "구기터널 자전거/보행자통로",
+    "surface": "paved"
+  }
+},
+{
+  "type": "way",
+  "id": 848767974,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "구기터널 자전거/보행자통로",
+    "surface": "paved",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 848767975,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "비봉길",
+    "name:en": "Bibong-gil",
+    "name:ko": "비봉길",
+    "surface": "paved",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 848767978,
+  "tags": {
+    "bicycle": "yes",
+    "highway": "footway",
+    "lit": "yes",
+    "name": "구기터널 자전거/보행자통로",
+    "surface": "paved",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 848767979,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 6구간 평창마을길",
+    "name:en": "[Bukhansan Dulle-gil] Route 6 - Pyeongchangmaeul-gil",
+    "name:ko": "[북한산둘레길] 6구간 평창마을길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 848767987,
+  "tags": {
+    "highway": "path",
+    "name": "형제봉능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 868466280,
+  "tags": {
+    "highway": "path",
+    "name": "도봉산장 도봉대피소",
+    "name:en": "Dobong Shelter",
+    "name:ko": "도봉산장 도봉대피소",
+    "surface": "metal",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 868466281,
+  "tags": {
+    "highway": "path",
+    "name": "도봉산장 도봉대피소",
+    "name:en": "Dobong Shelter",
+    "name:ko": "도봉산장 도봉대피소",
+    "surface": "earth",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 880356052,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 882182119,
+  "tags": {
+    "highway": "path",
+    "name": "도봉산장 도봉대피소",
+    "name:en": "Dobong Shelter",
+    "name:ko": "도봉산장 도봉대피소",
+    "surface": "earth",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 904997365,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "석굴암길",
+    "name:en": "Seokguram-gil",
+    "name:ko": "석굴암길",
+    "official_ref": "16",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 904997366,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "석굴암길",
+    "name:en": "Seokguram-gil",
+    "name:ko": "석굴암길",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 987850460,
+  "tags": {
+    "highway": "path",
+    "name": "탕춘대 매표소 입구",
+    "sac_scale": "hiking",
+    "surface": "earth"
+  }
+},
+{
+  "type": "way",
+  "id": 1034786124,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 18구간 도봉옛길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1124073435,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "earth"
+  }
+},
+{
+  "type": "way",
+  "id": 1124073444,
+  "tags": {
+    "ford": "yes",
+    "highway": "path",
+    "name": "부왕동계곡",
+    "route": "hiking",
+    "sac_scale": "hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 1149624453,
+  "tags": {
+    "bicycle": "yes",
+    "footway": "sidewalk",
+    "highway": "footway",
+    "name": "화랑로",
+    "name:en": "Hwarang-ro",
+    "name:ko": "화랑로",
+    "surface": "paved",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1159858385,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1159858391,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로"
+  }
+},
+{
+  "type": "way",
+  "id": 1159858393,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "motor_vehicle": "no",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "earth",
+    "vehicle": "no",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 1159858394,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "motor_vehicle": "no",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "earth",
+    "vehicle": "no",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "way",
+  "id": 1159858553,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1175794560,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1175801243,
+  "tags": {
+    "highway": "path",
+    "name": "형제봉능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1175801245,
+  "tags": {
+    "highway": "path",
+    "name": "형제봉능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446566,
+  "tags": {
+    "access": "yes",
+    "handrail": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 4구간 솔샘길",
+    "name:en": "[Bukhansan Dulle-gil] Route 4 - Solsaem-gil",
+    "name:ko": "[북한산둘레길] 4구간 솔샘길",
+    "surface": "wood",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446568,
+  "tags": {
+    "access": "yes",
+    "handrail": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 4구간 솔샘길",
+    "name:en": "[Bukhansan Dulle-gil] Route 4 - Solsaem-gil",
+    "name:ko": "[북한산둘레길] 4구간 솔샘길",
+    "surface": "wood",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446571,
+  "tags": {
+    "access": "yes",
+    "handrail": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 4구간 솔샘길",
+    "name:en": "[Bukhansan Dulle-gil] Route 4 - Solsaem-gil",
+    "name:ko": "[북한산둘레길] 4구간 솔샘길",
+    "surface": "wood",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446572,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446574,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446576,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446579,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446580,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177446582,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1177624391,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1177624396,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:49",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1177624398,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1177624399,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1177624404,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "무수골 매표소-원통사 2Km 1:007",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1177624416,
+  "tags": {
+    "access": "yes",
+    "handrail": "yes",
+    "highway": "path",
+    "name": "신선대",
+    "name:ko": "신선대",
+    "ramp": "no",
+    "sac_scale": "hiking",
+    "surface": "metal",
+    "wheelchair": "no",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643576,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643578,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "dirt"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643583,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643584,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "bridge": "yes",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "metal",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643585,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643587,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643589,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643591,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643593,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643594,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "bridge": "yes",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643595,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643599,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643601,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643603,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643605,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643606,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643607,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643609,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "bridge": "yes",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "layer": "1",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643612,
+  "tags": {
+    "access": "permissive",
+    "bicycle": "no",
+    "foot": "yes",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "no",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643625,
+  "tags": {
+    "highway": "path",
+    "name": "삼천사길",
+    "route": "hiking",
+    "sac_scale": "hiking",
+    "trail_visibility": "excellent"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643650,
+  "tags": {
+    "highway": "path",
+    "name": "의상능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643652,
+  "tags": {
+    "highway": "path",
+    "name": "의상능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643654,
+  "tags": {
+    "highway": "path",
+    "name": "의상능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643655,
+  "tags": {
+    "highway": "path",
+    "name": "의상능선",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643658,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "의상능선",
+    "sac_scale": "demanding_mountain_hiking",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643660,
+  "tags": {
+    "foot": "yes",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "의상능선",
+    "sac_scale": "demanding_mountain_hiking",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643661,
+  "tags": {
+    "distance_and_average_time:ko": "11분 < 0.4Km > 15분",
+    "highway": "path",
+    "name": "가사당 길",
+    "name:ko": "가사당 길",
+    "sac_scale": "mountain_hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 1179643663,
+  "tags": {
+    "distance_and_average_time:ko": "11분 < 0.4Km > 15분",
+    "highway": "path",
+    "name": "가사당 길",
+    "name:ko": "가사당 길",
+    "sac_scale": "mountain_hiking",
+    "trail_visibility": "good"
+  }
+},
+{
+  "type": "way",
+  "id": 1179656322,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "note": "Access to the top of Bohyeonbong is forbidden.",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1179656323,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로"
+  }
+},
+{
+  "type": "way",
+  "id": 1179656324,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로"
+  }
+},
+{
+  "type": "way",
+  "id": 1179656333,
+  "tags": {
+    "bicycle": "no",
+    "distance_and_average_time:ko": "26분 < 0.8Km > 26분",
+    "foot": "yes",
+    "highway": "path",
+    "name": "[북한산둘레길] 8구간 구름정원길",
+    "name:en": "[Bukhansan Dulle-gil] Route 8 - Gureumjeongwon-gil",
+    "name:ko": "[북한산둘레길] 8구간 구름정원길",
+    "sac_scale": "hiking",
+    "surface": "paving_stones",
+    "trail_visibility": "excellent",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1179656342,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "흙"
+  }
+},
+{
+  "type": "way",
+  "id": 1179656343,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로",
+    "surface": "rock"
+  }
+},
+{
+  "type": "way",
+  "id": 1189549564,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "horse": "no",
+    "motor_vehicle": "permit",
+    "name": "군사 도로",
+    "surface": "unpaved"
+  }
+},
+{
+  "type": "way",
+  "id": 1196334802,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 21구간 우이령길",
+    "name:en": "[Bukhansan Dulle-gil] Route 21 - Uiryeong-gil",
+    "name:ja": "[北漢山ドゥルレギル] 21区間 牛耳嶺ギル",
+    "name:ko": "[북한산둘레길] 21구간 우이령길",
+    "official_ref": "16",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 1271908930,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "name": "[북한산둘레길] 12구간 - 충의길",
+    "name:en": "[Bukhansan Dulle-gil] Section 12 - Chungui-gil",
+    "name:ko": "[북한산둘레길] 12구간 - 충의길",
+    "sac_scale": "hiking",
+    "stroller": "no",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "wheelchair": "no",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1271908933,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 21구간 우이령길",
+    "name:en": "[Bukhansan Dulle-gil] Route 21 - Uiryeong-gil",
+    "name:ja": "[北漢山ドゥルレギル] 21区間 牛耳嶺ギル",
+    "name:ko": "[북한산둘레길] 21구간 우이령길",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 1271908934,
+  "tags": {
+    "access": "permit",
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 21구간 우이령길",
+    "name:en": "[Bukhansan Dulle-gil] Route 21 - Uiryeong-gil",
+    "name:ja": "[北漢山ドゥルレギル] 21区間 牛耳嶺ギル",
+    "name:ko": "[북한산둘레길] 21구간 우이령길",
+    "sac_scale": "hiking",
+    "stroller": "limited",
+    "surface": "ground",
+    "trail_visibility": "excellent",
+    "wheelchair": "limited",
+    "width": "3"
+  }
+},
+{
+  "type": "way",
+  "id": 1271908939,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.4Km 00:13",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319754,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319755,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319768,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319769,
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319771,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319772,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 18구간 도봉옛길",
+    "surface": "ground",
+    "width": "1.3"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319773,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319774,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319776,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319779,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 20구간 왕실묘역길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319783,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319784,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 18구간 도봉옛길",
+    "surface": "ground",
+    "width": "1.3"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319785,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319787,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319789,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319794,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319795,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319798,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319801,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 18구간 도봉옛길",
+    "surface": "ground",
+    "width": "1.3"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319807,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319808,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319812,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319813,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319814,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319815,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319816,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319818,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 20구간 왕실묘역길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319819,
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319820,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319821,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319823,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319826,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319829,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319834,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319835,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319838,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319839,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319840,
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319846,
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319847,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319849,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319851,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 20구간 왕실묘역길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319852,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319857,
+  "tags": {
+    "access": "no",
+    "bicycle": "no",
+    "foot": "no",
+    "highway": "path",
+    "name": "비법정탐방로",
+    "name:en": "Restricted trail",
+    "name:ko": "비법정탐방로"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319860,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319861,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319864,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319866,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319869,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319871,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319873,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319875,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319876,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319879,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 18구간 도봉옛길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319882,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319884,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "북한산둘레길 19구간 방학동길",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319892,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319897,
+  "tags": {
+    "bicycle": "no",
+    "handrail": "yes",
+    "highway": "footway",
+    "name": "북한산둘레길 18코스 도봉옛길 (무장애 탐방구간)",
+    "sac_scale": "hiking",
+    "surface": "wood",
+    "width": "1.6"
+  }
+},
+{
+  "type": "way",
+  "id": 1273319899,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "hiking": "yes",
+    "name": "북한산둘레길 19구간 방학동길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "website": "https://www.knps.or.kr/portal/dulegil/bukhansan/course19.do",
+    "width": "1.2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273324905,
+  "tags": {
+    "bicycle": "yes",
+    "footway": "sidewalk",
+    "highway": "footway",
+    "name": "[북한산둘레길] 20구간 왕실묘역길",
+    "surface": "paving_stones",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1273324906,
+  "tags": {
+    "bicycle": "yes",
+    "footway": "sidewalk",
+    "highway": "footway",
+    "name": "[북한산둘레길] 20구간 왕실묘역길",
+    "surface": "paving_stones",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1274772073,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 1구간 소나무숲길",
+    "name:en": "[Bukhansan Dulle-gil] Sonamusup-gil",
+    "name:ko": "[북한산둘레길] 1구간 소나무숲길",
+    "surface": "paving_stones",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1274774577,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 3구간 흰구름길",
+    "name:en": "[Bukhansan Dulle-gil] Huingureum-gil",
+    "name:ko": "[북한산둘레길] 3구간 흰구름길",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1275185869,
+  "tags": {
+    "bicycle": "no",
+    "highway": "footway",
+    "name": "솔샘로25길",
+    "name:ko": "솔샘로25길",
+    "surface": "asphalt",
+    "width": "2"
+  }
+},
+{
+  "type": "way",
+  "id": 1275185870,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "[북한산둘레길] 5구간 명상길",
+    "name:en": "[Bukhansan Dulle-gil] Route 5 - Myeongsang-gil",
+    "name:ko": "[북한산둘레길] 5구간 명상길",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434100,
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "path",
+    "layer": "1",
+    "name": "0.6Km 00:20",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434101,
+  "tags": {
+    "bicycle": "no",
+    "highway": "path",
+    "name": "0.6Km 00:20",
+    "sac_scale": "hiking",
+    "surface": "earth",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434104,
+  "tags": {
+    "bridge": "yes",
+    "highway": "path",
+    "layer": "1",
+    "name": "극락교",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434129,
+  "tags": {
+    "bridge": "yes",
+    "highway": "path",
+    "layer": "1",
+    "name": "1.4Km 00:48",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434130,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:48",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434131,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:48",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434132,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:48",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434133,
+  "tags": {
+    "bridge": "yes",
+    "highway": "path",
+    "layer": "1",
+    "name": "천중교",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434134,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:48",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434135,
+  "tags": {
+    "bridge": "yes",
+    "highway": "path",
+    "layer": "1",
+    "name": "중생교",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1393434136,
+  "tags": {
+    "highway": "path",
+    "name": "1.4Km 00:48",
+    "sac_scale": "hiking"
+  }
+},
+{
+  "type": "way",
+  "id": 1408682206,
+  "tags": {
+    "bicycle": "no",
+    "dog": "no",
+    "highway": "path",
+    "lit": "no",
+    "mtb:scale:imba": "1",
+    "name": "[북한산둘레길] 11구간 효자길",
+    "name:en": "[Bukhansan Dulle-gil] Section 11 - Hyoja-gil",
+    "name:ko": "[북한산둘레길] 11구간 효자길",
+    "sac_scale": "hiking",
+    "stroller": "no",
+    "surface": "earth",
+    "trail_visibility": "good",
+    "wheelchair": "no",
+    "width": "1"
+  }
+},
+{
+  "type": "way",
+  "id": 1417097696,
+  "tags": {
+    "bicycle": "no",
+    "bridge": "yes",
+    "highway": "path",
+    "horse": "no",
+    "layer": "1",
+    "name": "원효교",
+    "sac_scale": "hiking",
+    "surface": "concrete"
+  }
+}
+
+  ]
+}

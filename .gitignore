@@ -1,0 +1,16 @@
+# oh-my-claudecode 상태
+.omc/
+
+# 스크래치/불필요 바이너리 (같은 데이터의 GPX 내보내기, 파이프라인에 미사용)
+scripts/dl_gpx.bin
+
+# DEM 원본(대용량) — 필요 시 AWS elevation-tiles-prod 에서 재다운로드
+scripts/*.hgt
+scripts/*.hgt.gz
+
+# python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

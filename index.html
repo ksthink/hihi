@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>하이하잇 · 북한산 & 설악산 등산로 탐방</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- iOS 시뮬레이터 스타일 프레임 (iPhone 17 · 402 × 874 pt) -->
+  <div id="frame-bg">
+    <div class="sim-window">
+      <div class="sim-toolbar">
+        <div class="traffic">
+          <span class="tl red"></span><span class="tl yellow"></span><span class="tl green"></span>
+        </div>
+        <div class="sim-title">iPhone 17 — iOS 26.0</div>
+      </div>
+      <div class="device">
+      <div class="screen">
+
+        <!-- 상태바 (Dynamic Island) -->
+        <div class="statusbar">
+          <span class="sb-time">9:41</span>
+          <div class="island"></div>
+          <span class="sb-right">
+            <span class="sb-signal"></span>
+            <span class="sb-wifi"></span>
+            <span class="sb-batt"></span>
+          </span>
+        </div>
+
+        <div id="app">
+          <main id="map"></main>
+
+          <!-- 테마 토글 (화이트 / 다크) -->
+          <button id="theme-toggle" aria-label="테마 전환">
+            <svg class="icn moon" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.3A8.2 8.2 0 0 1 9.7 3.5a8.2 8.2 0 1 0 10.8 10.8z"/></svg>
+            <svg class="icn sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+          </button>
+
+          <!-- 상단 오버레이: 제목 + 현재 산 -->
+          <div class="top-overlay explore-only">
+            <header>
+              <h1>하이하잇</h1>
+              <div class="cur-mtn" id="cur-mtn">북한산</div>
+            </header>
+          </div>
+
+          <!-- 하단 시트 (bottom sheet) -->
+          <div id="sheet" class="explore-only">
+            <div class="grabber" id="grabber"></div>
+            <div class="sheet-content">
+              <div class="sheet-legend">
+                <span>초급 <span class="dmeter"><i class="on"></i><i></i><i></i></span></span>
+                <span>중급 <span class="dmeter"><i class="on"></i><i class="on"></i><i></i></span></span>
+                <span>고급 <span class="dmeter"><i class="on"></i><i class="on"></i><i class="on"></i></span></span>
+              </div>
+
+              <div class="section">
+                <h2>등산로 <button id="show-all" hidden>전체 보기</button></h2>
+                <ul id="trail-list"></ul>
+              </div>
+
+              <div class="section">
+                <h2>지도 데이터 다운로드</h2>
+                <button class="dl-btn" id="dl-geojson">등산로 데이터 (GeoJSON)</button>
+                <button class="dl-btn" id="dl-offline">오프라인 지도 추출 스크립트</button>
+                <p class="hint small" id="dl-note"></p>
+              </div>
+
+              <footer>
+                <p>기저 지도: <a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a> PMTiles ·
+                © <a href="https://openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a></p>
+                <p class="warn">등산로는 개략적인 샘플 데이터입니다. 실제 산행 시 공식 지도를 확인하세요.</p>
+              </footer>
+            </div>
+          </div>
+
+          <!-- 추천 뷰 -->
+          <section class="view" id="view-chu">
+            <div class="view-head"><h1>추천</h1><p>대한민국 명산과 추천 코스</p></div>
+            <div class="view-body">
+              <div class="famous">
+                <button class="famous-btn" id="famous-btn">대한민국 100대 명산</button>
+                <ul class="famous-list" id="famous-list" hidden></ul>
+              </div>
+              <h2 class="reco-h2">추천 코스</h2>
+              <div id="reco-list"></div>
+            </div>
+          </section>
+
+          <!-- 등반 뷰 -->
+          <section class="view" id="view-deung">
+            <div class="view-head"><h1>등반</h1><p>코스를 골라 산행을 시작하세요</p></div>
+            <div class="view-body">
+              <div class="climb-card">
+                <div class="climb-course" id="climb-course">선택된 코스가 없습니다</div>
+                <div class="climb-stats">
+                  <div><span id="climb-dist">–</span><small>거리(km)</small></div>
+                  <div><span id="climb-time">–</span><small>예상(시간)</small></div>
+                  <div><span id="climb-diff">–</span><small>난이도</small></div>
+                </div>
+                <div class="climb-stats">
+                  <div><span id="climb-emax">–</span><small>최고(m)</small></div>
+                  <div><span id="climb-gain">–</span><small>누적상승(m)</small></div>
+                  <div><span id="climb-emin">–</span><small>최저(m)</small></div>
+                </div>
+                <div id="climb-profile" class="profile"></div>
+                <button class="start-btn" id="start-btn">등반 시작</button>
+                <p class="hint" id="climb-hint">탐험 탭에서 등산로를 선택하면 여기에 표시됩니다.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 기록 뷰 -->
+          <section class="view" id="view-girok">
+            <div class="view-head"><h1>기록</h1><p>나의 산행 이력</p></div>
+            <div class="view-body">
+              <div class="rec-summary">
+                <div><span>12</span><small>총 산행</small></div>
+                <div><span>58.4</span><small>총 거리(km)</small></div>
+                <div><span>6,120</span><small>누적 고도(m)</small></div>
+              </div>
+              <ul class="rec-list" id="rec-list"></ul>
+            </div>
+          </section>
+
+          <!-- 하단 탭바 -->
+          <nav id="tabbar">
+            <button class="tabbtn active" data-tab="tam">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><polygon points="15.5,8.5 13,13 8.5,15.5 11,11" fill="currentColor" stroke="none"/></svg></span>
+              <span class="lbl">탐험</span>
+            </button>
+            <button class="tabbtn" data-tab="chu">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.6 9.6l5.8-.8z"/></svg></span>
+              <span class="lbl">추천</span>
+            </button>
+            <button class="tabbtn" data-tab="deung">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M2.5 20l6-11 3.5 6 2-3.5L21.5 20z"/><path d="M8.5 9l1.7 3"/></svg></span>
+              <span class="lbl">등반</span>
+            </button>
+            <button class="tabbtn" data-tab="girok">
+              <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.2 2"/></svg></span>
+              <span class="lbl">기록</span>
+            </button>
+          </nav>
+
+          <div id="loading">지도를 불러오는 중…</div>
+        </div>
+
+        <!-- 홈 인디케이터 -->
+        <div class="home-indicator"></div>
+      </div>
+      </div><!-- /.device -->
+    </div><!-- /.sim-window -->
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

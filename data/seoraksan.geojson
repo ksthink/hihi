@@ -1,0 +1,101 @@
+{
+  "type": "FeatureCollection",
+  "name": "seoraksan",
+  "properties": {
+    "park": "설악산국립공원",
+    "bbox": [128.43, 38.08, 128.48, 38.18],
+    "note": "샘플/개략 데이터입니다. 실제 산행 시 공식 지도를 확인하세요."
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "kind": "trail",
+        "name": "오색 - 대청봉 코스",
+        "difficulty": "고급",
+        "distance_km": 5.0,
+        "time_hr": 4.0,
+        "start": "오색 탐방지원센터",
+        "peak": "대청봉 (1708m)",
+        "desc": "설악산 정상 대청봉으로 최단 시간에 오르는 코스. 짧지만 급경사가 계속됩니다."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.4530, 38.0870],
+          [128.4560, 38.0950],
+          [128.4600, 38.1040],
+          [128.4630, 38.1120],
+          [128.4655, 38.1194]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "kind": "trail",
+        "name": "울산바위 코스",
+        "difficulty": "중급",
+        "distance_km": 3.8,
+        "time_hr": 3.0,
+        "start": "설악동 소공원 · 신흥사",
+        "peak": "울산바위 (873m)",
+        "desc": "흔들바위를 지나 808개 철계단을 올라 울산바위 전망대에 이르는 인기 코스."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.4680, 38.1700],
+          [128.4630, 38.1650],
+          [128.4590, 38.1610],
+          [128.4530, 38.1560]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "kind": "trail",
+        "name": "천불동계곡 코스",
+        "difficulty": "중급",
+        "distance_km": 6.5,
+        "time_hr": 4.5,
+        "start": "설악동 소공원",
+        "peak": "무너미고개",
+        "desc": "비선대·양폭을 지나는 설악의 대표 계곡길. 단풍철 절경으로 유명합니다."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.4655, 38.1690],
+          [128.4600, 38.1500],
+          [128.4560, 38.1350],
+          [128.4650, 38.1230]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "kind": "trail",
+        "name": "공룡능선 코스",
+        "difficulty": "고급",
+        "distance_km": 5.1,
+        "time_hr": 5.0,
+        "start": "마등령",
+        "peak": "공룡능선",
+        "desc": "설악의 백미로 꼽히는 험준한 암릉 종주 구간. 체력과 경험이 필요합니다."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [128.4470, 38.1470],
+          [128.4520, 38.1420],
+          [128.4570, 38.1360],
+          [128.4620, 38.1290],
+          [128.4650, 38.1230]
+        ]
+      }
+    }
+  ]
+}
