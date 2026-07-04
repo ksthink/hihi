@@ -63,9 +63,9 @@
               </div>
 
               <div class="section">
-                <h2>지도 데이터 다운로드</h2>
-                <button class="dl-btn" id="dl-geojson">등산로 데이터 (GeoJSON)</button>
-                <button class="dl-btn" id="dl-offline">오프라인 지도 추출 스크립트</button>
+                <h2>오프라인 저장</h2>
+                <button class="dl-btn" id="dl-save">이 산 오프라인 저장</button>
+                <button class="dl-btn" id="dl-geojson">등산로 데이터 내보내기 (GeoJSON)</button>
                 <p class="hint small" id="dl-note"></p>
               </div>
 
@@ -117,12 +117,30 @@
           <section class="view" id="view-girok">
             <div class="view-head"><h1>기록</h1><p>나의 산행 이력</p></div>
             <div class="view-body">
+              <!-- 계정 (Supabase Auth) -->
+              <div class="auth-bar" id="auth-bar">
+                <div class="auth-out" id="auth-out">
+                  <input type="email" id="auth-email" placeholder="이메일" autocomplete="email" />
+                  <input type="password" id="auth-pass" placeholder="비밀번호" autocomplete="current-password" />
+                  <div class="auth-actions">
+                    <button class="auth-btn primary" id="auth-signin">로그인</button>
+                    <button class="auth-btn" id="auth-signup">가입</button>
+                  </div>
+                  <p class="auth-msg" id="auth-msg"></p>
+                </div>
+                <div class="auth-in" id="auth-in" hidden>
+                  <span class="auth-user" id="auth-user"></span>
+                  <button class="auth-btn" id="auth-signout">로그아웃</button>
+                </div>
+              </div>
+
               <div class="rec-summary">
-                <div><span>12</span><small>총 산행</small></div>
-                <div><span>58.4</span><small>총 거리(km)</small></div>
-                <div><span>6,120</span><small>누적 고도(m)</small></div>
+                <div><span id="sum-count">0</span><small>총 산행</small></div>
+                <div><span id="sum-dist">0</span><small>총 거리(km)</small></div>
+                <div><span id="sum-gain">0</span><small>누적 고도(m)</small></div>
               </div>
               <ul class="rec-list" id="rec-list"></ul>
+              <p class="rec-empty" id="rec-empty" hidden>로그인하고 등반 기록을 저장하세요.</p>
             </div>
           </section>
 

@@ -273,3 +273,19 @@ footer .warn { margin-top: 6px; }
   .statusbar { padding-top: env(safe-area-inset-top); height: calc(54px + env(safe-area-inset-top)); }
   #tabbar { padding-bottom: calc(18px + env(safe-area-inset-bottom)); height: calc(72px + env(safe-area-inset-bottom)); }
 }
+
+/* ── 계정 (Supabase Auth) ─────────────────────────── */
+.auth-bar { margin-bottom: 16px; }
+.auth-out { display: flex; flex-direction: column; gap: 8px; }
+.auth-out input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px; outline: none; }
+.auth-out input:focus { border-color: var(--accent); }
+.auth-actions { display: flex; gap: 8px; }
+.auth-btn { flex: 1; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.auth-btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.auth-btn:active { transform: scale(.98); }
+.auth-msg { font-size: 12.5px; color: var(--muted); line-height: 1.5; min-height: 1em; margin-top: 2px; }
+.auth-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--elevated); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+.auth-in .auth-user { font-size: 14px; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-in .auth-btn { flex: 0 0 auto; width: auto; padding: 8px 16px; }
+.rec-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 12px; line-height: 1.6; }
+.dl-btn.saved { background: var(--accent); color: var(--on-accent); border-color: var(--accent); cursor: default; opacity: .92; }

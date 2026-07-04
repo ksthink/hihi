@@ -1,10 +1,10 @@
 import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm";
 import { Protocol } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
 import { buildStyle } from "./basemap-style.js";
+import { supabase, signUp, signIn, signOut } from "./supabase-client.js";
 
 // ── 설정 ──────────────────────────────────────────────
 const PMTILES_URL = `${location.origin}/pmtiles/v4.pmtiles`; // 로컬 프록시 경유 (CORS 회피)
-const UPSTREAM_PMTILES_URL = "https://demo-bucket.protomaps.com/v4.pmtiles"; // 오프라인 추출 CLI용
 
 const PARKS = {
   bukhansan: { label: "북한산", center: [126.990, 37.672], zoom: 11.3, bbox: [126.90, 37.59, 127.06, 37.75], file: "data/bukhansan-routes.geojson" },
@@ -264,6 +264,7 @@ async function loadPark(park) {
   applyTrailFilter();
   map.flyTo({ center: cfg.center, zoom: cfg.zoom, duration: 900 });
   renderTrailList(geojson);
+  refreshSaveButton();
 }
 
 // ── 사이드바(시트) 등산로 목록 ───────────────────────
@@ -464,33 +465,176 @@ function profileSVG(prof, W, H) {
 function renderProfile(prof) {
   document.getElementById("climb-profile").innerHTML = profileSVG(prof, 300, 72);
 }
+// 등반 세션: 시작~종료 시간을 재고, 종료 시 climb_records 로 저장.
+// (실시간 GPS 트랙 기록은 iOS 네이티브 단계 기능 — 웹은 코스 통계로 기록)
+let climbSession = null; // { startedAt: Date, feature }
+
 document.getElementById("start-btn").disabled = true;
-document.getElementById("start-btn").addEventListener("click", () => {
+document.getElementById("start-btn").addEventListener("click", async () => {
   if (!selectedTrail) return;
   const btn = document.getElementById("start-btn");
   const tracking = btn.dataset.on === "1";
-  btn.dataset.on = tracking ? "0" : "1";
-  btn.textContent = tracking ? "등반 시작" : "등반 중 · 종료";
-  btn.classList.toggle("recording", !tracking);
+
+  if (!tracking) {
+    // ── 등반 시작 ──
+    if (!currentUser) {
+      const hint = document.getElementById("climb-hint");
+      if (hint) hint.textContent = "등반 기록을 저장하려면 기록 탭에서 로그인하세요.";
+      showTab("girok");
+      return;
+    }
+    climbSession = { startedAt: new Date(), feature: selectedTrail };
+    btn.dataset.on = "1";
+    btn.textContent = "등반 중 · 종료";
+    btn.classList.add("recording");
+  } else {
+    // ── 등반 종료 → 기록 저장 ──
+    btn.dataset.on = "0";
+    btn.textContent = "등반 시작";
+    btn.classList.remove("recording");
+    btn.disabled = true;
+    await saveClimb();
+    btn.disabled = false;
+  }
 });
 
-// ── 기록 뷰 ──────────────────────────────────────────
-const RECORDS = [
-  { name: "북한산 백운대", date: "2026.06.21", dist: 8.4, time: "4:10" },
-  { name: "설악산 대청봉", date: "2026.05.30", dist: 11.2, time: "7:25" },
-  { name: "북한산 비봉", date: "2026.05.02", dist: 6.1, time: "3:05" },
-  { name: "설악산 울산바위", date: "2026.04.18", dist: 7.6, time: "3:40" }
-];
-function renderRecords() {
+async function saveClimb() {
+  if (!climbSession || !currentUser) { climbSession = null; return; }
+  const p = climbSession.feature.properties;
+  const ended = new Date();
+  const rec = {
+    user_id: currentUser.id,
+    mountain_id: currentPark,
+    course_name: p.name,
+    started_at: climbSession.startedAt.toISOString(),
+    ended_at: ended.toISOString(),
+    distance_km: p.distance_km ?? null,
+    ascent_m: p.ascent ?? null,
+    duration_s: Math.max(1, Math.round((ended - climbSession.startedAt) / 1000)),
+    track: null
+  };
+  climbSession = null;
+  const { error } = await supabase.from("climb_records").insert(rec);
+  if (error) {
+    console.error("기록 저장 실패:", error);
+    const hint = document.getElementById("climb-hint");
+    if (hint) hint.textContent = "기록 저장 실패: " + error.message;
+    return;
+  }
+  const hint = document.getElementById("climb-hint");
+  if (hint) hint.textContent = "등반 기록이 저장되었습니다. 기록 탭에서 확인하세요.";
+  renderRecords();
+}
+
+// ── 기록 뷰 (Supabase climb_records) ─────────────────
+let currentUser = null;
+
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const z = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())}`;
+}
+function fmtDur(s) {
+  if (!s && s !== 0) return "–";
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+function setSummary(count, dist, gain) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set("sum-count", count);
+  set("sum-dist", dist);
+  set("sum-gain", (gain || 0).toLocaleString());
+}
+
+async function renderRecords() {
   const ul = document.getElementById("rec-list");
+  const empty = document.getElementById("rec-empty");
+  if (!ul) return;
   ul.innerHTML = "";
-  RECORDS.forEach((r) => {
+
+  if (!currentUser) {
+    empty.hidden = false;
+    empty.textContent = "로그인하고 등반 기록을 저장하세요.";
+    setSummary(0, 0, 0);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("climb_records")
+    .select("*")
+    .order("started_at", { ascending: false });
+
+  if (error) {
+    console.error("기록 로드 실패:", error);
+    empty.hidden = false;
+    empty.textContent = "기록을 불러오지 못했습니다. (테이블/스키마 확인)";
+    setSummary(0, 0, 0);
+    return;
+  }
+
+  const recs = data || [];
+  empty.hidden = recs.length > 0;
+  if (!recs.length) empty.textContent = "아직 등반 기록이 없습니다. 코스를 선택해 등반을 시작해 보세요.";
+
+  let totDist = 0, totGain = 0;
+  recs.forEach((r) => {
+    totDist += r.distance_km || 0;
+    totGain += r.ascent_m || 0;
     const li = document.createElement("li");
     li.className = "rec-item";
     li.innerHTML = `
-      <div class="ri-top"><span class="ri-name">${r.name}</span><span class="ri-date">${r.date}</span></div>
-      <div class="ri-meta"><span>${r.dist} km</span><span>${r.time}</span></div>`;
+      <div class="ri-top"><span class="ri-name">${r.course_name || r.mountain_id || "산행"}</span><span class="ri-date">${fmtDate(r.started_at)}</span></div>
+      <div class="ri-meta"><span>${(r.distance_km ?? 0)} km</span><span>${fmtDur(r.duration_s)}</span></div>`;
     ul.appendChild(li);
+  });
+  setSummary(recs.length, totDist.toFixed(1), totGain);
+}
+
+// ── 계정 (Supabase Auth) ─────────────────────────────
+function updateAuthUI() {
+  const out = document.getElementById("auth-out");
+  const inb = document.getElementById("auth-in");
+  const who = document.getElementById("auth-user");
+  if (!out || !inb) return;
+  if (currentUser) {
+    out.hidden = true; inb.hidden = false;
+    if (who) who.textContent = currentUser.email || "로그인됨";
+  } else {
+    out.hidden = false; inb.hidden = true;
+  }
+}
+function setupAuth() {
+  const email = document.getElementById("auth-email");
+  const pass = document.getElementById("auth-pass");
+  const msg = document.getElementById("auth-msg");
+  const creds = () => ({ e: (email.value || "").trim(), p: pass.value || "" });
+
+  document.getElementById("auth-signin").addEventListener("click", async () => {
+    msg.textContent = "";
+    const { e, p } = creds();
+    if (!e || !p) { msg.textContent = "이메일과 비밀번호를 입력하세요."; return; }
+    const { error } = await signIn(e, p);
+    if (error) { msg.textContent = error.message; return; }
+    pass.value = "";
+  });
+  document.getElementById("auth-signup").addEventListener("click", async () => {
+    msg.textContent = "";
+    const { e, p } = creds();
+    if (!e || !p) { msg.textContent = "이메일과 비밀번호를 입력하세요."; return; }
+    const { data, error } = await signUp(e, p);
+    if (error) { msg.textContent = error.message; return; }
+    if (data.user && !data.session) msg.textContent = "확인 메일을 보냈습니다. 메일 인증 후 로그인하세요.";
+    else pass.value = "";
+  });
+  document.getElementById("auth-signout").addEventListener("click", () => signOut());
+
+  // 세션 변화 → UI/기록/저장버튼 갱신 (등록 직후 INITIAL_SESSION 도 여기로 들어옴)
+  supabase.auth.onAuthStateChange((_ev, session) => {
+    currentUser = session?.user || null;
+    updateAuthUI();
+    renderRecords();
+    refreshSaveButton();
   });
 }
 
@@ -506,24 +650,64 @@ document.getElementById("dl-geojson").addEventListener("click", () => {
   const g = trailCache[currentPark];
   if (g) download(`${currentPark}-trails.geojson`, JSON.stringify(g, null, 2));
 });
-document.getElementById("dl-offline").addEventListener("click", () => {
-  const cfg = PARKS[currentPark];
-  const [minLon, minLat, maxLon, maxLat] = cfg.bbox;
-  const out = `${currentPark}-offline.pmtiles`;
-  const script = `#!/usr/bin/env bash
-# ${cfg.label} 영역 오프라인 지도 추출 (하이하잇)
-# 필요: pmtiles CLI  ->  https://github.com/protomaps/go-pmtiles/releases
 
-pmtiles extract "${UPSTREAM_PMTILES_URL}" "${out}" \\
-  --bbox=${minLon},${minLat},${maxLon},${maxLat} \\
-  --minzoom=8 --maxzoom=15
-
-echo "완료: ${out}"
-`;
-  download(`extract-${currentPark}.sh`, script, "text/x-shellscript");
-  document.getElementById("dl-note").textContent =
-    `bbox ${minLon},${minLat},${maxLon},${maxLat} · pmtiles CLI로 실행하면 ${out} 생성`;
+// 오프라인 저장: Supabase Storage 에서 팩을 취득(배포 검증) + saved_packs 에 기록.
+// (브라우저 진짜 오프라인 캐싱은 iOS 파일시스템 단계에서 구현 — 여기선 배포+저장표시)
+document.getElementById("dl-save").addEventListener("click", async () => {
+  const note = document.getElementById("dl-note");
+  if (!currentUser) {
+    note.textContent = "오프라인 저장은 로그인 후 이용할 수 있습니다.";
+    showTab("girok");
+    return;
+  }
+  const park = currentPark;
+  const btn = document.getElementById("dl-save");
+  btn.disabled = true;
+  note.textContent = "저장 중…";
+  try {
+    // 팩 파일 취득(존재/접근 확인)
+    const files = ["routes.geojson", "spots.geojson", "contours.geojson"];
+    let got = 0;
+    for (const f of files) {
+      const { data, error } = await supabase.storage.from("packs").download(`${park}/${f}`);
+      if (!error && data) got++;
+    }
+    // 저장 표시
+    const { error } = await supabase.from("saved_packs").upsert({
+      user_id: currentUser.id, mountain_id: park, pack_version: 1
+    });
+    if (error) throw error;
+    btn.textContent = "저장됨 ✓";
+    btn.classList.add("saved");
+    note.textContent = `${PARKS[park].label} 오프라인 저장 완료 (팩 ${got}/${files.length}개 확인)`;
+  } catch (e) {
+    console.error("오프라인 저장 실패:", e);
+    note.textContent = "저장 실패: " + (e.message || e);
+    btn.disabled = false;
+  }
 });
+
+// 현재 산의 저장 여부에 맞춰 저장 버튼 상태 갱신
+async function refreshSaveButton() {
+  const btn = document.getElementById("dl-save");
+  if (!btn) return;
+  const reset = () => {
+    btn.textContent = "이 산 오프라인 저장";
+    btn.classList.remove("saved");
+    btn.disabled = false;
+  };
+  if (!currentUser) { reset(); return; }
+  const { data } = await supabase
+    .from("saved_packs").select("mountain_id")
+    .eq("mountain_id", currentPark).maybeSingle();
+  if (data) {
+    btn.textContent = "저장됨 ✓";
+    btn.classList.add("saved");
+    btn.disabled = true;
+  } else {
+    reset();
+  }
+}
 
 // ── 테마 토글 ────────────────────────────────────────
 function applyTheme(t) {
@@ -580,6 +764,8 @@ document.getElementById("show-all").addEventListener("click", (e) => {
 });
 
 // ── 시작 ─────────────────────────────────────────────
+setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
+
 map.on("load", async () => {
   [peaksData, spotsData, contoursData] = await Promise.all([
     fetch("data/peaks.geojson").then((r) => r.json()),

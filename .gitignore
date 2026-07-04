@@ -12,5 +12,9 @@ scripts/*.hgt.gz
 __pycache__/
 *.pyc
 
+# Supabase 비밀 (service_role/secret 키 등) — 절대 커밋 금지
+.env
+*.env
+
 # OS
 .DS_Store
