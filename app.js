@@ -17,7 +17,7 @@ const PARKS = {
   [MNT.bukhansan]: { label: "북한산", center: [126.990, 37.672], zoom: 11.3, bbox: [126.90, 37.59, 127.06, 37.75],
     file: "data/bukhansan-routes.geojson", spots: "data/bukhansan-spots.geojson", contours: "data/bukhansan-contours.geojson" },
   [MNT.seoraksan]: { label: "설악산", center: [128.403, 38.133], zoom: 11.3, bbox: [128.30, 38.07, 128.51, 38.19],
-    file: "data/seoraksan-routes.geojson", spots: "data/seoraksan-spots.geojson" } // 등고선 없음(변환만)
+    file: "data/seoraksan-routes.geojson", spots: "data/seoraksan-spots.geojson", contours: "data/seoraksan-contours.geojson" }
 };
 
 const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
