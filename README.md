@@ -35,7 +35,7 @@
 ### 탐험 (지도)
 - PMTiles 벡터 기저 지도 — 흑백, 화이트/다크 테마 대응
 - **북한산 등산로 40개 코스** (OSM 실데이터): 능선·계곡 등산로 22개 + 북한산둘레길 18구간
-- **등고선 오버레이** (SRTM DEM 생성): 100m 주 등고선(줌 10.5+), 50m 보조(12.5+), 고도 라벨(13.5+)
+- **등고선 오버레이** (Copernicus GLO-30 DEM, 50m 간격): 100m 주 등고선(줌 10.5+), 50m 보조(12.5+), 고도 라벨(13.5+)
 - **경로 지점**(분기점·시종점) 점 표시, 주요 봉우리(백운대·대청봉 등) 라벨
 - 등산로 목록 바텀시트 — 코스별 난이도(보통/어려움/매우 어려움)·거리·시간·**고도 미니그래프**
 - 코스 선택 시 해당 루트만 필터 표시 + 제목 블록에 "산이름 | 코스명"
@@ -114,7 +114,8 @@
 | 스크립트 | 역할 |
 |---|---|
 | `osm_trails.py` | Overpass(OSM)에서 능선 등산로(`highway=path` + 이름) + 둘레길(`route=hiking`)을 코스로 변환. `sac_scale` 로 난이도 산정 |
-| `make_contours.py` | SRTM 1-arcsec DEM(AWS elevation-tiles-prod)에서 50m 간격 등고선 생성 (numpy/contourpy, venv 필요) |
+| `make_contours_copernicus.py` | **등고선 생성(현행)**: Copernicus GLO-30 DEM(AWS Open Data, COG)에서 산 bbox 등고선 → shapely 단순화 (rasterio/contourpy/shapely). 무료·저장자유, 전 세계 커버 |
+| `make_contours.py` | 등고선 생성(대안): SRTM 1-arcsec DEM 50m (numpy/contourpy) |
 | `add_elevation.py` | 각 코스에 고도 프로파일·최고/최저·누적상승 계산(DEM 이중선형 보간) |
 | `convert_spots.py` | 산림청 Esri JSON 스팟을 EPSG:5186 → WGS84 역투영 변환(외부 의존성 없음) |
 | `upload_packs.py` | 팩을 Supabase Storage 에 업로드 + `mountains` 카탈로그 시드 (secret 키 env 필요) |
@@ -323,7 +324,8 @@ hihi/
 │   ├── serve.py                    [폐기 예정] 로컬 개발 서버(정적+PMTiles CORS 프록시, :8890).
 │   │                                 iOS 는 로컬 파일 접근이라 프록시 개념 자체가 없음
 │   ├── osm_trails.py               ★ 등산로 생성(현행): Overpass 결과 → routes.geojson
-│   ├── make_contours.py            ★ 등고선 생성: SRTM DEM → contours.geojson (venv: numpy/contourpy)
+│   ├── make_contours_copernicus.py ★ 등고선 생성(현행): Copernicus GLO-30(COG) → bbox 등고선 (rasterio/contourpy/shapely)
+│   ├── make_contours.py            등고선 생성(대안): SRTM DEM 50m (venv: numpy/contourpy)
 │   ├── add_elevation.py            ★ 고도 주입: 코스에 profile/ascent/min·max_elev (venv)
 │   ├── convert_spots.py            ★ 스팟 변환: 산림청 Esri JSON, EPSG:5186→WGS84 (의존성 없음)
 │   ├── convert_seoraksan.py        설악산 산림청 Esri JSON(등산로+스팟) → WGS84 GeoJSON 변환
