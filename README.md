@@ -34,7 +34,7 @@
 
 ### 탐험 (지도)
 - PMTiles 벡터 기저 지도 — 흑백, 화이트/다크 테마 대응
-- **북한산 등산로 40개 코스** (OSM 실데이터): 능선·계곡 등산로 22개 + 북한산둘레길 18구간
+- **국립공원공단 공식 탐방코스** (KNPS 탐방로 공간데이터): 북한산 21코스·설악산 11코스 — 실제 코스명(사기막골입구~백운대 등)·시종점·거리·난이도
 - **등고선 오버레이** (Copernicus GLO-30 DEM, 50m 간격): 100m 주 등고선(줌 10.5+), 50m 보조(12.5+), 고도 라벨(13.5+)
 - **경로 지점**(분기점·시종점) 점 표시, 주요 봉우리(백운대·대청봉 등) 라벨
 - 등산로 목록 바텀시트 — 코스별 난이도(보통/어려움/매우 어려움)·거리·시간·**고도 미니그래프**
@@ -113,7 +113,9 @@
 
 | 스크립트 | 역할 |
 |---|---|
-| `osm_trails.py` | Overpass(OSM)에서 능선 등산로(`highway=path` + 이름) + 둘레길(`route=hiking`)을 코스로 변환. `sac_scale` 로 난이도 산정 |
+| `convert_knps_courses.py` | **등산로 생성(현행)**: 국립공원공단 탐방로 공간데이터 API(공원사무소코드 필터) → 코스ID로 묶어 공식 코스 GeoJSON. 3km+ 주요 코스 큐레이션 (shapely) |
+| `add_elevation_copernicus.py` | 코스 고도 주입: Copernicus DEM 샘플링 → profile/min/max/ascent |
+| `osm_trails.py` | 등산로 생성(대안): Overpass(OSM) 능선·둘레길 → 코스 |
 | `make_contours_copernicus.py` | **등고선 생성(현행)**: Copernicus GLO-30 DEM(AWS Open Data, COG)에서 산 bbox 등고선 → shapely 단순화 (rasterio/contourpy/shapely). 무료·저장자유, 전 세계 커버 |
 | `make_contours.py` | 등고선 생성(대안): SRTM 1-arcsec DEM 50m (numpy/contourpy) |
 | `add_elevation.py` | 각 코스에 고도 프로파일·최고/최저·누적상승 계산(DEM 이중선형 보간) |
