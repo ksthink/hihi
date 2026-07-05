@@ -21,3 +21,7 @@ __pycache__/
 
 # 기저 타일 추출본 (대용량) — Supabase Storage 로 배포, 재생성: pmtiles extract
 data/tiles/
+
+# 국토지리정보원 등고선 원본(대용량 shp) — 재생성: convert_ngii_contours.py
+N3L_F0010000_*/
+data/*.srtm.bak

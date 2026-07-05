@@ -27,10 +27,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if not URL or not KEY:
     sys.exit("환경변수 SUPABASE_URL, SUPABASE_SECRET_KEY 를 설정하세요.")
 
-# 명산 팩: mountain_id -> {로컬파일: Storage 파일명}
+# 명산 팩: mountain_id(= 산림청 산코드 9자리, scripts/MNT_CODE.xlsx) -> {로컬파일: Storage 파일명}
 # base.pmtiles 재생성: pmtiles extract <v4 소스> data/tiles/<id>-base.pmtiles --bbox=<bbox> --maxzoom=15
 PACKS = {
-    "bukhansan": {
+    "113050202": {  # 북한산(백운대 대표코드)
         "data/tiles/bukhansan-base.pmtiles": "base.pmtiles",
         "data/bukhansan-routes.geojson": "routes.geojson",
         "data/bukhansan-spots.geojson": "spots.geojson",
@@ -44,10 +44,10 @@ def content_type(name):
 
 # mountains 카탈로그 (app.js 의 PARKS/FAMOUS 와 일치)
 MOUNTAINS = [
-    {"id": "bukhansan", "name": "북한산", "region": "서울·경기", "elev": 836,
+    {"id": "113050202", "name": "북한산", "region": "서울·경기", "elev": 836,
      "center": [126.990, 37.672], "zoom": 11.3,
-     "bbox": [126.90, 37.59, 127.06, 37.75], "pack_version": 1},
-    {"id": "seoraksan", "name": "설악산", "region": "강원 속초·양양", "elev": 1708,
+     "bbox": [126.90, 37.59, 127.06, 37.75], "pack_version": 2},
+    {"id": "428302602", "name": "설악산", "region": "강원 속초·양양", "elev": 1708,
      "center": [128.457, 38.135], "zoom": 11.6,
      "bbox": [128.43, 38.08, 128.48, 38.18], "pack_version": 1},
 ]

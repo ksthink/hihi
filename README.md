@@ -114,7 +114,8 @@
 | 스크립트 | 역할 |
 |---|---|
 | `osm_trails.py` | Overpass(OSM)에서 능선 등산로(`highway=path` + 이름) + 둘레길(`route=hiking`)을 코스로 변환. `sac_scale` 로 난이도 산정 |
-| `make_contours.py` | SRTM 1-arcsec DEM(AWS elevation-tiles-prod)에서 50m 간격 등고선 생성 (numpy/contourpy, venv 필요) |
+| `convert_ngii_contours.py` | **국토지리정보원 수치지형도 5m 등고선**(EPSG:5179 shp) → 산 bbox 클립 + WGS84 GeoJSON (pyshp). 현행 등고선 소스 — 정밀 |
+| `make_contours.py` | 등고선 생성(대안): SRTM 1-arcsec DEM 50m (numpy/contourpy) — 규제 무관·전국 자동, 정밀도 낮음 |
 | `add_elevation.py` | 각 코스에 고도 프로파일·최고/최저·누적상승 계산(DEM 이중선형 보간) |
 | `convert_spots.py` | 산림청 Esri JSON 스팟을 EPSG:5186 → WGS84 역투영 변환(외부 의존성 없음) |
 | `upload_packs.py` | 팩을 Supabase Storage 에 업로드 + `mountains` 카탈로그 시드 (secret 키 env 필요) |
@@ -140,10 +141,19 @@ python3 scripts/upload_packs.py
 팩을 업로드/추가할 때 반드시 아래 규격을 따릅니다. 웹앱·시드 스크립트·(향후) iOS 가
 모두 이 규격을 전제로 동작합니다.
 
-**① 식별자 (`mountain_id`)**
-- 영문 소문자 로마자 표기, 공백 없음 — 예: `bukhansan`, `seoraksan`, `jirisan`
-- 이 id 가 Storage 폴더명 · `mountains.id` · `app.js` `PARKS` 키 · `saved_packs.mountain_id` ·
-  `climb_records.mountain_id` 로 **전부 공유**됩니다 (한 곳이라도 다르면 연결이 끊어짐)
+**① 식별자 (`mountain_id`) = 산림청 산코드 9자리**
+- 전국 산 코드 원천: `scripts/MNT_CODE.xlsx`(목록 2,931산) + `scripts/mnt.xlsx`(산정보 4,704산,
+  항공본부) → `scripts/convert_mnt_codes.py` 병합 → `data/mnt-codes.json`
+  (5,360산 `{code, name, region, elev?}`, 공통 코드는 산정보가 정본)
+- **대표 코드 규칙**: 산림청 체계엔 "산 전체" 코드가 없고 조사구역/봉우리 단위다.
+  따라서 **산의 대표 코드 = 주봉(정상) 코드 중 산정보가 충실한 쪽**으로 정한다.
+  예: 북한산→**백운대 `113050202`**(835.6m) · 설악산→**대청봉 `428302602`** · 지리산→**천왕봉 `488605302`**
+- **산 이름은 전국 중복이 317건**(가야산·지리산 등) — 이름을 키로 쓰지 말 것. 표시할 때는
+  `region` 을 함께 노출해 구분한다.
+- 이 코드가 Storage 폴더명 · `mountains.id` · `app.js` `PARKS`/`MNT` 키 · `saved_packs.mountain_id` ·
+  `climb_records.mountain_id` · IndexedDB 팩 키로 **전부 공유**됩니다 (한 곳이라도 다르면 연결이 끊어짐)
+- 로컬 데이터 파일명은 가독성을 위해 로마자 유지 가능 (`data/bukhansan-routes.geojson`) —
+  코드→파일 매핑은 `PARKS[<코드>].file` 이 담당
 
 **② Storage 파일 레이아웃** — 버킷 `packs` (공개 읽기), **파일명 고정**
 
@@ -191,24 +201,26 @@ packs/<mountain_id>/contours.geojson   선택 — 등고선
 
 ```python
 PACKS = {
-    "jirisan": {   # ← mountain_id
+    "488605302": {   # ← mountain_id = 산코드 (지리산_천왕봉, data/mnt-codes.json 에서 조회)
+        "data/tiles/jirisan-base.pmtiles": "base.pmtiles",
         "data/jirisan-routes.geojson":   "routes.geojson",    # 로컬 경로: Storage 파일명
         "data/jirisan-spots.geojson":    "spots.geojson",     # (없으면 줄 생략)
         "data/jirisan-contours.geojson": "contours.geojson",
     },
 }
 MOUNTAINS = [
-    {"id": "jirisan", "name": "지리산", "region": "전남·전북·경남", "elev": 1915,
+    {"id": "488605302", "name": "지리산", "region": "전남·전북·경남", "elev": 1915,
      "center": [127.731, 35.337], "zoom": 11.0,
      "bbox": [127.62, 35.27, 127.83, 35.42], "pack_version": 1},
 ]
 ```
 
 **⑥ 체크리스트 (업로드 전)**
+- [ ] `mountain_id` 가 `data/mnt-codes.json` 에 있는 **산코드 9자리**인가? (이름 슬러그 금지)
 - [ ] 좌표가 WGS84 [lng, lat] 인가? (한국이면 lng 124~132, lat 33~39 범위)
 - [ ] `routes` 의 코스 `name` 이 산 내 고유한가?
 - [ ] `difficulty` 값이 `초급/중급/고급` 중 하나인가? (표시 라벨과 혼동 금지)
-- [ ] `mountain_id` 가 `PARKS`(app.js)·`PACKS`/`MOUNTAINS`(시드)에서 동일한가?
+- [ ] 산코드가 `PARKS`/`MNT`(app.js)·`PACKS`/`MOUNTAINS`(시드)에서 동일한가?
 - [ ] 내용이 바뀐 재업로드라면 `pack_version` 을 올렸는가?
 
 ---
@@ -298,8 +310,11 @@ hihi/
 │   ├── bukhansan-spots.geojson     경로 지점 221개: 분기점·시종점 (38KB)
 │   ├── bukhansan-contours.geojson  등고선 343개: 50m 간격 (397KB)
 │   ├── peaks.geojson               주요 봉우리 7개 (북한산+설악산 공용)
-│   ├── seoraksan.geojson           설악산 샘플 4코스 (⚠️ 실데이터 교체 예정)
+│   ├── seoraksan-routes.geojson    설악산 대청봉 등산로 57구간 (산림청 변환, 미큐레이션)
+│   ├── seoraksan-spots.geojson     설악산 대청봉 스팟 45개 (분기점·시종점)
+│   ├── seoraksan.geojson           (레거시 샘플 4코스 — 미사용, 삭제 후보)
 │   ├── bukhansan.geojson           (레거시 샘플 3코스 — 미사용, 삭제 후보)
+│   ├── mnt-codes.json              전국 산 카탈로그 5,360건 {code,name,region,elev?} — id 표준의 원천
 │   └── tiles/                      (gitignore) base.pmtiles 추출본 — Storage 로만 배포
 │
 ├── supabase/
@@ -309,9 +324,16 @@ hihi/
 │   ├── serve.py                    [폐기 예정] 로컬 개발 서버(정적+PMTiles CORS 프록시, :8890).
 │   │                                 iOS 는 로컬 파일 접근이라 프록시 개념 자체가 없음
 │   ├── osm_trails.py               ★ 등산로 생성(현행): Overpass 결과 → routes.geojson
-│   ├── make_contours.py            ★ 등고선 생성: SRTM DEM → contours.geojson (venv: numpy/contourpy)
+│   ├── convert_ngii_contours.py    ★ 등고선 변환: 국토지리정보원 5m(EPSG:5179 shp) → bbox 클립 WGS84 (pyshp)
+│   ├── make_contours.py            등고선 생성(대안): SRTM DEM 50m (venv: numpy/contourpy)
+│   ├── N3L_F0010000_서울/          (gitignore, 72MB) 국토지리정보원 등고선 원본 shp — 서울 도엽(북한산 포함)
 │   ├── add_elevation.py            ★ 고도 주입: 코스에 profile/ascent/min·max_elev (venv)
 │   ├── convert_spots.py            ★ 스팟 변환: 산림청 Esri JSON, EPSG:5186→WGS84 (의존성 없음)
+│   ├── convert_seoraksan.py        설악산 산림청 Esri JSON(등산로+스팟) → WGS84 GeoJSON 변환
+│   ├── raw_428302602_geojson/      설악산 대청봉 산림청 원본(Esri JSON, EPSG:5186)
+│   ├── MNT_CODE.xlsx               산코드 목록 원본(산림청, 2,931산)
+│   ├── mnt.xlsx                    산정보 원본(산림청 항공본부, 4,704산 — 소재지·높이·설명)
+│   ├── convert_mnt_codes.py        ★ 산코드 병합 변환: 두 xlsx → data/mnt-codes.json (openpyxl)
 │   ├── upload_packs.py             ★ Supabase 시드: 팩 업로드 + mountains 카탈로그
 │   │                                 (env: SUPABASE_URL, SUPABASE_SECRET_KEY)
 │   ├── osm_routes.py               (대안) OSM route=hiking 릴레이션 → 코스
@@ -385,7 +407,8 @@ hihi/
 
 | 리소스 | 내용 |
 |---|---|
-| `mountains` | 공개 카탈로그 (id/name/region/elev/center/zoom/bbox/pack_version/pack_size_kb) |
+| `mountains` | 팩 카탈로그 (id=산코드/name/region/elev/center/zoom/bbox/pack_version/pack_size_kb) |
+| `mountain_info` | 전국 산 카탈로그 5,360건 = 산정보 4,704(높이·관리주체·설명 포함) + 목록 전용 656(이름·소재지만) 병합 — data/mnt-codes.json 과 동일 기준. 공개 읽기, 시드: `scripts/seed_mountain_info.py` |
 | `profiles` | 사용자 프로필 (RLS: 본인만) |
 | `climb_records` | 등반 기록 (started/ended_at, distance_km, ascent_m, duration_s, track jsonb — RLS: 본인만) |
 | `saved_packs` | 저장한 산 (user_id+mountain_id PK — RLS: 본인만) |

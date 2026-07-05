@@ -8,9 +8,16 @@ const PMTILES_URL = `${location.origin}/pmtiles/v4.pmtiles`; // 로컬 프록시
 // 현재 기저 소스: 온라인(PMTILES_URL) 또는 로컬 팩("local-<산id>", IndexedDB Blob 등록 후)
 let baseUrl = PMTILES_URL;
 
+// 산 식별자 = 산림청 산코드 9자리 (scripts/MNT_CODE.xlsx → data/mnt-codes.json, 전국 2,931산).
+// 산 이름은 전국 중복(317건)이 있어 코드가 전 시스템 표준 키다:
+// Storage packs/<산코드>/ · mountains.id · saved_packs/climb_records.mountain_id · IndexedDB 팩 키
+// 대표 코드 = 주봉(정상) 코드, 산정보가 충실한 쪽 (북한산→백운대, 설악산→대청봉)
+const MNT = { bukhansan: "113050202", seoraksan: "428302602" };
 const PARKS = {
-  bukhansan: { label: "북한산", center: [126.990, 37.672], zoom: 11.3, bbox: [126.90, 37.59, 127.06, 37.75], file: "data/bukhansan-routes.geojson" },
-  seoraksan: { label: "설악산", center: [128.457, 38.135], zoom: 11.6, bbox: [128.43, 38.08, 128.48, 38.18], file: "data/seoraksan.geojson" }
+  [MNT.bukhansan]: { label: "북한산", center: [126.990, 37.672], zoom: 11.3, bbox: [126.90, 37.59, 127.06, 37.75],
+    file: "data/bukhansan-routes.geojson", spots: "data/bukhansan-spots.geojson", contours: "data/bukhansan-contours.geojson" },
+  [MNT.seoraksan]: { label: "설악산", center: [128.403, 38.133], zoom: 11.3, bbox: [128.30, 38.07, 128.51, 38.19],
+    file: "data/seoraksan-routes.geojson", spots: "data/seoraksan-spots.geojson" } // 등고선 없음(변환만)
 };
 
 const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
@@ -40,8 +47,8 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 const map = new maplibregl.Map({
   container: "map",
   style: buildStyle(baseUrl, theme),
-  center: PARKS.bukhansan.center,
-  zoom: PARKS.bukhansan.zoom,
+  center: PARKS[MNT.bukhansan].center,
+  zoom: PARKS[MNT.bukhansan].zoom,
   hash: true,
   // 대한민국으로 이동/축소 범위 제한 (제주·독도가 잘리지 않도록 여백 포함, 한 단계 더 축소 허용)
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], // [SW, NE] — 남한 전역 + 주변 여백
@@ -77,7 +84,7 @@ class ThemeControl {
 map.addControl(new ThemeControl(), "bottom-right");
 
 // ── 상태 ─────────────────────────────────────────────
-let currentPark = "bukhansan";
+let currentPark = MNT.bukhansan;
 let peaksData = null;
 let selectedTrail = null;
 let selectedName = null;
@@ -115,25 +122,32 @@ function ensureOverlays() {
       ? { line: "#3a3a3a", label: "#8a8a8a", halo: "#000000" }
       : { line: "#c4bfb5", label: "#8a857c", halo: "#ffffff" };
     map.addSource("contours", { type: "geojson", data: ov.contours || EMPTY_FC });
-    // 50m 보조 등고선 (확대 시)
+    // 국토지리정보원 5m 등고선 3단계: idx 0=지형선(5m), 1=계곡선(25m), 2=주곡선(100m)
+    // 지형선 (5m) — 고배율에서만, 과밀 방지
     map.addLayer({
-      id: "contour-line", type: "line", source: "contours", minzoom: 12.5,
+      id: "contour-fine", type: "line", source: "contours", minzoom: 14,
       filter: ["==", ["get", "idx"], 0],
-      paint: { "line-color": cc.line, "line-width": 0.5, "line-opacity": 0.5 }
+      paint: { "line-color": cc.line, "line-width": 0.4, "line-opacity": 0.4 }
     });
-    // 100m 주 등고선
+    // 계곡선 (25m)
+    map.addLayer({
+      id: "contour-mid", type: "line", source: "contours", minzoom: 12.5,
+      filter: ["==", ["get", "idx"], 1],
+      paint: { "line-color": cc.line, "line-width": 0.6, "line-opacity": 0.55 }
+    });
+    // 주곡선 (100m) — 굵게
     map.addLayer({
       id: "contour-index", type: "line", source: "contours", minzoom: 10.5,
-      filter: ["==", ["get", "idx"], 1],
-      paint: { "line-color": cc.line, "line-width": 1.1, "line-opacity": 0.7 }
+      filter: ["==", ["get", "idx"], 2],
+      paint: { "line-color": cc.line, "line-width": 1.1, "line-opacity": 0.75 }
     });
-    // 고도 라벨 (주 등고선)
+    // 고도 라벨 (주곡선)
     map.addLayer({
-      id: "contour-label", type: "symbol", source: "contours", minzoom: 13.5,
-      filter: ["==", ["get", "idx"], 1],
+      id: "contour-label", type: "symbol", source: "contours", minzoom: 13,
+      filter: ["==", ["get", "idx"], 2],
       layout: {
         "symbol-placement": "line", "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
-        "text-font": ["Noto Sans Regular"], "text-size": 10, "symbol-spacing": 300
+        "text-font": ["Noto Sans Regular"], "text-size": 10, "symbol-spacing": 320
       },
       paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 }
     });
@@ -215,7 +229,7 @@ function applySpotsVisibility() {
 
 function applyContourVisibility() {
   const vis = (parkOverlays[currentPark] || {}).contours ? "visible" : "none";
-  ["contour-line", "contour-index", "contour-label"].forEach((id) => {
+  ["contour-fine", "contour-mid", "contour-index", "contour-label"].forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
   });
 }
@@ -262,6 +276,17 @@ function useBaseFor(park) {
   }
 }
 
+// 산별 오버레이(스팟/등고선) 지연 로드. 저장 팩(openSavedMap)이 이미 채웠으면 그대로 둔다.
+async function ensureParkOverlays(park) {
+  if (parkOverlays[park]) return;
+  const cfg = PARKS[park] || {};
+  const [spots, contours] = await Promise.all([
+    cfg.spots ? fetch(cfg.spots).then((r) => r.json()).catch(() => null) : null,
+    cfg.contours ? fetch(cfg.contours).then((r) => r.json()).catch(() => null) : null
+  ]);
+  parkOverlays[park] = { spots, contours };
+}
+
 // ── 산 데이터 로드 ───────────────────────────────────
 async function loadPark(park) {
   currentPark = park;
@@ -272,6 +297,7 @@ async function loadPark(park) {
   useBaseFor(park);
   let geojson = trailCache[park];
   if (!geojson) { geojson = await fetch(cfg.file).then((r) => r.json()); trailCache[park] = geojson; }
+  await ensureParkOverlays(park);
 
   ensureOverlays();
   if (map.getSource("trails")) map.getSource("trails").setData(geojson);
@@ -328,8 +354,8 @@ function focusTrail(feature) {
 
 // ── 명산 선택 (추천 탭의 "대한민국 100대 명산") ──────
 const FAMOUS = [
-  { park: "bukhansan", name: "북한산", elev: "836m", region: "서울·경기" },
-  { park: "seoraksan", name: "설악산", elev: "1708m", region: "강원 속초·양양" }
+  { park: MNT.bukhansan, name: "북한산", elev: "836m", region: "서울·경기" },
+  { park: MNT.seoraksan, name: "설악산", elev: "1708m", region: "강원 속초·양양" }
 ];
 function renderFamous() {
   const ul = document.getElementById("famous-list");
@@ -426,9 +452,9 @@ document.querySelectorAll(".tabbtn").forEach((b) =>
 
 // ── 추천 뷰 ──────────────────────────────────────────
 const RECO = [
-  { name: "오색 - 대청봉 코스", park: "seoraksan", parkLabel: "설악산", diff: "고급", why: "설악 정상 대청봉을 최단 시간에 오르는 도전 코스" },
-  { name: "진달래길", park: "bukhansan", parkLabel: "북한산", diff: "초급", why: "진달래능선을 따라 대동문으로, 봄이면 진달래 명소인 대표 등산로 (OSM)" },
-  { name: "천불동계곡 코스", park: "seoraksan", parkLabel: "설악산", diff: "중급", why: "비선대·양폭을 지나는 설악의 대표 계곡길" }
+  { name: "오색 - 대청봉 코스", park: MNT.seoraksan, parkLabel: "설악산", diff: "고급", why: "설악 정상 대청봉을 최단 시간에 오르는 도전 코스" },
+  { name: "진달래길", park: MNT.bukhansan, parkLabel: "북한산", diff: "초급", why: "진달래능선을 따라 대동문으로, 봄이면 진달래 명소인 대표 등산로 (OSM)" },
+  { name: "천불동계곡 코스", park: MNT.seoraksan, parkLabel: "설악산", diff: "중급", why: "비선대·양폭을 지나는 설악의 대표 계곡길" }
 ];
 function renderReco() {
   const box = document.getElementById("reco-list");
@@ -1033,15 +1059,9 @@ document.getElementById("show-all").addEventListener("click", (e) => {
 setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
 
 map.on("load", async () => {
-  let spots, contours;
-  [peaksData, spots, contours] = await Promise.all([
-    fetch("data/peaks.geojson").then((r) => r.json()),
-    fetch("data/bukhansan-spots.geojson").then((r) => r.json()),
-    fetch("data/bukhansan-contours.geojson").then((r) => r.json())
-  ]);
-  parkOverlays.bukhansan = { spots, contours };
+  peaksData = await fetch("data/peaks.geojson").then((r) => r.json());
   ensureOverlays();
-  await loadPark("bukhansan");
+  await loadPark(MNT.bukhansan); // 오버레이(스팟/등고선)는 loadPark 이 산별 지연 로드
   renderFamous();
   renderReco();
   renderRecords();

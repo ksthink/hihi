@@ -62,6 +62,23 @@ drop policy if exists own_packs on saved_packs;
 create policy own_packs on saved_packs for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- mountain_info: 전국 산정보 원본 (산림청 항공본부 mnt.xlsx, 공개 읽기)
+-- mountains(팩 카탈로그)와 별도 — 산코드(code)로 조인. 시드: scripts/seed_mountain_info.py
+create table if not exists mountain_info (
+  code text primary key,
+  name text,
+  region text,
+  elev real,
+  manager text,
+  manager_tel text,
+  description text,
+  data_date date,
+  created_at timestamptz default now()
+);
+alter table mountain_info enable row level security;
+drop policy if exists mountain_info_read on mountain_info;
+create policy mountain_info_read on mountain_info for select using (true);
+
 -- Storage 버킷 (공개 읽기). SQL Editor 에서 권한으로 막히면 이 3줄만 빼고 실행 후
 -- 대시보드 Storage 에서 packs 버킷(Public)을 수동 생성한다.
 insert into storage.buckets (id, name, public)
