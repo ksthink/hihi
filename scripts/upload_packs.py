@@ -36,6 +36,12 @@ PACKS = {
         "data/bukhansan-spots.geojson": "spots.geojson",
         "data/bukhansan-contours.geojson": "contours.geojson",
     },
+    "428302602": {  # 설악산(대청봉 대표코드)
+        "data/tiles/seoraksan-base.pmtiles": "base.pmtiles",
+        "data/seoraksan-routes.geojson": "routes.geojson",
+        "data/seoraksan-spots.geojson": "spots.geojson",
+        "data/seoraksan-contours.geojson": "contours.geojson",
+    },
 }
 
 def content_type(name):
@@ -48,8 +54,8 @@ MOUNTAINS = [
      "center": [126.990, 37.672], "zoom": 11.3,
      "bbox": [126.90, 37.59, 127.06, 37.75], "pack_version": 2},
     {"id": "428302602", "name": "설악산", "region": "강원 속초·양양", "elev": 1708,
-     "center": [128.457, 38.135], "zoom": 11.6,
-     "bbox": [128.43, 38.08, 128.48, 38.18], "pack_version": 1},
+     "center": [128.403, 38.133], "zoom": 11.3,
+     "bbox": [128.30, 38.07, 128.51, 38.19], "pack_version": 1},
 ]
 
 
