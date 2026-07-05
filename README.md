@@ -114,8 +114,7 @@
 | 스크립트 | 역할 |
 |---|---|
 | `osm_trails.py` | Overpass(OSM)에서 능선 등산로(`highway=path` + 이름) + 둘레길(`route=hiking`)을 코스로 변환. `sac_scale` 로 난이도 산정 |
-| `convert_ngii_contours.py` | **국토지리정보원 수치지형도 5m 등고선**(EPSG:5179 shp) → 산 bbox 클립 + WGS84 GeoJSON (pyshp). 현행 등고선 소스 — 정밀 |
-| `make_contours.py` | 등고선 생성(대안): SRTM 1-arcsec DEM 50m (numpy/contourpy) — 규제 무관·전국 자동, 정밀도 낮음 |
+| `make_contours.py` | SRTM 1-arcsec DEM(AWS elevation-tiles-prod)에서 50m 간격 등고선 생성 (numpy/contourpy, venv 필요) |
 | `add_elevation.py` | 각 코스에 고도 프로파일·최고/최저·누적상승 계산(DEM 이중선형 보간) |
 | `convert_spots.py` | 산림청 Esri JSON 스팟을 EPSG:5186 → WGS84 역투영 변환(외부 의존성 없음) |
 | `upload_packs.py` | 팩을 Supabase Storage 에 업로드 + `mountains` 카탈로그 시드 (secret 키 env 필요) |
@@ -324,9 +323,7 @@ hihi/
 │   ├── serve.py                    [폐기 예정] 로컬 개발 서버(정적+PMTiles CORS 프록시, :8890).
 │   │                                 iOS 는 로컬 파일 접근이라 프록시 개념 자체가 없음
 │   ├── osm_trails.py               ★ 등산로 생성(현행): Overpass 결과 → routes.geojson
-│   ├── convert_ngii_contours.py    ★ 등고선 변환: 국토지리정보원 5m(EPSG:5179 shp) → bbox 클립 WGS84 (pyshp)
-│   ├── make_contours.py            등고선 생성(대안): SRTM DEM 50m (venv: numpy/contourpy)
-│   ├── N3L_F0010000_서울/          (gitignore, 72MB) 국토지리정보원 등고선 원본 shp — 서울 도엽(북한산 포함)
+│   ├── make_contours.py            ★ 등고선 생성: SRTM DEM → contours.geojson (venv: numpy/contourpy)
 │   ├── add_elevation.py            ★ 고도 주입: 코스에 profile/ascent/min·max_elev (venv)
 │   ├── convert_spots.py            ★ 스팟 변환: 산림청 Esri JSON, EPSG:5186→WGS84 (의존성 없음)
 │   ├── convert_seoraksan.py        설악산 산림청 Esri JSON(등산로+스팟) → WGS84 GeoJSON 변환

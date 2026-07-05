@@ -46,7 +46,7 @@ def content_type(name):
 MOUNTAINS = [
     {"id": "113050202", "name": "북한산", "region": "서울·경기", "elev": 836,
      "center": [126.990, 37.672], "zoom": 11.3,
-     "bbox": [126.90, 37.59, 127.06, 37.75], "pack_version": 2},
+     "bbox": [126.90, 37.59, 127.06, 37.75], "pack_version": 1},
     {"id": "428302602", "name": "설악산", "region": "강원 속초·양양", "elev": 1708,
      "center": [128.457, 38.135], "zoom": 11.6,
      "bbox": [128.43, 38.08, 128.48, 38.18], "pack_version": 1},

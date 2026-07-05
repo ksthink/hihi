@@ -122,32 +122,25 @@ function ensureOverlays() {
       ? { line: "#3a3a3a", label: "#8a8a8a", halo: "#000000" }
       : { line: "#c4bfb5", label: "#8a857c", halo: "#ffffff" };
     map.addSource("contours", { type: "geojson", data: ov.contours || EMPTY_FC });
-    // 국토지리정보원 5m 등고선 3단계: idx 0=지형선(5m), 1=계곡선(25m), 2=주곡선(100m)
-    // 지형선 (5m) — 고배율에서만, 과밀 방지
+    // 50m 보조 등고선 (확대 시)
     map.addLayer({
-      id: "contour-fine", type: "line", source: "contours", minzoom: 14,
+      id: "contour-line", type: "line", source: "contours", minzoom: 12.5,
       filter: ["==", ["get", "idx"], 0],
-      paint: { "line-color": cc.line, "line-width": 0.4, "line-opacity": 0.4 }
+      paint: { "line-color": cc.line, "line-width": 0.5, "line-opacity": 0.5 }
     });
-    // 계곡선 (25m)
-    map.addLayer({
-      id: "contour-mid", type: "line", source: "contours", minzoom: 12.5,
-      filter: ["==", ["get", "idx"], 1],
-      paint: { "line-color": cc.line, "line-width": 0.6, "line-opacity": 0.55 }
-    });
-    // 주곡선 (100m) — 굵게
+    // 100m 주 등고선
     map.addLayer({
       id: "contour-index", type: "line", source: "contours", minzoom: 10.5,
-      filter: ["==", ["get", "idx"], 2],
-      paint: { "line-color": cc.line, "line-width": 1.1, "line-opacity": 0.75 }
+      filter: ["==", ["get", "idx"], 1],
+      paint: { "line-color": cc.line, "line-width": 1.1, "line-opacity": 0.7 }
     });
-    // 고도 라벨 (주곡선)
+    // 고도 라벨 (주 등고선)
     map.addLayer({
-      id: "contour-label", type: "symbol", source: "contours", minzoom: 13,
-      filter: ["==", ["get", "idx"], 2],
+      id: "contour-label", type: "symbol", source: "contours", minzoom: 13.5,
+      filter: ["==", ["get", "idx"], 1],
       layout: {
         "symbol-placement": "line", "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
-        "text-font": ["Noto Sans Regular"], "text-size": 10, "symbol-spacing": 320
+        "text-font": ["Noto Sans Regular"], "text-size": 10, "symbol-spacing": 300
       },
       paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 }
     });
@@ -229,7 +222,7 @@ function applySpotsVisibility() {
 
 function applyContourVisibility() {
   const vis = (parkOverlays[currentPark] || {}).contours ? "visible" : "none";
-  ["contour-fine", "contour-mid", "contour-index", "contour-label"].forEach((id) => {
+  ["contour-line", "contour-index", "contour-label"].forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
   });
 }
