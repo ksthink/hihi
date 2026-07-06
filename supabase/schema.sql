@@ -13,11 +13,15 @@ create table if not exists mountains (
   bbox jsonb,
   pack_version int default 1,
   pack_size_kb int,
+  sort_order int default 100,
+  published boolean default true,
+  famous boolean default false,
+  updated_at timestamptz default now(),
   created_at timestamptz default now()
 );
 alter table mountains enable row level security;
 drop policy if exists mountains_read on mountains;
-create policy mountains_read on mountains for select using (true);
+create policy mountains_read on mountains for select using (published);
 
 -- profiles: 사용자 프로필
 create table if not exists profiles (

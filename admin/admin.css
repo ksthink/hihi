@@ -1,0 +1,119 @@
+/* 하이하잇 관리자 콘솔 — 흑백, 데스크톱 전용(로컬 도구) */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  display: flex;
+  font: 13px/1.5 -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  color: #111; background: #fff;
+}
+[hidden] { display: none !important; }
+
+#side {
+  width: 360px; min-width: 360px; height: 100%;
+  overflow-y: auto; border-right: 1px solid #ddd;
+  padding: 14px 16px 40px; background: #fafafa;
+}
+#map { flex: 1; height: 100%; }
+
+#side-head { display: flex; align-items: baseline; justify-content: space-between; }
+h1 { font-size: 17px; margin: 0 0 10px; }
+h2 { font-size: 13px; margin: 18px 0 6px; text-transform: none; letter-spacing: .02em; }
+h3 { font-size: 12.5px; margin: 16px 0 6px; }
+.dim { color: #888; font-size: 12px; }
+
+input, select, button {
+  font: inherit; color: inherit;
+  border: 1px solid #ccc; border-radius: 6px; background: #fff;
+  padding: 5px 8px;
+}
+input[type="search"] { width: 100%; }
+input[type="number"] { width: 72px; }
+input[type="checkbox"] { width: auto; margin-right: 4px; }
+label { display: block; margin: 5px 0; }
+label.chk { display: flex; align-items: center; }
+.row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+
+button { cursor: pointer; }
+button:hover { border-color: #111; }
+button.primary { background: #111; color: #fff; border-color: #111; }
+button.primary:hover { background: #333; }
+button.danger { color: #b00020; border-color: #b00020; }
+button.big { width: 100%; padding: 9px; font-weight: 600; }
+button.active { background: #111; color: #fff; }
+
+/* 검색 결과 */
+#mnt-results {
+  list-style: none; margin: 4px 0 0; padding: 0;
+  border: 1px solid #ddd; border-radius: 6px; background: #fff;
+  max-height: 240px; overflow-y: auto;
+}
+#mnt-results li {
+  padding: 6px 9px; border-bottom: 1px solid #eee;
+  display: flex; justify-content: space-between; gap: 6px; align-items: center;
+}
+#mnt-results li:last-child { border-bottom: 0; }
+#mnt-results .nm { font-weight: 600; }
+#mnt-results .no-src { color: #bbb; }
+#mnt-results button { padding: 2px 8px; font-size: 12px; }
+
+/* 초안 목록 */
+#draft-list { list-style: none; margin: 0; padding: 0; }
+#draft-list li {
+  padding: 7px 9px; margin-bottom: 4px; border: 1px solid #ddd;
+  border-radius: 7px; background: #fff; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+}
+#draft-list li:hover { border-color: #111; }
+#draft-list li.sel { border-color: #111; box-shadow: 0 0 0 1px #111 inset; }
+#draft-list .nm { font-weight: 600; }
+#draft-list .meta { color: #888; font-size: 11.5px; }
+#draft-list .unpub { color: #b00020; }
+
+/* 코스 목록 */
+#course-list { list-style: none; margin: 0; padding: 0; }
+#course-list li {
+  border: 1px solid #ddd; border-radius: 7px; background: #fff;
+  padding: 7px 9px; margin-bottom: 5px; cursor: pointer;
+}
+#course-list li.sel { border-color: #111; box-shadow: 0 0 0 1px #111 inset; }
+#course-list li.off { opacity: .55; }
+#course-list .c-head { display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+#course-list .c-name { font-weight: 600; flex: 1; border: 0; padding: 1px 2px; background: transparent; }
+#course-list .c-name:focus { outline: 1px solid #111; border-radius: 3px; }
+#course-list .c-meta { color: #777; font-size: 11.5px; margin-top: 2px; }
+#course-list .c-tools { display: none; margin-top: 6px; gap: 6px; flex-wrap: wrap; }
+#course-list li.sel .c-tools { display: flex; }
+#course-list .c-tools select, #course-list .c-tools input { font-size: 12px; padding: 3px 6px; }
+#course-list .c-desc { width: 100%; }
+.badge {
+  font-size: 10.5px; padding: 1px 6px; border-radius: 8px;
+  border: 1px solid #999; color: #555; white-space: nowrap;
+}
+.badge.ready { background: #111; color: #fff; border-color: #111; }
+.badge.gpx { border-style: dashed; }
+
+/* GPX / 배포 박스 */
+.gpx-box, .publish-box {
+  border: 1px solid #ddd; border-radius: 8px; background: #fff;
+  padding: 10px; margin: 12px 0;
+}
+#gpx-report { font-size: 12px; margin-top: 6px; }
+#gpx-report .warn { color: #b00020; }
+
+/* 스팟 편집기 */
+#spot-editor {
+  border: 1px solid #111; border-radius: 8px; background: #fff;
+  padding: 10px; margin-top: 8px;
+}
+
+/* 잡 진행 */
+.pbar { height: 8px; border-radius: 4px; background: #e5e5e5; margin: 6px 0; overflow: hidden; }
+#job-fill { height: 100%; width: 0; background: #111; transition: width .3s; }
+#job-log {
+  max-height: 130px; overflow-y: auto; background: #f4f4f4;
+  border-radius: 6px; padding: 6px 8px; font-size: 11px; white-space: pre-wrap; margin: 4px 0 0;
+}
+#job-step { font-size: 12px; font-weight: 600; }
+
+#save-state { font-size: 11.5px; color: #888; }
+#save-state.dirty { color: #b06000; }

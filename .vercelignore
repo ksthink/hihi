@@ -5,6 +5,14 @@
 # Python 콘텐츠 파이프라인 + serve.py (Vercel 미사용)
 scripts/
 
+# 관리자 콘솔·큐레이션 소스·로컬 캐시 (로컬 전용 — 절대 배포 금지)
+admin/
+admin_data/
+cache/
+tools/
+mountain/
+.venv/
+
 # schema.sql (배포 불필요)
 supabase/
 

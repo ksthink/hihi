@@ -20,22 +20,9 @@ from rasterio.merge import merge
 from shapely.geometry import LineString
 
 
-def main():
-    out = sys.argv[1]
-    minlon, minlat, maxlon, maxlat = map(float, sys.argv[2].split(","))
-    # 마지막 인자가 숫자면 interval, 나머지는 tif
-    args = sys.argv[3:]
-    # 꼬리 인자 파싱: [interval(int)] [simplify_deg(float)]
-    simp = 0.00003
-    interval = 50
-    while args and not args[-1].endswith(".tif"):
-        v = args.pop()
-        if "." in v:
-            simp = float(v)
-        else:
-            interval = int(v)
-    tifs = args
-
+def generate(out, bbox, tifs, interval=50, simp=0.00003, log=print):
+    """bbox [minLon,minLat,maxLon,maxLat] 등고선 GeoJSON 생성 (publish_pack 에서 재사용)."""
+    minlon, minlat, maxlon, maxlat = bbox
     srcs = [rasterio.open(t) for t in tifs]
     mosaic, tf = merge(srcs, bounds=(minlon, minlat, maxlon, maxlat))
     Z = mosaic[0].astype("float64")
@@ -71,10 +58,29 @@ def main():
     json.dump({"type": "FeatureCollection", "features": feats},
               open(out, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     import os
-    print(f"고도 {zmin:.0f}~{zmax:.0f}m · 간격 {interval}m · 단순화 {simp} · 등고선 {len(feats)}개 → {out} "
-          f"({os.path.getsize(out)//1024}KB)")
+    log(f"고도 {zmin:.0f}~{zmax:.0f}m · 간격 {interval}m · 단순화 {simp} · 등고선 {len(feats)}개 → {out} "
+        f"({os.path.getsize(out)//1024}KB)")
     for s in srcs:
         s.close()
+    return len(feats)
+
+
+def main():
+    out = sys.argv[1]
+    minlon, minlat, maxlon, maxlat = map(float, sys.argv[2].split(","))
+    # 마지막 인자가 숫자면 interval, 나머지는 tif
+    args = sys.argv[3:]
+    # 꼬리 인자 파싱: [interval(int)] [simplify_deg(float)]
+    simp = 0.00003
+    interval = 50
+    while args and not args[-1].endswith(".tif"):
+        v = args.pop()
+        if "." in v:
+            simp = float(v)
+        else:
+            interval = int(v)
+    tifs = args
+    generate(out, [minlon, minlat, maxlon, maxlat], tifs, interval, simp)
 
 
 if __name__ == "__main__":

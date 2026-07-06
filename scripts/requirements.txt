@@ -1,0 +1,5 @@
+# 관리자 콘솔·데이터 파이프라인 의존성 — .venv 에 설치 (scripts/setup_admin.sh)
+numpy
+rasterio
+contourpy
+shapely

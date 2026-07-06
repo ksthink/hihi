@@ -1,0 +1,7774 @@
+{
+ "version": 1,
+ "mountain": {
+  "code": "114100301",
+  "name": "안산",
+  "region": "서울특별시 서대문구 봉원동",
+  "elev": 295,
+  "center": [
+   126.95,
+   37.575
+  ],
+  "zoom": 12,
+  "bbox": [
+   126.93,
+   37.56,
+   126.97,
+   37.59
+  ],
+  "sort_order": 100,
+  "famous": false,
+  "published": true
+ },
+ "courses": [
+  {
+   "id": "c-402084eb8db7",
+   "name": "현저동 코스",
+   "difficulty": "초급",
+   "desc": "현저동(시점) → 무악동봉수대지",
+   "kind": "산림청 등산로(코스 추출)",
+   "status": "ready",
+   "source": {
+    "type": "forest_auto"
+   },
+   "segments": null,
+   "lines": [
+    [
+     [
+      126.95806,
+      37.57108
+     ],
+     [
+      126.95797,
+      37.57101
+     ],
+     [
+      126.95793,
+      37.57093
+     ],
+     [
+      126.95791,
+      37.57086
+     ],
+     [
+      126.95792,
+      37.57082
+     ],
+     [
+      126.95798,
+      37.57075
+     ],
+     [
+      126.95804,
+      37.57069
+     ],
+     [
+      126.95815,
+      37.57058
+     ],
+     [
+      126.95807,
+      37.5705
+     ],
+     [
+      126.95777,
+      37.57028
+     ],
+     [
+      126.95759,
+      37.57012
+     ],
+     [
+      126.95746,
+      37.57001
+     ],
+     [
+      126.9574,
+      37.56999
+     ],
+     [
+      126.95734,
+      37.56998
+     ],
+     [
+      126.9573,
+      37.56998
+     ],
+     [
+      126.95728,
+      37.56998
+     ],
+     [
+      126.95726,
+      37.56998
+     ],
+     [
+      126.95725,
+      37.57001
+     ],
+     [
+      126.95727,
+      37.57005
+     ],
+     [
+      126.95717,
+      37.56994
+     ],
+     [
+      126.95712,
+      37.5699
+     ],
+     [
+      126.95693,
+      37.56973
+     ],
+     [
+      126.95687,
+      37.56966
+     ],
+     [
+      126.95683,
+      37.56962
+     ],
+     [
+      126.95678,
+      37.56965
+     ],
+     [
+      126.95671,
+      37.56966
+     ],
+     [
+      126.95663,
+      37.5697
+     ],
+     [
+      126.95654,
+      37.56969
+     ],
+     [
+      126.95646,
+      37.56969
+     ],
+     [
+      126.95641,
+      37.56972
+     ],
+     [
+      126.95623,
+      37.5697
+     ],
+     [
+      126.95619,
+      37.56966
+     ],
+     [
+      126.95617,
+      37.56962
+     ],
+     [
+      126.95616,
+      37.56956
+     ],
+     [
+      126.95617,
+      37.56952
+     ],
+     [
+      126.95616,
+      37.56945
+     ],
+     [
+      126.95613,
+      37.5694
+     ],
+     [
+      126.95609,
+      37.56934
+     ],
+     [
+      126.95606,
+      37.56931
+     ],
+     [
+      126.95601,
+      37.56928
+     ],
+     [
+      126.95592,
+      37.56923
+     ],
+     [
+      126.95586,
+      37.56921
+     ],
+     [
+      126.95576,
+      37.5692
+     ],
+     [
+      126.95569,
+      37.56921
+     ],
+     [
+      126.95564,
+      37.56919
+     ],
+     [
+      126.95559,
+      37.56917
+     ],
+     [
+      126.95554,
+      37.56912
+     ],
+     [
+      126.95549,
+      37.56906
+     ],
+     [
+      126.95542,
+      37.56901
+     ],
+     [
+      126.95538,
+      37.56899
+     ],
+     [
+      126.95534,
+      37.56898
+     ],
+     [
+      126.9553,
+      37.56898
+     ],
+     [
+      126.95529,
+      37.56898
+     ],
+     [
+      126.95522,
+      37.56901
+     ],
+     [
+      126.9552,
+      37.56904
+     ],
+     [
+      126.95516,
+      37.56905
+     ],
+     [
+      126.95511,
+      37.56905
+     ],
+     [
+      126.95507,
+      37.56907
+     ],
+     [
+      126.95503,
+      37.56908
+     ],
+     [
+      126.95497,
+      37.56909
+     ],
+     [
+      126.95494,
+      37.56907
+     ],
+     [
+      126.95488,
+      37.56907
+     ],
+     [
+      126.95481,
+      37.5691
+     ],
+     [
+      126.95473,
+      37.56911
+     ],
+     [
+      126.95451,
+      37.56919
+     ],
+     [
+      126.95441,
+      37.56922
+     ],
+     [
+      126.9543,
+      37.56926
+     ],
+     [
+      126.95424,
+      37.56927
+     ],
+     [
+      126.95418,
+      37.56929
+     ],
+     [
+      126.95412,
+      37.56932
+     ],
+     [
+      126.95403,
+      37.56935
+     ],
+     [
+      126.95389,
+      37.56938
+     ],
+     [
+      126.95383,
+      37.56941
+     ],
+     [
+      126.95371,
+      37.56943
+     ],
+     [
+      126.95357,
+      37.56945
+     ],
+     [
+      126.95346,
+      37.56949
+     ],
+     [
+      126.95336,
+      37.56953
+     ],
+     [
+      126.95331,
+      37.56956
+     ],
+     [
+      126.95316,
+      37.56961
+     ],
+     [
+      126.95311,
+      37.56966
+     ],
+     [
+      126.95311,
+      37.56969
+     ],
+     [
+      126.95309,
+      37.56971
+     ],
+     [
+      126.95306,
+      37.56972
+     ],
+     [
+      126.95297,
+      37.56979
+     ],
+     [
+      126.9529,
+      37.56983
+     ],
+     [
+      126.95286,
+      37.56984
+     ],
+     [
+      126.95283,
+      37.56989
+     ],
+     [
+      126.9528,
+      37.56991
+     ],
+     [
+      126.95278,
+      37.56995
+     ],
+     [
+      126.95274,
+      37.56999
+     ],
+     [
+      126.95272,
+      37.57001
+     ],
+     [
+      126.95269,
+      37.57001
+     ],
+     [
+      126.95266,
+      37.57
+     ],
+     [
+      126.95262,
+      37.56999
+     ],
+     [
+      126.95255,
+      37.57003
+     ],
+     [
+      126.9525,
+      37.57006
+     ],
+     [
+      126.95242,
+      37.57009
+     ],
+     [
+      126.95235,
+      37.57013
+     ],
+     [
+      126.95229,
+      37.57015
+     ],
+     [
+      126.95221,
+      37.57019
+     ],
+     [
+      126.95214,
+      37.5702
+     ],
+     [
+      126.95207,
+      37.5702
+     ],
+     [
+      126.95201,
+      37.57019
+     ],
+     [
+      126.95197,
+      37.57019
+     ],
+     [
+      126.95191,
+      37.57019
+     ],
+     [
+      126.95184,
+      37.57023
+     ],
+     [
+      126.95179,
+      37.57028
+     ],
+     [
+      126.95169,
+      37.57043
+     ],
+     [
+      126.95159,
+      37.5705
+     ],
+     [
+      126.9515,
+      37.57053
+     ],
+     [
+      126.95135,
+      37.5706
+     ],
+     [
+      126.95119,
+      37.57068
+     ],
+     [
+      126.95115,
+      37.57072
+     ],
+     [
+      126.95108,
+      37.57077
+     ],
+     [
+      126.95102,
+      37.5709
+     ],
+     [
+      126.95101,
+      37.57095
+     ],
+     [
+      126.95099,
+      37.57103
+     ],
+     [
+      126.95087,
+      37.5713
+     ],
+     [
+      126.95079,
+      37.5717
+     ],
+     [
+      126.95063,
+      37.57197
+     ],
+     [
+      126.95066,
+      37.57198
+     ],
+     [
+      126.95055,
+      37.57221
+     ],
+     [
+      126.95033,
+      37.57245
+     ],
+     [
+      126.95022,
+      37.5727
+     ],
+     [
+      126.95017,
+      37.57302
+     ],
+     [
+      126.95003,
+      37.57326
+     ],
+     [
+      126.95001,
+      37.57333
+     ],
+     [
+      126.95001,
+      37.5734
+     ],
+     [
+      126.94994,
+      37.57344
+     ],
+     [
+      126.94991,
+      37.57361
+     ],
+     [
+      126.94992,
+      37.57375
+     ],
+     [
+      126.94989,
+      37.57383
+     ],
+     [
+      126.94975,
+      37.57402
+     ],
+     [
+      126.94972,
+      37.57413
+     ],
+     [
+      126.94965,
+      37.57422
+     ],
+     [
+      126.94951,
+      37.57434
+     ],
+     [
+      126.9494,
+      37.57441
+     ],
+     [
+      126.94934,
+      37.57444
+     ],
+     [
+      126.94928,
+      37.57449
+     ],
+     [
+      126.94917,
+      37.57453
+     ],
+     [
+      126.94909,
+      37.57459
+     ],
+     [
+      126.94905,
+      37.57466
+     ],
+     [
+      126.94904,
+      37.57483
+     ],
+     [
+      126.94897,
+      37.57491
+     ],
+     [
+      126.94893,
+      37.57498
+     ],
+     [
+      126.94891,
+      37.57503
+     ],
+     [
+      126.94886,
+      37.57508
+     ],
+     [
+      126.94873,
+      37.57525
+     ],
+     [
+      126.94853,
+      37.5753
+     ],
+     [
+      126.94844,
+      37.57528
+     ],
+     [
+      126.94834,
+      37.57523
+     ],
+     [
+      126.94816,
+      37.57521
+     ],
+     [
+      126.94811,
+      37.57519
+     ],
+     [
+      126.94802,
+      37.5753
+     ],
+     [
+      126.94805,
+      37.57534
+     ],
+     [
+      126.948,
+      37.57539
+     ],
+     [
+      126.94794,
+      37.57543
+     ],
+     [
+      126.94789,
+      37.57543
+     ],
+     [
+      126.94777,
+      37.57547
+     ],
+     [
+      126.94777,
+      37.57551
+     ],
+     [
+      126.94777,
+      37.57553
+     ],
+     [
+      126.94782,
+      37.57555
+     ],
+     [
+      126.94782,
+      37.57562
+     ],
+     [
+      126.94778,
+      37.57565
+     ],
+     [
+      126.94783,
+      37.57571
+     ],
+     [
+      126.9478,
+      37.57575
+     ],
+     [
+      126.94781,
+      37.57581
+     ],
+     [
+      126.94786,
+      37.57587
+     ],
+     [
+      126.94785,
+      37.5759
+     ],
+     [
+      126.94783,
+      37.57596
+     ],
+     [
+      126.94771,
+      37.57598
+     ],
+     [
+      126.94767,
+      37.57603
+     ],
+     [
+      126.94763,
+      37.57607
+     ],
+     [
+      126.94761,
+      37.57612
+     ],
+     [
+      126.94752,
+      37.57618
+     ],
+     [
+      126.94746,
+      37.57624
+     ],
+     [
+      126.94741,
+      37.57627
+     ],
+     [
+      126.94737,
+      37.57633
+     ],
+     [
+      126.94733,
+      37.57641
+     ],
+     [
+      126.94727,
+      37.5765
+     ],
+     [
+      126.94723,
+      37.57659
+     ],
+     [
+      126.9472,
+      37.57662
+     ],
+     [
+      126.94717,
+      37.57666
+     ],
+     [
+      126.94718,
+      37.57674
+     ],
+     [
+      126.94714,
+      37.57674
+     ],
+     [
+      126.94707,
+      37.57677
+     ],
+     [
+      126.94705,
+      37.5768
+     ],
+     [
+      126.94704,
+      37.57684
+     ],
+     [
+      126.94695,
+      37.57682
+     ],
+     [
+      126.9469,
+      37.57681
+     ]
+    ]
+   ],
+   "computed": {
+    "distance_km": 1.75,
+    "time_hr": 0.9,
+    "profile": [
+     66,
+     70,
+     69,
+     70,
+     81,
+     87,
+     91,
+     114,
+     120,
+     122,
+     135,
+     153,
+     163,
+     173,
+     180,
+     182,
+     179,
+     172,
+     171,
+     173,
+     172,
+     175,
+     187,
+     192,
+     198,
+     201,
+     201,
+     193,
+     198,
+     206,
+     204,
+     203,
+     201,
+     199,
+     194,
+     192,
+     191,
+     192,
+     192,
+     195,
+     189,
+     197,
+     205,
+     219,
+     237,
+     247,
+     258,
+     273
+    ],
+    "min_elev": 66,
+    "max_elev": 273,
+    "ascent": 249,
+    "descent": 42
+   }
+  }
+ ],
+ "spots": [
+  {
+   "id": "sp-58587",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.941198,
+    37.580159
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58603",
+   "category": "정자",
+   "name": null,
+   "coord": [
+    126.940827,
+    37.580166
+   ],
+   "detail": "정자",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58605",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.940739,
+    37.579945
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58608",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.941797,
+    37.580072
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58634",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.943091,
+    37.575308
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58639",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.943352,
+    37.574894
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58640",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.943445,
+    37.574871
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58643",
+   "category": "정자",
+   "name": null,
+   "coord": [
+    126.943397,
+    37.574656
+   ],
+   "detail": "정자",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58665",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.941905,
+    37.573074
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58689",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.939908,
+    37.577426
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58724",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.946027,
+    37.577996
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58729",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946349,
+    37.577843
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58736",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.947177,
+    37.576827
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58739",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.944036,
+    37.579843
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58750",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.944983,
+    37.580239
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58757",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946295,
+    37.580496
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58758",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946296,
+    37.580496
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58759",
+   "category": "정상",
+   "name": null,
+   "coord": [
+    126.946296,
+    37.580496
+   ],
+   "detail": "산정상전경",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58767",
+   "category": "주차장",
+   "name": null,
+   "coord": [
+    126.94784,
+    37.580505
+   ],
+   "detail": "주차장(무악재3길)",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58769",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.946887,
+    37.579605
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58772",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.946419,
+    37.579249
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58773",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946496,
+    37.579288
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58781",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946509,
+    37.578914
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58783",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.94667,
+    37.578618
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58794",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.94858,
+    37.576844
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58798",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.948245,
+    37.57652
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58803",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.948159,
+    37.57745
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58817",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.948041,
+    37.579668
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58827",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.945279,
+    37.580957
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58835",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.945068,
+    37.58129
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58849",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.944408,
+    37.581437
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58861",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.943802,
+    37.581425
+   ],
+   "detail": "옹달샘",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58870",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.94848,
+    37.575744
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58878",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.947824,
+    37.575961
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58911",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.940313,
+    37.574279
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58917",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.941036,
+    37.573361
+   ],
+   "detail": "식수대",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58923",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.941852,
+    37.571131
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58934",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.942225,
+    37.570764
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58941",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.946016,
+    37.570536
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-58946",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.9475,
+    37.572021
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": true,
+   "deleted": false
+  },
+  {
+   "id": "sp-58966",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.944216,
+    37.573899
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59016",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.943049,
+    37.572079
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59042",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.944576,
+    37.573081
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59055",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.945036,
+    37.571997
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59076",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.945284,
+    37.573813
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59095",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.946406,
+    37.573874
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59120",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.946834,
+    37.574689
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59127",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.949078,
+    37.574828
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59136",
+   "category": "정자",
+   "name": null,
+   "coord": [
+    126.951817,
+    37.570313
+   ],
+   "detail": "정자",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59140",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.953489,
+    37.56962
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59149",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.955987,
+    37.567111
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59154",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.957187,
+    37.566447
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59163",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.94243,
+    37.572248
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59194",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.947309,
+    37.57442
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59204",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.945162,
+    37.573846
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59293",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.950733,
+    37.574354
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59416",
+   "category": "주차장",
+   "name": null,
+   "coord": [
+    126.952697,
+    37.572568
+   ],
+   "detail": "주차장",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59424",
+   "category": "주차장",
+   "name": null,
+   "coord": [
+    126.952739,
+    37.572878
+   ],
+   "detail": "주차장",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59452",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.953083,
+    37.572981
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59476",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.948666,
+    37.575714
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59477",
+   "category": "정상",
+   "name": null,
+   "coord": [
+    126.948808,
+    37.575772
+   ],
+   "detail": "산정상전경",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59478",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.94892,
+    37.575801
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59526",
+   "category": "정자",
+   "name": null,
+   "coord": [
+    126.955986,
+    37.568175
+   ],
+   "detail": "정자",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59569",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.952543,
+    37.567079
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59597",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.946283,
+    37.573639
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59631",
+   "category": "정상",
+   "name": null,
+   "coord": [
+    126.949234,
+    37.575931
+   ],
+   "detail": "산정상전경",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59644",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.942784,
+    37.57986
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59656",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.944488,
+    37.579736
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59694",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.947368,
+    37.570097
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59730",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.95124,
+    37.570122
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59733",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.954378,
+    37.568608
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59792",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.945764,
+    37.573623
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59798",
+   "category": "정상",
+   "name": null,
+   "coord": [
+    126.947235,
+    37.57685
+   ],
+   "detail": "정상부",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59801",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946093,
+    37.579955
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59815",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.940487,
+    37.577637
+   ],
+   "detail": "약수터",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59821",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.941689,
+    37.58184
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59880",
+   "category": "정자",
+   "name": null,
+   "coord": [
+    126.94312,
+    37.575638
+   ],
+   "detail": "정자",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59898",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.937899,
+    37.579829
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59907",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.939584,
+    37.580135
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59985",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.936314,
+    37.579661
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59986",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.937256,
+    37.580507
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59987",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.937885,
+    37.581592
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59988",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.937916,
+    37.576458
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59989",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.937985,
+    37.580582
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59990",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.938366,
+    37.574949
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59991",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.938381,
+    37.579399
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59992",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.938544,
+    37.580501
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59993",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.938623,
+    37.57959
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59994",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.938673,
+    37.579603
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59995",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.938745,
+    37.581286
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59996",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.938765,
+    37.581347
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59997",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.938886,
+    37.581398
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59998",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939412,
+    37.577663
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-59999",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.939411,
+    37.582241
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60000",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939431,
+    37.580701
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60001",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939465,
+    37.580278
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60002",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939531,
+    37.579147
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60003",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939598,
+    37.577434
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60004",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939817,
+    37.577315
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60005",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939821,
+    37.578928
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60006",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939823,
+    37.581908
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60007",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939896,
+    37.579204
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60008",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.939911,
+    37.581517
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60009",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.940058,
+    37.568284
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60010",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940196,
+    37.577155
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60011",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.940236,
+    37.574098
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60012",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94029,
+    37.575365
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60013",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.940364,
+    37.569297
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60014",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940394,
+    37.577504
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60015",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94043,
+    37.57679
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60016",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940494,
+    37.576666
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60017",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940535,
+    37.577703
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60018",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.940578,
+    37.570219
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60019",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940615,
+    37.578266
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60020",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940639,
+    37.578764
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60021",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940639,
+    37.578764
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60022",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940672,
+    37.574386
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60023",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940675,
+    37.58127
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60024",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940843,
+    37.580332
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60025",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940905,
+    37.569127
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60026",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94091,
+    37.578766
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60027",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940951,
+    37.575428
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60028",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.940971,
+    37.571722
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60029",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94104,
+    37.580373
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60030",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941075,
+    37.576241
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60031",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941103,
+    37.573248
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60032",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941157,
+    37.570458
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60033",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941236,
+    37.57853
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60034",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941261,
+    37.569996
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60035",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94139,
+    37.57876
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60036",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941407,
+    37.578782
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60037",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94144,
+    37.576366
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60038",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941663,
+    37.57356
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60039",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941695,
+    37.570276
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60040",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941731,
+    37.570303
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60041",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941732,
+    37.582462
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60042",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941797,
+    37.57847
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60043",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941846,
+    37.573043
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60044",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941973,
+    37.578827
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60045",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.941981,
+    37.582244
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60046",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942069,
+    37.580013
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60047",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942129,
+    37.570564
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60048",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942146,
+    37.572649
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60049",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942167,
+    37.582605
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60050",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942237,
+    37.580611
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60051",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942337,
+    37.576989
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60052",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942386,
+    37.571989
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60053",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942391,
+    37.572363
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60054",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.942463,
+    37.582901
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60055",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942498,
+    37.572818
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60056",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942507,
+    37.571692
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60057",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942574,
+    37.571947
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60058",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942572,
+    37.576362
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60059",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942683,
+    37.582246
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60060",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.942763,
+    37.56942
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60061",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942767,
+    37.572362
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60062",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942775,
+    37.575786
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60063",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.942841,
+    37.581846
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60064",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94288,
+    37.572447
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60065",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94291,
+    37.572009
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60066",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.942915,
+    37.577648
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60067",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943004,
+    37.571665
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60068",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943022,
+    37.5723
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60069",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943038,
+    37.572084
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60070",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943101,
+    37.570752
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60071",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943132,
+    37.570785
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60072",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943253,
+    37.570741
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60073",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943278,
+    37.579636
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60074",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943319,
+    37.572255
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60075",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.943312,
+    37.582142
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60076",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943341,
+    37.579647
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60077",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943347,
+    37.580045
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60078",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943393,
+    37.572066
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60079",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943494,
+    37.573473
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60080",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943502,
+    37.579806
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60081",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943537,
+    37.573735
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60082",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94356,
+    37.571105
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60083",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943589,
+    37.574729
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60084",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943604,
+    37.571729
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60085",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943601,
+    37.579679
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60086",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943653,
+    37.571824
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60087",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943694,
+    37.579805
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60088",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943699,
+    37.574732
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60089",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943757,
+    37.579706
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60090",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943839,
+    37.570725
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60091",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943835,
+    37.581594
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60092",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943845,
+    37.579777
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60093",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943902,
+    37.5747
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60094",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943927,
+    37.573107
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60095",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943964,
+    37.570122
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60096",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943978,
+    37.570485
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60097",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943982,
+    37.574232
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60098",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.943987,
+    37.573829
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60099",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944035,
+    37.572125
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60100",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944069,
+    37.572487
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60101",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944107,
+    37.57064
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60102",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944109,
+    37.579732
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60103",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944139,
+    37.579676
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60104",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944174,
+    37.574318
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60105",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94419,
+    37.579011
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60106",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944193,
+    37.581296
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60107",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944215,
+    37.570769
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60108",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944213,
+    37.574389
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60109",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944214,
+    37.573537
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60110",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944288,
+    37.575542
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60111",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944369,
+    37.574006
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60112",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944418,
+    37.573993
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60113",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944417,
+    37.581403
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60114",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944448,
+    37.581265
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60115",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944464,
+    37.573939
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60116",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944483,
+    37.572756
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60117",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.9445,
+    37.579762
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60118",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944567,
+    37.579437
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60119",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944579,
+    37.57457
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60120",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.944619,
+    37.576937
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60121",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944626,
+    37.574567
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60122",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944704,
+    37.575563
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60123",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944717,
+    37.580727
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60124",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944719,
+    37.580955
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60125",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944759,
+    37.572941
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60126",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944764,
+    37.579732
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60127",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944825,
+    37.580038
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60128",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94484,
+    37.578873
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60129",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94485,
+    37.578813
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60130",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944911,
+    37.571915
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60131",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944922,
+    37.573637
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60132",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.944941,
+    37.569092
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60133",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944941,
+    37.580044
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60134",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944942,
+    37.581675
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60135",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94495,
+    37.57997
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60136",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.944997,
+    37.580732
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60137",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945028,
+    37.572248
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60138",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94503,
+    37.573475
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60139",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945064,
+    37.581919
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60140",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945098,
+    37.575452
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60141",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94519,
+    37.573327
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60142",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945223,
+    37.579443
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60143",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945273,
+    37.579719
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60144",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945289,
+    37.573748
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60145",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.945336,
+    37.580951
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60146",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945337,
+    37.57998
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60147",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945395,
+    37.573873
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60148",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945392,
+    37.583066
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60149",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.9454,
+    37.582811
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60150",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945421,
+    37.571041
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60151",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945422,
+    37.579176
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60152",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.945441,
+    37.584229
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60153",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945542,
+    37.571062
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60154",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945567,
+    37.576092
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60155",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945583,
+    37.579609
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60156",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945601,
+    37.573455
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60157",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945684,
+    37.571401
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60158",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945692,
+    37.582227
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60159",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945713,
+    37.579811
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60160",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945742,
+    37.574171
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60161",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945752,
+    37.580226
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60162",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945767,
+    37.579868
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60163",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945776,
+    37.570998
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60164",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945828,
+    37.573648
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60165",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945911,
+    37.580175
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60166",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945924,
+    37.573509
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60167",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.945969,
+    37.574332
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60168",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946002,
+    37.580197
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60169",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946086,
+    37.580337
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60170",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946134,
+    37.579868
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60171",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946166,
+    37.573793
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60172",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94617,
+    37.573532
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60173",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946205,
+    37.573906
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60174",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946296,
+    37.573478
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60175",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946311,
+    37.574389
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60176",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946335,
+    37.576722
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60177",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.946358,
+    37.582722
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60178",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946429,
+    37.57403
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60179",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946433,
+    37.573814
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60180",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946466,
+    37.573643
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60181",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946542,
+    37.573539
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60182",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946562,
+    37.576827
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60183",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946604,
+    37.579263
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60184",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946606,
+    37.581467
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60185",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946772,
+    37.573745
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60186",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946798,
+    37.57673
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60187",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946804,
+    37.570707
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60188",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946804,
+    37.570707
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60189",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.946901,
+    37.576812
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60190",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94695,
+    37.574602
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60191",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947003,
+    37.574472
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60192",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94702,
+    37.574152
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60193",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947044,
+    37.574193
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60194",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947289,
+    37.573621
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60195",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947292,
+    37.571745
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60196",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947317,
+    37.578541
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60197",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947373,
+    37.576163
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60198",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947389,
+    37.576148
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60199",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947404,
+    37.574756
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60200",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947417,
+    37.573193
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60201",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947496,
+    37.571647
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60202",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947521,
+    37.576178
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60203",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947537,
+    37.570333
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60204",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947537,
+    37.573243
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60205",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94757,
+    37.572258
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60206",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947598,
+    37.580404
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60207",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947607,
+    37.573276
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60208",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94771,
+    37.575983
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60209",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947719,
+    37.573753
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60210",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947755,
+    37.572554
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60211",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947806,
+    37.573181
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60212",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947827,
+    37.575965
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60213",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947831,
+    37.579431
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60214",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.947863,
+    37.579421
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60215",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.947956,
+    37.569737
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60216",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948004,
+    37.570542
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60217",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948,
+    37.578342
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60218",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.948019,
+    37.580457
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60219",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948043,
+    37.572473
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60220",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.948075,
+    37.580505
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60221",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948111,
+    37.575187
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60222",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948147,
+    37.572234
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60223",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.948278,
+    37.579825
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60224",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94836,
+    37.57666
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60225",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94849,
+    37.575763
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60226",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948512,
+    37.569757
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60227",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948527,
+    37.578032
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60228",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.948565,
+    37.56958
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60229",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948648,
+    37.576179
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60230",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948656,
+    37.577944
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60231",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948779,
+    37.572835
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60232",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.948801,
+    37.569514
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60233",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948823,
+    37.576255
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60234",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948969,
+    37.571806
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60235",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.948994,
+    37.569931
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60236",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949022,
+    37.575556
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60237",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949037,
+    37.574828
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60238",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949053,
+    37.575212
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60239",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949066,
+    37.569746
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60240",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949162,
+    37.571675
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60241",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949172,
+    37.574532
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60242",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949182,
+    37.570338
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60243",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949194,
+    37.571548
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60244",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949228,
+    37.576999
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60245",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94925,
+    37.572
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60246",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949288,
+    37.574972
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60247",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949298,
+    37.571476
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60248",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949349,
+    37.575718
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60249",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949357,
+    37.57166
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60250",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949371,
+    37.571558
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60251",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949486,
+    37.57958
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60252",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949508,
+    37.574339
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60253",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949532,
+    37.579516
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60254",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949765,
+    37.5729
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60255",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949843,
+    37.577806
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60256",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949846,
+    37.57606
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60257",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949849,
+    37.577377
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60258",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949872,
+    37.579533
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60259",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.94999,
+    37.571261
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60260",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.949987,
+    37.577318
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60261",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.950005,
+    37.568264
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60262",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950009,
+    37.573333
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60263",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950034,
+    37.575951
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60264",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950039,
+    37.570416
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60265",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950109,
+    37.577709
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60266",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.95012,
+    37.570229
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60267",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950316,
+    37.569921
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60268",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950433,
+    37.574547
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60269",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.950567,
+    37.579447
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60270",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950584,
+    37.568267
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60271",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.950592,
+    37.578837
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60272",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.950698,
+    37.574545
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60273",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950735,
+    37.574096
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60274",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.950999,
+    37.56846
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60275",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951011,
+    37.570948
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60276",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.951016,
+    37.579935
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60277",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951149,
+    37.57072
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60278",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.951397,
+    37.566931
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60279",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951585,
+    37.569644
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60280",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951598,
+    37.577093
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60281",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951701,
+    37.570488
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60282",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.951729,
+    37.578054
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60283",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.95178,
+    37.570343
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60284",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951785,
+    37.570283
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60285",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951787,
+    37.570393
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60286",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951813,
+    37.569738
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60287",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.951944,
+    37.573642
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60288",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952035,
+    37.57732
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60289",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.952107,
+    37.578753
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60290",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952163,
+    37.570294
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60291",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.952542,
+    37.575028
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60292",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952551,
+    37.572929
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60293",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952621,
+    37.569986
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60294",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952665,
+    37.572465
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60295",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952685,
+    37.572937
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60296",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952818,
+    37.572669
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60297",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952871,
+    37.572963
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60298",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.952964,
+    37.572383
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60299",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953039,
+    37.578148
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60300",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.95306,
+    37.567316
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60301",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953112,
+    37.569657
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60302",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953362,
+    37.571718
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60303",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.953368,
+    37.577894
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60304",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953413,
+    37.568693
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60305",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953601,
+    37.573149
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60306",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953633,
+    37.571608
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60307",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953714,
+    37.569435
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60308",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953713,
+    37.57187
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60309",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.953888,
+    37.569383
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60310",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.95399,
+    37.568789
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60311",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954011,
+    37.568984
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60312",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.95402,
+    37.567332
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60313",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954353,
+    37.568635
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60314",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954412,
+    37.568762
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60315",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954468,
+    37.572006
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60316",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954548,
+    37.566939
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60317",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954742,
+    37.56823
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60318",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954753,
+    37.568806
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60319",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.954912,
+    37.57038
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60320",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955065,
+    37.568438
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60321",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955302,
+    37.568981
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60322",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955369,
+    37.568264
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60323",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955422,
+    37.568261
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60324",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955471,
+    37.567394
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60325",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955625,
+    37.567799
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60326",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955748,
+    37.567221
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60327",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.955754,
+    37.565643
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60328",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955812,
+    37.566553
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60329",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.955854,
+    37.567126
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60330",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.956037,
+    37.566455
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60331",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.956078,
+    37.56817
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60332",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.956138,
+    37.572775
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60333",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.956148,
+    37.572818
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60334",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.956233,
+    37.569704
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60335",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.956566,
+    37.5655
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60336",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.95683,
+    37.569618
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60337",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.956955,
+    37.565946
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60338",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.956975,
+    37.566006
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60339",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.957088,
+    37.566547
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60340",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.957257,
+    37.566516
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60341",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.957267,
+    37.570052
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60342",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.957334,
+    37.566449
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60343",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.957665,
+    37.566375
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60344",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.957854,
+    37.568834
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60345",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.9579,
+    37.566378
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60346",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.957907,
+    37.568656
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60347",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.958063,
+    37.571078
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60348",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.958314,
+    37.565667
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60349",
+   "category": "분기점",
+   "name": null,
+   "coord": [
+    126.958328,
+    37.5662
+   ],
+   "detail": "분기점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60350",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.958577,
+    37.565933
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-60351",
+   "category": "시종점",
+   "name": null,
+   "coord": [
+    126.959222,
+    37.568473
+   ],
+   "detail": "시종점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98046",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.941912,
+    37.58014
+   ],
+   "detail": "음수대",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98061",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.940283,
+    37.575363
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98067",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.941483,
+    37.576338
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98087",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.945776,
+    37.579888
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98096",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.948382,
+    37.57665
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98100",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.948146,
+    37.579705
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98104",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.945281,
+    37.579996
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98106",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.945072,
+    37.581961
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98109",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.944199,
+    37.581299
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98113",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.947841,
+    37.57595
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98122",
+   "category": "화장실",
+   "name": null,
+   "coord": [
+    126.946204,
+    37.570042
+   ],
+   "detail": "화장실",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98142",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.940927,
+    37.569184
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98146",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.942449,
+    37.571791
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98153",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.943991,
+    37.570119
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98161",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.945287,
+    37.571684
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98169",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.944622,
+    37.574569
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98170",
+   "category": "음수대",
+   "name": null,
+   "coord": [
+    126.946917,
+    37.574606
+   ],
+   "detail": "음수대",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98195",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.944238,
+    37.573505
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98198",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.947694,
+    37.573745
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98203",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.941694,
+    37.573562
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98219",
+   "category": "주차장",
+   "name": null,
+   "coord": [
+    126.952698,
+    37.572444
+   ],
+   "detail": "주차장",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98221",
+   "category": "주차장",
+   "name": null,
+   "coord": [
+    126.952524,
+    37.572893
+   ],
+   "detail": "주차장",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98224",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.952956,
+    37.572384
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98245",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.950063,
+    37.570474
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98246",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.949801,
+    37.571247
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98255",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.952066,
+    37.577329
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98257",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.951812,
+    37.569702
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98263",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.947989,
+    37.57221
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98268",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.95396,
+    37.567326
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98271",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.950313,
+    37.570019
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98272",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.95371,
+    37.569419
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98273",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.954354,
+    37.568777
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98275",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.955738,
+    37.566539
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98276",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.955919,
+    37.566486
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98282",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.955873,
+    37.565861
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98283",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.956936,
+    37.566068
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98288",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.944638,
+    37.574562
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98290",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946784,
+    37.573775
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98291",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.946133,
+    37.579866
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98294",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.947802,
+    37.572966
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98297",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.94878,
+    37.57521
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98298",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.9384,
+    37.57942
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98300",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.938712,
+    37.581327
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98303",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.938891,
+    37.581406
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98307",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.942445,
+    37.571808
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98308",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.943462,
+    37.571914
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  },
+  {
+   "id": "sp-98310",
+   "category": "조망점",
+   "name": null,
+   "coord": [
+    126.940359,
+    37.576754
+   ],
+   "detail": "조망점",
+   "etc": null,
+   "origin": "forest",
+   "moved": false,
+   "deleted": false
+  }
+ ],
+ "publish": {
+  "pack_version": 1,
+  "published_at": "2026-07-06T06:51:26.607972+00:00",
+  "pack_size_kb": 3743,
+  "tiles_bbox": [
+   126.93,
+   37.56,
+   126.97,
+   37.59
+  ]
+ }
+}

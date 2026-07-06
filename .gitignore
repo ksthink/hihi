@@ -25,3 +25,11 @@ data/tiles/
 
 # 산림청 전국 등산로 원본 (2,932산 SHP/GeoJSON/GPX, 2.9GB) — 커밋 금지, 팩 빌드 소스
 mountain/
+
+# 관리자 콘솔 영속 환경 (재생성: scripts/setup_admin.sh)
+.venv/
+tools/
+cache/
+
+# 배포 산출물 (draft 에서 재생성: 관리자 배포 버튼 / publish_pack.py)
+data/packs/

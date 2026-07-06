@@ -12,15 +12,37 @@ let baseUrl = PMTILES_URL;
 // 산 이름은 전국 중복(317건)이 있어 코드가 전 시스템 표준 키다:
 // Storage packs/<산코드>/ · mountains.id · saved_packs/climb_records.mountain_id · IndexedDB 팩 키
 // 대표 코드 = 주봉(정상) 코드, 산정보가 충실한 쪽 (북한산→백운대, 설악산→대청봉, 청계산→과천)
-const MNT = { bukhansan: "113050202", seoraksan: "428302602", cheonggyesan: "412900401" };
-const PARKS = {
-  [MNT.bukhansan]: { label: "북한산", center: [126.990, 37.672], zoom: 11.3, bbox: [126.90, 37.59, 127.06, 37.75],
-    file: "data/bukhansan-routes.geojson", spots: "data/bukhansan-spots.geojson", contours: "data/bukhansan-contours.geojson" },
-  [MNT.seoraksan]: { label: "설악산", center: [128.403, 38.133], zoom: 11.3, bbox: [128.30, 38.07, 128.51, 38.19],
-    file: "data/seoraksan-routes.geojson", spots: "data/seoraksan-spots.geojson", contours: "data/seoraksan-contours.geojson" },
-  [MNT.cheonggyesan]: { label: "청계산", center: [127.035, 37.42], zoom: 12.0, bbox: [126.98, 37.36, 127.09, 37.47],
-    file: "data/cheonggyesan-routes.geojson", spots: "data/cheonggyesan-spots.geojson", contours: "data/cheonggyesan-contours.geojson" }
-};
+//
+// 카탈로그 주도: 산 목록은 Supabase mountains 테이블(published, sort_order 순)에서 로드.
+// 관리자 콘솔(/admin, 로컬)에서 배포하면 앱 새로고침만으로 반영된다 — 코드 배포 불필요.
+// iOS 도 동일 테이블을 소비. 오프라인 부팅은 localStorage 캐시 폴백.
+let PARKS = {}; // 산코드 → { label, center, zoom, bbox, elev, region, famous }
+const CATALOG_KEY = "hiheight-catalog";
+
+async function loadCatalog() {
+  try {
+    let q = await supabase.from("mountains").select("*")
+      .eq("published", true).order("sort_order").order("name");
+    if (q.error) q = await supabase.from("mountains").select("*").order("name"); // 마이그레이션 전 호환
+    if (q.error || !q.data || !q.data.length) throw q.error || new Error("empty");
+    PARKS = {};
+    for (const m of q.data) {
+      PARKS[m.id] = {
+        label: m.name, center: m.center, zoom: m.zoom, bbox: m.bbox,
+        elev: m.elev, region: m.region, famous: m.famous !== false
+      };
+    }
+    localStorage.setItem(CATALOG_KEY, JSON.stringify(PARKS));
+  } catch (_) {
+    // 오프라인 등 조회 실패 → 마지막 카탈로그 캐시로 (저장 팩 열람 유지)
+    try { PARKS = JSON.parse(localStorage.getItem(CATALOG_KEY)) || {}; } catch (_e) { PARKS = {}; }
+  }
+  return Object.keys(PARKS);
+}
+
+// Storage 팩 파일 공개 URL — 카탈로그의 데이터 소스 (routes/spots/contours/base.pmtiles)
+const packUrl = (park, file) =>
+  supabase.storage.from("packs").getPublicUrl(`${park}/${file}`).data.publicUrl;
 
 const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
 // 데이터 값(초급/중급/고급) → 화면 표시 라벨
@@ -49,8 +71,8 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 const map = new maplibregl.Map({
   container: "map",
   style: buildStyle(baseUrl, theme),
-  center: PARKS[MNT.bukhansan].center,
-  zoom: PARKS[MNT.bukhansan].zoom,
+  center: [126.990, 37.672], // 카탈로그 로드 전 기본 뷰 (첫 산 로드 시 flyTo)
+  zoom: 11.3,
   hash: true,
   // 대한민국으로 이동/축소 범위 제한 (제주·독도가 잘리지 않도록 여백 포함, 한 단계 더 축소 허용)
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], // [SW, NE] — 남한 전역 + 주변 여백
@@ -151,7 +173,7 @@ map.on("styleimagemissing", (e) => {
 });
 
 // ── 상태 ─────────────────────────────────────────────
-let currentPark = MNT.bukhansan;
+let currentPark = null; // 카탈로그 로드 후 첫 산으로 설정
 let peaksData = null;
 let selectedTrail = null;
 let selectedName = null;
@@ -243,6 +265,16 @@ function ensureOverlays() {
         "circle-stroke-width": 0.6
       }
     });
+    // 운영자가 이름 붙인 분기점/시종점만 지도 라벨 (관리자 콘솔 큐레이션)
+    map.addLayer({
+      id: "spots-labels", type: "symbol", source: "spots", minzoom: 12.5,
+      filter: ["all", ["in", ["get", "category"], ["literal", SHOWN]], ["has", "name"]],
+      layout: {
+        "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"],
+        "text-size": 10.5, "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
+      },
+      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
+    });
   }
 
   if (!map.getSource("peaks") && peaksData) {
@@ -267,8 +299,8 @@ function ensureOverlays() {
       const p = e.features[0].properties;
       new maplibregl.Popup({ maxWidth: "240px" })
         .setLngLat(e.lngLat)
-        .setHTML(`<div class="popup-title">${p.category || "스팟"}</div>
-          <div class="popup-meta">${p.detail || ""}${p.etc ? "<br>" + p.etc : ""}</div>`)
+        .setHTML(`<div class="popup-title">${p.name || p.category || "스팟"}</div>
+          <div class="popup-meta">${p.name ? p.category + "<br>" : ""}${p.detail || ""}${p.etc ? "<br>" + p.etc : ""}</div>`)
         .addTo(map);
     });
     map.on("mouseenter", "spots-dots", () => (map.getCanvas().style.cursor = "pointer"));
@@ -284,7 +316,9 @@ function ensureOverlays() {
 // 스팟/등고선은 현재 산의 데이터가 있을 때만 표시 (산별 일반화)
 function applySpotsVisibility() {
   const vis = (parkOverlays[currentPark] || {}).spots ? "visible" : "none";
-  if (map.getLayer("spots-dots")) map.setLayoutProperty("spots-dots", "visibility", vis);
+  ["spots-dots", "spots-labels"].forEach((id) => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+  });
 }
 
 function applyContourVisibility() {
@@ -336,13 +370,14 @@ function useBaseFor(park) {
   }
 }
 
-// 산별 오버레이(스팟/등고선) 지연 로드. 저장 팩(openSavedMap)이 이미 채웠으면 그대로 둔다.
+// 산별 오버레이(스팟/등고선) 지연 로드 — Storage packs/<산코드>/ 에서.
+// 저장 팩(openSavedMap)이 이미 채웠으면 그대로 둔다.
 async function ensureParkOverlays(park) {
   if (parkOverlays[park]) return;
-  const cfg = PARKS[park] || {};
+  const fetchPack = (file) =>
+    fetch(packUrl(park, file)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [spots, contours] = await Promise.all([
-    cfg.spots ? fetch(cfg.spots).then((r) => r.json()).catch(() => null) : null,
-    cfg.contours ? fetch(cfg.contours).then((r) => r.json()).catch(() => null) : null
+    fetchPack("spots.geojson"), fetchPack("contours.geojson")
   ]);
   parkOverlays[park] = { spots, contours };
 }
@@ -356,7 +391,7 @@ async function loadPark(park) {
   if (cur) cur.textContent = cfg.label;
   useBaseFor(park);
   let geojson = trailCache[park];
-  if (!geojson) { geojson = await fetch(cfg.file).then((r) => r.json()); trailCache[park] = geojson; }
+  if (!geojson) { geojson = await fetch(packUrl(park, "routes.geojson")).then((r) => r.json()); trailCache[park] = geojson; }
   await ensureParkOverlays(park);
 
   ensureOverlays();
@@ -413,15 +448,19 @@ function focusTrail(feature) {
 }
 
 // ── 명산 선택 (추천 탭의 "대한민국 100대 명산") ──────
-const FAMOUS = [
-  { park: MNT.bukhansan, name: "북한산", elev: "836m", region: "서울·경기" },
-  { park: MNT.seoraksan, name: "설악산", elev: "1708m", region: "강원 속초·양양" },
-  { park: MNT.cheonggyesan, name: "청계산", elev: "616m", region: "서울·과천·성남" }
-];
+// 카탈로그(PARKS)에서 파생 — famous 플래그는 관리자 콘솔에서 지정
+function catalogList(famousOnly = false) {
+  return Object.entries(PARKS)
+    .filter(([, p]) => !famousOnly || p.famous)
+    .map(([code, p]) => ({
+      park: code, name: p.label,
+      elev: p.elev ? p.elev + "m" : "", region: p.region || ""
+    }));
+}
 function renderFamous() {
   const ul = document.getElementById("famous-list");
   ul.innerHTML = "";
-  FAMOUS.forEach((m) => {
+  catalogList(true).forEach((m) => {
     const li = document.createElement("li");
     li.className = "famous-item";
     li.innerHTML = `<span class="fm-name">${m.name}</span><span class="fm-meta">${m.elev} · ${m.region}</span>`;
@@ -447,11 +486,12 @@ function selectMountain(park) {
   const results = document.getElementById("search-results");
   let composing = false;
 
-  // 접두 우선, 없으면 포함 매치 (가장 유사한 산부터)
+  // 접두 우선, 없으면 포함 매치 (가장 유사한 산부터) — 공개 카탈로그 전체 대상
   function matches(q) {
-    if (!q) return FAMOUS.slice();
-    const pre = FAMOUS.filter((m) => m.name.startsWith(q));
-    const inc = FAMOUS.filter((m) => !m.name.startsWith(q) && m.name.includes(q));
+    const all = catalogList();
+    if (!q) return all;
+    const pre = all.filter((m) => m.name.startsWith(q));
+    const inc = all.filter((m) => !m.name.startsWith(q) && m.name.includes(q));
     return [...pre, ...inc];
   }
   function highlight(name, q) {
@@ -473,12 +513,12 @@ function selectMountain(park) {
   function autocomplete() {
     const typed = input.value;
     if (!typed) return;
-    const m = FAMOUS.find((x) => x.name.startsWith(typed) && x.name !== typed);
+    const m = catalogList().find((x) => x.name.startsWith(typed) && x.name !== typed);
     if (m) { input.value = m.name; input.setSelectionRange(typed.length, m.name.length); }
   }
   function pick() {
     const q = input.value.trim();
-    const m = FAMOUS.find((x) => x.name === q) || matches(q)[0];
+    const m = catalogList().find((x) => x.name === q) || matches(q)[0];
     if (m) { selectMountain(m.park); close(); }
   }
   function open() { panel.hidden = false; render(""); input.focus(); }
@@ -512,10 +552,11 @@ document.querySelectorAll(".tabbtn").forEach((b) =>
 );
 
 // ── 추천 뷰 ──────────────────────────────────────────
+// 추천 코스 (당장은 하드코딩 존치 — 추후 routes.geojson `reco` 속성으로 이관 예정)
 const RECO = [
-  { name: "오색 - 대청봉 코스", park: MNT.seoraksan, parkLabel: "설악산", diff: "고급", why: "설악 정상 대청봉을 최단 시간에 오르는 도전 코스" },
-  { name: "진달래길", park: MNT.bukhansan, parkLabel: "북한산", diff: "초급", why: "진달래능선을 따라 대동문으로, 봄이면 진달래 명소인 대표 등산로 (OSM)" },
-  { name: "천불동계곡 코스", park: MNT.seoraksan, parkLabel: "설악산", diff: "중급", why: "비선대·양폭을 지나는 설악의 대표 계곡길" }
+  { name: "오색 - 대청봉 코스", park: "428302602", parkLabel: "설악산", diff: "고급", why: "설악 정상 대청봉을 최단 시간에 오르는 도전 코스" },
+  { name: "진달래길", park: "113050202", parkLabel: "북한산", diff: "초급", why: "진달래능선을 따라 대동문으로, 봄이면 진달래 명소인 대표 등산로 (OSM)" },
+  { name: "천불동계곡 코스", park: "428302602", parkLabel: "설악산", diff: "중급", why: "비선대·양폭을 지나는 설악의 대표 계곡길" }
 ];
 function renderReco() {
   const box = document.getElementById("reco-list");
@@ -873,9 +914,7 @@ const idbDelete = (id) => idbTx("readwrite", (st) => st.delete(id));
 const idbList = () => idbTx("readonly", (st) => st.getAll());
 
 // ── 지도 다운로드 (Storage → IndexedDB) ─────────────
-const packUrl = (park, file) =>
-  supabase.storage.from("packs").getPublicUrl(`${park}/${file}`).data.publicUrl;
-
+// packUrl 은 상단 카탈로그 블록에 정의 (오버레이 로드와 공용)
 let downloading = false;
 
 // 시트 헤더 "지도 다운" 버튼 상태
@@ -1035,7 +1074,16 @@ async function renderSavedMaps() {
 // 저장된 지도 열기: 로컬 타일 + 로컬 데이터로 지도 표시, 최근 코스 자동선택
 async function openSavedMap(id) {
   const rec = await idbGet(id).catch(() => null);
-  if (!rec || !PARKS[id]) return;
+  if (!rec) return;
+  if (!PARKS[id]) {
+    // 완전 오프라인 + 카탈로그 캐시 부재 → 저장 팩 레코드로 최소 카탈로그 복원
+    const flat = rec.routes.features.flatMap((f) =>
+      (f.geometry.type === "MultiLineString" ? f.geometry.coordinates : [f.geometry.coordinates]).flat());
+    const xs = flat.map((c) => c[0]), ys = flat.map((c) => c[1]);
+    const bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    PARKS[id] = { label: rec.label, zoom: 12,
+      center: [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], bbox };
+  }
   if (!localRegistered[id]) {
     // IndexedDB Blob 을 pmtiles 소스로 등록 → "pmtiles://local-<id>" (네트워크 불필요)
     protocol.add(new PMTiles(new FileSource(new File([rec.base], "local-" + id))));
@@ -1120,9 +1168,10 @@ document.getElementById("show-all").addEventListener("click", (e) => {
 setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
 
 map.on("load", async () => {
-  peaksData = await fetch("data/peaks.geojson").then((r) => r.json());
+  peaksData = await fetch("data/peaks.geojson").then((r) => r.json()).catch(() => null);
   ensureOverlays();
-  await loadPark(MNT.bukhansan); // 오버레이(스팟/등고선)는 loadPark 이 산별 지연 로드
+  const codes = await loadCatalog(); // mountains 카탈로그 (오프라인 시 캐시)
+  if (codes.length) await loadPark(codes[0]); // 첫 산(sort_order 1위) — 오버레이는 산별 지연 로드
   renderFamous();
   renderReco();
   renderRecords();

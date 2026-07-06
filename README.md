@@ -113,30 +113,36 @@
 
 | 스크립트 | 역할 |
 |---|---|
-| `convert_knps_courses.py` | **등산로 생성(현행)**: 국립공원공단 탐방로 공간데이터 API(공원사무소코드 필터) → 코스ID로 묶어 공식 코스 GeoJSON. 3km+ 주요 코스 큐레이션 (shapely) |
+| `admin_server.py` | **관리자 콘솔(현행)**: `http://127.0.0.1:8891/admin/` — 산 추가·GPX 코스 큐레이션·분기점 편집·배포. 로컬 전용(127.0.0.1), secret 키는 `.env` 로만 |
+| `pack_lib.py` | 공용 라이브러리: EPSG:5186→WGS84, 산림청 구간 그래프, Dijkstra, DEM 보간, 48pt 프로파일 |
+| `draft_store.py` | 산별 큐레이션 초안(`admin_data/<산코드>/draft.json`) 저장소 + 배포 geojson 변환 |
+| `gpx_match.py` | GPX 업로드 → 구간망 맵매칭 (스냅 25m, 갭 Dijkstra 보간, 데이터 부실 구간은 GPX 원 좌표 하이브리드) |
+| `dem_cache.py` | Copernicus GLO-30 타일 캐시(`cache/dem/`) — bbox 커버 타일 자동 다운로드 |
+| `publish_pack.py` | 배포 파이프라인: draft → geojson·등고선·기저타일 → Storage 업로드 + `mountains` upsert |
+| `build_forest_pack.py` | 산림청 원본 → 자동 코스 추출 CLI (들머리→정상 Dijkstra, 신규 산 초안 시드에도 사용) |
+| `convert_knps_courses.py` | 국립공원 코스: KNPS 탐방로 API(공원사무소코드 필터) → 공식 코스 GeoJSON, 3km+ 큐레이션 |
 | `add_elevation_copernicus.py` | 코스 고도 주입: Copernicus DEM 샘플링 → profile/min/max/ascent |
-| `osm_trails.py` | 등산로 생성(대안): Overpass(OSM) 능선·둘레길 → 코스 |
-| `make_contours_copernicus.py` | **등고선 생성(현행)**: Copernicus GLO-30 DEM(AWS Open Data, COG)에서 산 bbox 등고선 → shapely 단순화 (rasterio/contourpy/shapely). 무료·저장자유, 전 세계 커버 |
-| `make_contours.py` | 등고선 생성(대안): SRTM 1-arcsec DEM 50m (numpy/contourpy) |
-| `add_elevation.py` | 각 코스에 고도 프로파일·최고/최저·누적상승 계산(DEM 이중선형 보간) |
-| `convert_spots.py` | 산림청 Esri JSON 스팟을 EPSG:5186 → WGS84 역투영 변환(외부 의존성 없음) |
-| `upload_packs.py` | 팩을 Supabase Storage 에 업로드 + `mountains` 카탈로그 시드 (secret 키 env 필요) |
+| `make_contours_copernicus.py` | 등고선 생성: Copernicus GLO-30 DEM(AWS Open Data, COG) → shapely 단순화 |
+| `osm_trails.py` / `make_contours.py` / `add_elevation.py` / `convert_spots.py` | 대안·레거시 파이프라인 (OSM 코스, SRTM 등고선 등) |
+| `upload_packs.py` | (레거시) 3산 일괄 시드 — 현행 배포는 관리자 콘솔/`publish_pack.py` |
 | `serve.py` | 로컬 개발 서버 (정적 + PMTiles CORS 프록시, 포트 8890) |
 
-### 새 산 추가하는 법 (요약 — 상세는 `QA.md`)
-1. **생성**: 위 파이프라인으로 `data/<산>-routes/-contours(/-spots).geojson` 생성
-2. **등록**: `app.js` 의 `PARKS` 와 `FAMOUS` 에 산 추가
-3. **시드**: `upload_packs.py` 의 `PACKS`/`MOUNTAINS` 에 추가 후 실행
-
+### 새 산 추가하는 법 (관리자 콘솔)
 ```bash
-# 시드 실행 (secret 키는 로컬 .env 로만 — 커밋 금지)
-export SUPABASE_URL=https://<프로젝트>.supabase.co
-export SUPABASE_SECRET_KEY=sb_secret_...
-python3 scripts/upload_packs.py
+bash scripts/setup_admin.sh                      # 최초 1회: .venv + go-pmtiles
+.venv/bin/python scripts/admin_server.py         # 0.0.0.0:8890 — 앱(/)+관리자(/admin/)+API 통합
 ```
+- 원격 접속: `http://<호스트>:8890/admin/?token=<ADMIN_TOKEN>` — 토큰은 시작 로그(또는 `.env`)에.
+  `/api` 는 토큰 인증(localhost 는 면제), 최초 진입 후 브라우저에 저장되어 재입력 불필요.
+- serve.py(구 개발 서버)와 같은 포트를 쓰므로 동시에 띄우지 말 것.
+1. **검색**: 산 이름/산코드 검색(전국 5,360) → "추가" — 산림청 원본(`mountain/<산코드>/`)에서
+   스팟·bbox 자동 구성 + 자동 코스 시드 (DEM 자동 다운로드)
+2. **큐레이션**: GPX 업로드로 코스 생성(맵매칭 미리보기 → "코스로 추가"), 이름·난이도·설명 편집,
+   배포 여부(ready/초안) 선별, 분기점 이름 부여·이동·추가
+3. **배포** 버튼 → 등고선·기저 타일 생성 → Supabase 반영 → **사용자 앱 새로고침만으로 등장**
+   (앱은 `mountains` 카탈로그 주도 — 코드 배포 불필요)
 
-> ⚠️ 현재 스팟·등고선 로드는 북한산 하드코딩 상태라, 두 번째 산부터는
-> 산별 로드 일반화 작업이 1회 필요합니다 (`QA.md` 2026-07-04 항목 참고).
+편집 소스는 `admin_data/<산코드>/draft.json`(커밋 대상), 배포 산출물 `data/packs/`·`cache/`·`tools/`·`.venv/` 는 gitignore.
 
 ### 팩 업로드 규격 (Pack Specification)
 
@@ -152,10 +158,10 @@ python3 scripts/upload_packs.py
   예: 북한산→**백운대 `113050202`**(835.6m) · 설악산→**대청봉 `428302602`** · 지리산→**천왕봉 `488605302`**
 - **산 이름은 전국 중복이 317건**(가야산·지리산 등) — 이름을 키로 쓰지 말 것. 표시할 때는
   `region` 을 함께 노출해 구분한다.
-- 이 코드가 Storage 폴더명 · `mountains.id` · `app.js` `PARKS`/`MNT` 키 · `saved_packs.mountain_id` ·
+- 이 코드가 Storage 폴더명 · `mountains.id` · `admin_data/<산코드>/` · `saved_packs.mountain_id` ·
   `climb_records.mountain_id` · IndexedDB 팩 키로 **전부 공유**됩니다 (한 곳이라도 다르면 연결이 끊어짐)
-- 로컬 데이터 파일명은 가독성을 위해 로마자 유지 가능 (`data/bukhansan-routes.geojson`) —
-  코드→파일 매핑은 `PARKS[<코드>].file` 이 담당
+- 앱의 산 목록·메타(`PARKS`)는 `mountains` 테이블에서 부팅 시 로드(카탈로그 주도) —
+  데이터 파일은 전부 Storage `packs/<산코드>/` 에서 fetch (로컬 `data/<slug>-*.geojson` 은 레거시 원본)
 
 **② Storage 파일 레이아웃** — 버킷 `packs` (공개 읽기), **파일명 고정**
 
