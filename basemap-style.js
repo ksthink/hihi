@@ -116,12 +116,12 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
       {
-        // 편의시설 점: 화장실·음수대·주차장·안내소 (고줌)
-        id: "poi-amenity-dots", type: "circle", source: "protomaps", "source-layer": "pois",
+        // 편의시설 아이콘: 화장실 WC·음수대 물방울·주차장 P·안내소 i (고줌)
+        id: "poi-amenity-icons", type: "symbol", source: "protomaps", "source-layer": "pois",
         minzoom: 14, filter: ["in", "kind", "toilets", "drinking_water", "parking", "information"],
-        paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 2, 17, 3.5],
-          "circle-color": C.bg, "circle-stroke-color": C.label, "circle-stroke-width": 1.2
+        layout: {
+          "icon-image": ["concat", "poi-", ["get", "kind"]],
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 17, 0.95]
         }
       },
       {
@@ -136,12 +136,12 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
       },
       {
-        // 버스정류장 (고줌: 작은 점 + 이름)
-        id: "bus-stops", type: "circle", source: "protomaps", "source-layer": "pois",
+        // 버스정류장 아이콘 (고줌)
+        id: "bus-stops", type: "symbol", source: "protomaps", "source-layer": "pois",
         minzoom: 14.5, filter: ["==", "kind", "bus_stop"],
-        paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 14.5, 1.8, 17, 3],
-          "circle-color": C.label, "circle-stroke-color": C.halo, "circle-stroke-width": 1
+        layout: {
+          "icon-image": "poi-bus_stop",
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 14.5, 0.55, 17, 0.9]
         }
       },
       {
@@ -155,22 +155,25 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
       },
       {
-        // 사찰·암자 — 한국 산행 랜드마크
+        // 사찰·암자 — 卍 아이콘 + 이름 (한국 산행 랜드마크)
         id: "temple-names", type: "symbol", source: "protomaps", "source-layer": "pois",
         minzoom: 13.5, filter: ["all", ["==", "kind", "place_of_worship"], ["has", "name"]],
         layout: {
+          "icon-image": "poi-place_of_worship",
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 13.5, 0.6, 17, 0.9],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"], "text-size": 11.5, "text-max-width": 8
+          "text-font": ["Noto Sans Regular"], "text-size": 11.5, "text-max-width": 8,
+          "text-offset": [0, 1.1], "text-anchor": "top"
         },
         paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
       {
-        // 전철역: 점 + 이름
-        id: "station-dots", type: "circle", source: "protomaps", "source-layer": "pois",
+        // 전철역: 아이콘 + 이름
+        id: "station-icons", type: "symbol", source: "protomaps", "source-layer": "pois",
         minzoom: 12, filter: ["==", "kind", "station"],
-        paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 2.5, 16, 4.5],
-          "circle-color": C.bg, "circle-stroke-color": C.label, "circle-stroke-width": 1.8
+        layout: {
+          "icon-image": "poi-station",
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 12, 0.7, 16, 1]
         }
       },
       {
@@ -179,7 +182,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
           "text-font": ["Noto Sans Regular"], "text-size": 12,
-          "text-offset": [0, 1], "text-anchor": "top", "text-max-width": 8
+          "text-offset": [0, 1.2], "text-anchor": "top", "text-max-width": 8
         },
         paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.5 }
       },

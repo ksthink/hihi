@@ -83,6 +83,71 @@ class ThemeControl {
 }
 map.addControl(new ThemeControl(), "bottom-right");
 
+// ── 지도 POI 아이콘 (흑백 뱃지, 런타임 캔버스 생성) ────
+// 외부 스프라이트/CDN 없이 styleimagemissing 때 즉석 생성 — 오프라인·테마 전환 자동 대응.
+// iOS 이식 시 동일 아이콘 id 로 UIImage 를 스타일에 등록하면 됨.
+const POI_TEXT = { toilets: "WC", parking: "P", information: "i", place_of_worship: "卍" };
+
+function makePoiIcon(id) {
+  const kind = id.replace(/^poi-/, "");
+  const dark = theme === "dark";
+  const fg = dark ? "#f2f2f2" : "#111111";
+  const bg = dark ? "#000000" : "#ffffff";
+  const S = 20, P = 2;                       // 뱃지 크기(css px), 여백
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = S * 2;              // 2x 해상도
+  const ctx = cv.getContext("2d");
+  ctx.scale(2, 2);
+
+  // 뱃지: 역은 원형, 나머지는 라운드 사각
+  ctx.fillStyle = bg;
+  ctx.strokeStyle = fg;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  if (kind === "station") ctx.arc(S / 2, S / 2, S / 2 - P, 0, Math.PI * 2);
+  else ctx.roundRect(P, P, S - 2 * P, S - 2 * P, 4);
+  ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = fg;
+  ctx.strokeStyle = fg;
+  if (kind in POI_TEXT) {
+    // 글자 아이콘 (WC · P · i · 卍)
+    const t = POI_TEXT[kind];
+    ctx.font = `bold ${t.length > 1 ? 8 : 11}px sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(t, S / 2, S / 2 + 0.5);
+  } else if (kind === "bus_stop") {
+    // 버스: 차체 + 창 + 바퀴
+    ctx.beginPath(); ctx.roundRect(5.5, 5, 9, 8, 1.5); ctx.fill();
+    ctx.fillStyle = bg;
+    ctx.fillRect(6.5, 6.5, 7, 2.5);
+    ctx.fillStyle = fg;
+    ctx.beginPath(); ctx.arc(7.5, 14, 1.2, 0, Math.PI * 2); ctx.arc(12.5, 14, 1.2, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === "station") {
+    // 전철: 차체 + 창 + 하단 레일
+    ctx.beginPath(); ctx.roundRect(6, 4.5, 8, 8.5, 2); ctx.fill();
+    ctx.fillStyle = bg;
+    ctx.fillRect(7, 6, 6, 3);
+    ctx.fillStyle = fg;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(6.5, 15.5); ctx.lineTo(9, 13); ctx.moveTo(13.5, 15.5); ctx.lineTo(11, 13); ctx.stroke();
+  } else if (kind === "drinking_water") {
+    // 물방울
+    ctx.beginPath();
+    ctx.moveTo(S / 2, 4.5);
+    ctx.bezierCurveTo(13.5, 8.5, 14, 10.5, 14, 12);
+    ctx.arc(S / 2, 12, 4, 0, Math.PI, false);
+    ctx.bezierCurveTo(6, 10.5, 6.5, 8.5, S / 2, 4.5);
+    ctx.fill();
+  } else {
+    return; // 모르는 아이콘은 생성하지 않음
+  }
+  if (!map.hasImage(id)) map.addImage(id, ctx.getImageData(0, 0, S * 2, S * 2), { pixelRatio: 2 });
+}
+map.on("styleimagemissing", (e) => {
+  if (e.id.startsWith("poi-")) makePoiIcon(e.id);
+});
+
 // ── 상태 ─────────────────────────────────────────────
 let currentPark = MNT.bukhansan;
 let peaksData = null;
