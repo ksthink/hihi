@@ -76,12 +76,134 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         }
       },
       {
+        id: "rail", type: "line", source: "protomaps", "source-layer": "roads",
+        minzoom: 11, filter: ["==", "kind", "rail"],
+        paint: {
+          "line-color": C.path,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.8, 16, 2.2],
+          "line-dasharray": [5, 2]
+        }
+      },
+      {
         id: "buildings", type: "fill", source: "protomaps", "source-layer": "buildings",
         minzoom: 14, paint: { "fill-color": C.building, "fill-opacity": 0.8 }
       },
       {
         id: "boundaries", type: "line", source: "protomaps", "source-layer": "boundaries",
         paint: { "line-color": C.boundary, "line-width": 1, "line-dasharray": [3, 2], "line-opacity": 0.7 }
+      },
+      // ── 라벨류 (아래 = 우선순위 낮음, places-labels 가 최상위) ──
+      {
+        // 도로명 (고줌)
+        id: "road-names", type: "symbol", source: "protomaps", "source-layer": "roads",
+        minzoom: 14.5, filter: ["in", "kind", "major_road", "minor_road"],
+        layout: {
+          "symbol-placement": "line",
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"], "text-size": 10.5, "symbol-spacing": 400
+        },
+        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
+      },
+      {
+        // 계곡·하천 이름 — 등산 중 위치 확인용
+        id: "water-names", type: "symbol", source: "protomaps", "source-layer": "water",
+        minzoom: 13, filter: ["has", "name"],
+        layout: {
+          "symbol-placement": "line",
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"], "text-size": 11, "symbol-spacing": 350
+        },
+        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
+      },
+      {
+        // 편의시설 점: 화장실·음수대·주차장·안내소 (고줌)
+        id: "poi-amenity-dots", type: "circle", source: "protomaps", "source-layer": "pois",
+        minzoom: 14, filter: ["in", "kind", "toilets", "drinking_water", "parking", "information"],
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 2, 17, 3.5],
+          "circle-color": C.bg, "circle-stroke-color": C.label, "circle-stroke-width": 1.2
+        }
+      },
+      {
+        // 편의시설 이름 (최고줌, 이름 있는 것만)
+        id: "poi-amenity-names", type: "symbol", source: "protomaps", "source-layer": "pois",
+        minzoom: 15.5, filter: ["all", ["in", "kind", "toilets", "drinking_water", "parking", "information"], ["has", "name"]],
+        layout: {
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"], "text-size": 10,
+          "text-offset": [0, 1.1], "text-anchor": "top", "text-max-width": 8
+        },
+        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
+      },
+      {
+        // 버스정류장 (고줌: 작은 점 + 이름)
+        id: "bus-stops", type: "circle", source: "protomaps", "source-layer": "pois",
+        minzoom: 14.5, filter: ["==", "kind", "bus_stop"],
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 14.5, 1.8, 17, 3],
+          "circle-color": C.label, "circle-stroke-color": C.halo, "circle-stroke-width": 1
+        }
+      },
+      {
+        id: "bus-stop-names", type: "symbol", source: "protomaps", "source-layer": "pois",
+        minzoom: 15.5, filter: ["==", "kind", "bus_stop"],
+        layout: {
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"], "text-size": 10,
+          "text-offset": [0, 1], "text-anchor": "top", "text-max-width": 9
+        },
+        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
+      },
+      {
+        // 사찰·암자 — 한국 산행 랜드마크
+        id: "temple-names", type: "symbol", source: "protomaps", "source-layer": "pois",
+        minzoom: 13.5, filter: ["all", ["==", "kind", "place_of_worship"], ["has", "name"]],
+        layout: {
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"], "text-size": 11.5, "text-max-width": 8
+        },
+        paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.4 }
+      },
+      {
+        // 전철역: 점 + 이름
+        id: "station-dots", type: "circle", source: "protomaps", "source-layer": "pois",
+        minzoom: 12, filter: ["==", "kind", "station"],
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 2.5, 16, 4.5],
+          "circle-color": C.bg, "circle-stroke-color": C.label, "circle-stroke-width": 1.8
+        }
+      },
+      {
+        id: "station-names", type: "symbol", source: "protomaps", "source-layer": "pois",
+        minzoom: 12.5, filter: ["==", "kind", "station"],
+        layout: {
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"], "text-size": 12,
+          "text-offset": [0, 1], "text-anchor": "top", "text-max-width": 8
+        },
+        paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.5 }
+      },
+      {
+        // 동네(neighbourhood/macrohood) 지명
+        id: "neighbourhood-labels", type: "symbol", source: "protomaps", "source-layer": "places",
+        minzoom: 12, filter: ["in", "kind", "macrohood", "neighbourhood"],
+        layout: {
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11, 16, 13],
+          "text-max-width": 7
+        },
+        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.5 }
+      },
+      {
+        // 행정동 이름 (pois administrative)
+        id: "admin-labels", type: "symbol", source: "protomaps", "source-layer": "pois",
+        minzoom: 13, filter: ["==", "kind", "administrative"],
+        layout: {
+          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-font": ["Noto Sans Regular"], "text-size": 11, "text-max-width": 7
+        },
+        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
       {
         id: "places-labels", type: "symbol", source: "protomaps", "source-layer": "places",
