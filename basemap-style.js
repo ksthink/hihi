@@ -41,9 +41,12 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         paint: { "fill-color": C.grass }
       },
       {
+        // 공원/보호구역: 불투명 + 미세한 톤 차이만.
+        // 반투명(0.6)이면 국립공원 같은 거대 폴리곤이 산 전체를 음영으로 덮고,
+        // 겹치는 폴리곤(공원∩보호구역)끼리 알파가 누적돼 얼룩처럼 진해진다.
         id: "landuse-park", type: "fill", source: "protomaps", "source-layer": "landuse",
         filter: ["in", "kind", "park", "national_park", "nature_reserve", "forest", "recreation_ground"],
-        paint: { "fill-color": C.park, "fill-opacity": 0.6 }
+        paint: { "fill-color": dark ? "#141414" : "#eeeeee" }
       },
       { id: "water", type: "fill", source: "protomaps", "source-layer": "water", paint: { "fill-color": C.water } },
       {
