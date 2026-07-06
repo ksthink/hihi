@@ -42,6 +42,12 @@ PACKS = {
         "data/seoraksan-spots.geojson": "spots.geojson",
         "data/seoraksan-contours.geojson": "contours.geojson",
     },
+    "412900401": {  # 청계산(과천 대표코드)
+        "data/tiles/cheonggyesan-base.pmtiles": "base.pmtiles",
+        "data/cheonggyesan-routes.geojson": "routes.geojson",
+        "data/cheonggyesan-spots.geojson": "spots.geojson",
+        "data/cheonggyesan-contours.geojson": "contours.geojson",
+    },
 }
 
 def content_type(name):
@@ -56,6 +62,9 @@ MOUNTAINS = [
     {"id": "428302602", "name": "설악산", "region": "강원 속초·양양", "elev": 1708,
      "center": [128.403, 38.133], "zoom": 11.3,
      "bbox": [128.30, 38.07, 128.51, 38.19], "pack_version": 2},
+    {"id": "412900401", "name": "청계산", "region": "서울·과천·성남", "elev": 616,
+     "center": [127.035, 37.42], "zoom": 12.0,
+     "bbox": [126.98, 37.36, 127.09, 37.47], "pack_version": 1},
 ]
 
 

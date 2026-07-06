@@ -11,13 +11,15 @@ let baseUrl = PMTILES_URL;
 // 산 식별자 = 산림청 산코드 9자리 (scripts/MNT_CODE.xlsx → data/mnt-codes.json, 전국 2,931산).
 // 산 이름은 전국 중복(317건)이 있어 코드가 전 시스템 표준 키다:
 // Storage packs/<산코드>/ · mountains.id · saved_packs/climb_records.mountain_id · IndexedDB 팩 키
-// 대표 코드 = 주봉(정상) 코드, 산정보가 충실한 쪽 (북한산→백운대, 설악산→대청봉)
-const MNT = { bukhansan: "113050202", seoraksan: "428302602" };
+// 대표 코드 = 주봉(정상) 코드, 산정보가 충실한 쪽 (북한산→백운대, 설악산→대청봉, 청계산→과천)
+const MNT = { bukhansan: "113050202", seoraksan: "428302602", cheonggyesan: "412900401" };
 const PARKS = {
   [MNT.bukhansan]: { label: "북한산", center: [126.990, 37.672], zoom: 11.3, bbox: [126.90, 37.59, 127.06, 37.75],
     file: "data/bukhansan-routes.geojson", spots: "data/bukhansan-spots.geojson", contours: "data/bukhansan-contours.geojson" },
   [MNT.seoraksan]: { label: "설악산", center: [128.403, 38.133], zoom: 11.3, bbox: [128.30, 38.07, 128.51, 38.19],
-    file: "data/seoraksan-routes.geojson", spots: "data/seoraksan-spots.geojson", contours: "data/seoraksan-contours.geojson" }
+    file: "data/seoraksan-routes.geojson", spots: "data/seoraksan-spots.geojson", contours: "data/seoraksan-contours.geojson" },
+  [MNT.cheonggyesan]: { label: "청계산", center: [127.035, 37.42], zoom: 12.0, bbox: [126.98, 37.36, 127.09, 37.47],
+    file: "data/cheonggyesan-routes.geojson", spots: "data/cheonggyesan-spots.geojson", contours: "data/cheonggyesan-contours.geojson" }
 };
 
 const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
@@ -413,7 +415,8 @@ function focusTrail(feature) {
 // ── 명산 선택 (추천 탭의 "대한민국 100대 명산") ──────
 const FAMOUS = [
   { park: MNT.bukhansan, name: "북한산", elev: "836m", region: "서울·경기" },
-  { park: MNT.seoraksan, name: "설악산", elev: "1708m", region: "강원 속초·양양" }
+  { park: MNT.seoraksan, name: "설악산", elev: "1708m", region: "강원 속초·양양" },
+  { park: MNT.cheonggyesan, name: "청계산", elev: "616m", region: "서울·과천·성남" }
 ];
 function renderFamous() {
   const ul = document.getElementById("famous-list");
