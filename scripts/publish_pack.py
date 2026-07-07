@@ -25,6 +25,7 @@ import urllib.request
 import dem_cache
 import draft_store
 import pack_lib as pl
+import r2_lib
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://durnojryhhsajnlwvdzt.supabase.co").rstrip("/")
 PMTILES_SOURCE = os.environ.get("PMTILES_SOURCE", "https://demo-bucket.protomaps.com/v4.pmtiles")
@@ -52,13 +53,8 @@ def _req(method, path, data=None, headers=None, raw=False):
 
 
 def _upload(local, dest):
-    ct = "application/octet-stream" if dest.endswith(".pmtiles") else "application/geo+json"
-    content = open(local, "rb").read()
-    st, out = _req("POST", f"/storage/v1/object/packs/{dest}", content,
-                   {"Content-Type": ct, "x-upsert": "true"}, raw=True)
-    if st not in (200, 201):
-        raise RuntimeError(f"업로드 실패({st}) {dest}: {out[:150]}")
-    return len(content)
+    # 팩 파일은 Cloudflare R2(hihi/packs/) 에 업로드 — egress 무료. mountains 카탈로그는 Supabase DB 유지.
+    return r2_lib.upload_file(local, f"packs/{dest}")
 
 
 def publish(code, job=None, step=None):

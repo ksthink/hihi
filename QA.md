@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-07-07 · packs Storage도 R2로 옮길 수 있나?
+
+**Q.** 지금 Supabase Storage에 있는 팩 파일(`packs/`)도 R2로 옮길 수 있어?
+
+**A.** 옮길 수 있다. base 타일 이관과 거의 같은 패턴이고 더 단순한 면도 있다. (→ 실제로 이관 완료)
+
+- **무엇이 옮겨지고 무엇이 남나**: **팩 파일 바이트만** R2로(`routes/spots/contours.geojson`, per-산 `base.pmtiles`). 산 카탈로그(`mountains`)·산정보(`mountain_info`)·저장기록(`saved_packs`)·등반기록·**Auth 는 Supabase DB 유지**. → "무거운 건 R2, 인증·데이터는 Supabase" 분업 완성.
+- **필요 작업 3가지**: ① 기존 팩 파일 이관(Supabase Storage → R2, 일회성 `scripts/migrate_packs_to_r2.py`) ② `app.js` `packUrl()` 을 R2 URL 반환으로 ③ 배포 파이프라인(`publish_pack.py`) 이 R2 업로드하도록(`scripts/r2_lib.py` 공용 헬퍼).
+- **base 타일과 다른 점 = CORS**: base 타일은 same-origin 프록시로 우회했지만, 팩 파일은 **브라우저가 R2에서 직접 fetch**(GeoJSON·pmtiles). 그래서 R2 CORS 가 접속 도메인을 허용해야 함. **`base.pmtiles`(최대 8.5MB)는 Vercel 함수 4.5MB 한도 초과라 프록시 불가 → R2 직결(CORS) 이 정답.**
+  - 현재 CORS: `hihi.metaphr.dev`·`localhost:8890` 허용됨 → **프로덕션·localhost 는 동작**. 로컬을 **IP로 접속**하면 차단 → 대시보드에서 `AllowedOrigins`를 `["*"]`(공개 OSM 데이터라 안전)로 넓히면 해결.
+- **이점**: 팩 다운로드 대역폭도 **R2 무료 egress** → Supabase 5GB egress 압박 해소, Supabase 는 인증+DB(수 MB)만 → 사실상 영구 무료. **위험 낮음**(base 타일과 동일 패턴, Supabase 원본은 폴백으로 남겨둠).
+
+---
+
 ## 2026-07-07 · Cloudflare R2 저장 10GB·대역폭 무제한이 맞나?
 
 **Q.** Cloudflare에서 지도를 서빙 중인데, 저장 10GB까지 무료가 맞고 대역폭(전송량)은 무제한 무료가 맞아?

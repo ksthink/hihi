@@ -43,8 +43,10 @@ async function loadCatalog() {
 }
 
 // Storage 팩 파일 공개 URL — 카탈로그의 데이터 소스 (routes/spots/contours/base.pmtiles)
-const packUrl = (park, file) =>
-  supabase.storage.from("packs").getPublicUrl(`${park}/${file}`).data.publicUrl;
+// 팩 파일은 Cloudflare R2 자체 호스팅(egress 무료). 브라우저가 직접 fetch → R2 CORS 필요(공개 OSM 데이터).
+// base.pmtiles(최대 8.5MB)는 Vercel 함수 4.5MB 한도 초과라 프록시 불가 → R2 직결이 정답.
+const R2_PACKS_BASE = "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/packs";
+const packUrl = (park, file) => `${R2_PACKS_BASE}/${park}/${file}`;
 
 const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
 // 데이터 값(초급/중급/고급) → 화면 표시 라벨

@@ -71,22 +71,25 @@
 ┌─ 프런트엔드 (빌드 없는 정적 파일) ──────────────────────┐
 │  index.html · app.js · basemap-style.js · style.css      │
 │  MapLibre GL JS + PMTiles + supabase-js (ESM)            │
-└──────┬──────────────────┬───────────────────┬──────────┘
-       │ /pmtiles/*       │ /api/weather      │ REST·Auth·Storage
-       ▼                  ▼                   ▼
-  Cloudflare R2      기상청 프록시         Supabase (서울 리전)
-  기저 지도 타일      (api/weather.js)      ├ Postgres + RLS
-  (자체 호스팅,                            │  mountains · mountain_info
-   egress 무료)                            │  profiles · climb_records · saved_packs
-                                           └ Storage: packs/<산코드>/…
+└──────┬───────────────────┬──────────────────┬──────────┘
+       │ 지도 타일·팩 파일   │ /api/weather     │ REST·Auth (DB만)
+       ▼                   ▼                  ▼
+  Cloudflare R2       기상청 프록시        Supabase (서울 리전)
+  ├ kr-base.pmtiles   (api/weather.js)     ├ Postgres + RLS
+  │  (기저 지도)                           │  mountains · mountain_info
+  └ packs/<산코드>/…                       │  profiles · climb_records · saved_packs
+     (오프라인 팩)                          └ (파일 없음 — 전부 R2로 이관)
+  자체 호스팅 · egress 무료
 ```
 
 - **프런트엔드**: 순수 정적 파일. 번들러·빌드 단계 없음. 브라우저 네이티브 ES 모듈.
-- **기저 지도 타일**: 대한민국 전역 벡터 타일 하나(`kr-base.pmtiles`, 505MB)를
-  **Cloudflare R2** 에 자체 호스팅. PMTiles 는 HTTP Range 로 **보이는 타일만** 내려받습니다.
-  브라우저 CORS 회피를 위해 same-origin 프록시(`/pmtiles/*`)를 거칩니다.
-  → 자세한 구축 과정은 **[CLOUDFLARE.md](CLOUDFLARE.md)**
-- **백엔드(Supabase)**: 온라인 기능 전용 — 로그인, 기록 동기화, 팩 배포, 산 정보.
+- **지도 타일·팩 파일 = Cloudflare R2** (egress 무료 · 자체 호스팅):
+  - **기저 지도**: 대한민국 전역 벡터 타일(`kr-base.pmtiles`, 505MB). PMTiles 는 HTTP Range 로
+    **보이는 타일만** 받고, CORS 회피 위해 same-origin 프록시(`/pmtiles/*`)를 거칩니다.
+  - **오프라인 팩**: `packs/<산코드>/`(등산로·시설·등고선 + per-산 base.pmtiles). 브라우저가
+    **R2에서 직접 fetch**(R2 CORS 필요). 구축·이관 과정은 **[CLOUDFLARE.md](CLOUDFLARE.md)**
+- **백엔드(Supabase) = 인증 + 관계형 DB 만** — 로그인, 기록 동기화, 산 카탈로그/정보.
+  (파일 저장은 전부 R2로 이관 → Supabase 는 Auth·DB 전담)
   등반 런타임(지도·경로)은 항상 로컬이 담당하는 **로컬 우선(local-first)** 모델.
   - 모든 사용자 테이블에 **RLS(Row Level Security)** — 본인 데이터만 접근
   - 클라이언트는 **공개(publishable) 키만** 사용. **비밀(secret) 키는 `.env` 전용**(절대 커밋·프런트 금지)
@@ -157,6 +160,7 @@ bash scripts/setup_admin.sh                    # 최초 1회: .venv + go-pmtiles
 | 자산 | 호스팅 | 비고 |
 |---|---|---|
 | 기저 지도 타일 | **Cloudflare R2** (`kr-base.pmtiles`) | egress 무료 · [CLOUDFLARE.md](CLOUDFLARE.md) |
+| 오프라인 팩 파일 | **Cloudflare R2** (`packs/<산코드>/`) | egress 무료 · 브라우저 직접 fetch(R2 CORS) |
 | 지도 라벨 글리프 | **리포 내 `fonts/`** (same-origin) | 나눔고딕코딩 라틴 글리프(PBF) |
 | 지도 한글 폰트 | **리포 내 `fonts/`** (`.woff2`) | 나눔고딕코딩 (localIdeographFontFamily) |
 | UI 폰트 | **리포 내 `fonts/`** (`.woff2`) | KakaoSmallSans |
@@ -198,29 +202,33 @@ hihi/
 ├── scripts/              콘텐츠 파이프라인 + 서버 (앱에 포함 안 됨)
 │   ├── serve.py              로컬 개발 서버 (정적 + /pmtiles 프록시)
 │   ├── admin_server.py       관리자 서버 (serve.py 상속 + /admin + /api)
-│   ├── r2_upload.py          R2 업로드 (boto3 멀티파트) — CLOUDFLARE.md 참고
+│   ├── r2_lib.py             R2 공용 헬퍼 (boto3 업로드) — 아래 스크립트들이 공유
+│   ├── r2_upload.py          R2 대용량 업로드 CLI (kr-base.pmtiles)
+│   ├── migrate_packs_to_r2.py 팩 파일 Supabase Storage → R2 일회성 이관
 │   ├── draft_store.py        산별 큐레이션 초안 저장소
 │   ├── gpx_match.py          GPX → 구간망 맵매칭
-│   ├── publish_pack.py       배포: draft → geojson·등고선·타일 → Storage
+│   ├── publish_pack.py       배포: draft → geojson·등고선·타일 → R2 packs/
 │   ├── pack_lib.py           공용 라이브러리 (좌표변환·그래프·DEM·프로파일)
 │   ├── dem_cache.py          Copernicus DEM 타일 캐시
 │   ├── seed_mountain_info.py 전국 산 정보(mountain_info) 시드
 │   └── (그 외 변환·대안 파이프라인 스크립트)
 │
-├── supabase/schema.sql   DB 스키마 + RLS + Storage 버킷
+├── supabase/schema.sql   DB 스키마 + RLS (Storage 버킷은 R2로 이관)
 ├── vercel.json           배포 리라이트
 ├── data/                 팩 원본 GeoJSON (일부 gitignore: tiles/, packs/)
 │
 └── 문서: README.md · CLOUDFLARE.md · WORKLOG.md · QA.md · CLAUDE.md
 ```
 
-**Supabase 리소스**
-| 리소스 | 내용 |
-|---|---|
-| `mountains` | 팩 카탈로그 (id=산코드, name, region, elev, center, zoom, bbox, pack_version) |
-| `mountain_info` | 전국 산 정보 5,360건 (높이·관리주체·전화·소개) — 산 소개 카드 소스 |
-| `profiles` · `climb_records` · `saved_packs` | 사용자 데이터 (RLS: 본인만) |
-| Storage `packs/<산코드>/` | `base.pmtiles`(오프라인 팩) · `routes`/`spots`/`contours.geojson` |
+**백엔드 리소스** (Supabase = Auth + DB / Cloudflare R2 = 파일)
+| 리소스 | 위치 | 내용 |
+|---|---|---|
+| `mountains` | Supabase DB | 팩 카탈로그 (id=산코드, name, region, elev, center, zoom, bbox, pack_version) |
+| `mountain_info` | Supabase DB | 전국 산 정보 5,360건 (높이·관리주체·전화·소개) — 산 소개 카드 소스 |
+| `profiles` · `climb_records` · `saved_packs` | Supabase DB | 사용자 데이터 (RLS: 본인만) |
+| Auth | Supabase | 이메일 로그인·세션 |
+| `packs/<산코드>/` | **Cloudflare R2** | `base.pmtiles`(오프라인 팩) · `routes`/`spots`/`contours.geojson` |
+| `kr-base.pmtiles` | **Cloudflare R2** | 기저 지도 타일 |
 
 ---
 
@@ -232,7 +240,7 @@ hihi/
 | 항목 | 웹(현재) | iOS(계획) |
 |---|---|---|
 | 지도 스타일·타일·데이터 | MapLibre GL JS + PMTiles + GeoJSON | MapLibre Native 가 동일 소비 |
-| 백엔드 | Supabase (스키마·RLS·Storage) | `supabase-swift` 로 그대로 재사용 |
+| 백엔드 | Supabase (스키마·RLS·Auth) + R2(파일) | `supabase-swift` 재사용 · R2는 파일 fetch/번들 |
 | GPS 트래킹 | `watchPosition` (화면 켠 상태만) | CoreLocation **백그라운드** |
 | 오프라인 저장 | IndexedDB (퇴거 가능) | 파일시스템 영구 저장 |
 | 기저 타일 | Cloudflare R2 (프록시 경유) | 산별 추출본 **앱 번들** |

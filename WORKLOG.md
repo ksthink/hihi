@@ -31,6 +31,9 @@
 - 지도 글리프 CDN 제거: `basemap-style.js` `glyphs` → `/fonts/{fontstack}/{range}.pbf` (protomaps.github.io 의존 제거, same-origin 정적)
 - 지도 라벨 폰트 나눔고딕코딩 통일: `basemap-style.js`·`app.js`·`admin/admin.js` `text-font` → `Nanum Gothic Coding Regular`, `localIdeographFontFamily` → Nanum(한글, 자체 woff2 canvas 렌더), `style.css`·`admin/admin.css` @font-face 추가. 라틴은 fontnik SDF 글리프 — 지도 전체가 나눔고딕코딩. 구글 CDN 미사용
 - `README.md` 전면 재작성 — 누구나 이해하도록 구조화(목차·기능표·아키텍처 다이어그램·자체 호스팅·저장소 구조·iOS 이식 로드맵). R2·자체 호스팅 최신 반영, 관련 문서 링크
+- 지도 라벨 크기·위계 정비: 전체 축소→위계 조정→20% 확대. base `locality`(잡지명)를 봉우리보다 작게(kind별 match), MapLibre 공식 검증기로 유효성 확인. `temple-names` 레거시 필터 현대 문법화
+- 봉우리 강조: 정상(`peaks.geojson` `main:true` = 대청봉·백운대) 14.4px·나머지 11px(case), **볼드**(나눔고딕코딩 Bold 자체 호스팅 `fonts/Nanum Gothic Coding Bold/` + `NanumGothicCoding-Bold.woff2` + @font-face 700), 지명 앞 삼각형(라이트 ▲/다크 △, 테마 전환 시 재부착)
+- 팩 파일 저장소 R2 이관: 기존 6산 24파일(base.pmtiles·routes/spots/contours) Supabase Storage → R2 `hihi/packs/` 복사(Supabase 원본은 폴백 유지). `app.js` `packUrl` → R2 직결(base.pmtiles 8.5MB는 Vercel 4.5MB 한도 초과라 프록시 불가), `publish_pack.py` `_upload` → R2. **Supabase 는 이제 Auth+DB 전담**. `scripts/r2_lib.py`·`migrate_packs_to_r2.py`(신규), .venv boto3 추가. R2 CORS 는 프로덕션·localhost 허용(로컬 IP 접속은 `*` 필요)
 
 ## 2026-07-04
 
