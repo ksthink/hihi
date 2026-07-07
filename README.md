@@ -2,446 +2,264 @@
 
 > **"산에서는 네트워크도, 배터리도 아껴야 한다."**
 
-하이하잇은 대한민국 명산(현재 북한산·설악산)의 등산로를 탐험하고, 오프라인으로 저장하고,
-등반을 기록하는 **모바일 등산 앱**입니다. 지금은 **MapLibre GL JS + PMTiles** 기반 웹앱으로
-개발 중이며, 최종적으로는 **iOS 네이티브 앱(MapLibre Native + SwiftUI)** 으로 완성됩니다.
+하이하잇은 대한민국 명산의 등산로를 **탐험**하고, 지도를 **오프라인으로 저장**하고,
+산행을 **기록**하는 모바일 등산 앱입니다.
+현재는 **웹앱(MapLibre GL JS + PMTiles)** 으로 개발 중이며, 최종적으로는
+**iOS 네이티브 앱(MapLibre Native + SwiftUI)** 으로 완성하는 것을 목표로 합니다.
 
-**라이브 데모**: https://hihi.metaphr.dev — 폰으로 접속하면 전체화면 앱 레이아웃,
-데스크톱에서는 iPhone 17(402×874) 시뮬레이터 프레임으로 표시됩니다.
-
----
-
-## 1. 프로젝트 취지
-
-### 왜 만드는가
-- **오프라인 우선** — 산에는 전파가 닿지 않는 구간이 많습니다. 지도·등산로·시설 정보를
-  미리 기기에 저장해 두고, 등반 중에는 **네트워크 호출 0** 으로 동작하는 것이 목표입니다.
-- **배터리 절약** — 등산에서 배터리는 안전 문제입니다. 화면 소비를 줄이기 위해
-  **색상을 배제한 흑백(모노크롬) UI** 만 제공합니다. 다크 모드는 순수 검정 배경(OLED 절전),
-  라이트 모드는 순수 흰색. 기저 지도도 흑백으로 렌더링합니다.
-- **대한민국 지형 특화** — 지도 범위를 남한 전역(제주·독도 포함)으로 제한하고,
-  한국 명산의 등산로·등고선·경로 지점을 산별 "팩" 단위로 관리합니다.
-
-### 사용자 워크플로 (설계 기준)
-1. 앱을 열고 산을 검색한다 → 지도와 등산로 목록이 보인다.
-2. 마음에 드는 산을 **오프라인 저장**한다 → 지도·루트·시설 데이터가 로컬에 저장된다.
-3. 저장된 코스를 골라 **등반 시작** → 완전 오프라인 상태에서 GPS 트래킹.
-4. 등반이 끝나면 **기록**이 저장되고, 온라인이 되면 계정에 동기화된다.
+🔗 **라이브 데모**: https://hihi.metaphr.dev
+(폰에서는 전체화면, 데스크톱에서는 아이폰 프레임 안에 표시됩니다.)
 
 ---
 
-## 2. 기능
-
-### 탐험 (지도)
-- PMTiles 벡터 기저 지도 — 흑백, 화이트/다크 테마 대응
-- **국립공원공단 공식 탐방코스** (KNPS 탐방로 공간데이터): 북한산 21코스·설악산 11코스 — 실제 코스명(사기막골입구~백운대 등)·시종점·거리·난이도
-- **등고선 오버레이** (Copernicus GLO-30 DEM, 50m 간격): 100m 주 등고선(줌 10.5+), 50m 보조(12.5+), 고도 라벨(13.5+)
-- **경로 지점**(분기점·시종점) 점 표시, 주요 봉우리(백운대·대청봉 등) 라벨
-- 등산로 목록 바텀시트 — 코스별 난이도(보통/어려움/매우 어려움)·거리·시간·**고도 미니그래프**
-- 코스 선택 시 해당 루트만 필터 표시 + 제목 블록에 "산이름 | 코스명"
-- **산 검색** — 좌상단 돋보기, 한글 IME 대응 인라인 자동완성
-- 지도 컨트롤: 나침반·현재위치·테마 토글(우하단), 축척(좌하단)
-
-### 추천
-- "대한민국 100대 명산" 목록(현재 북한산·설악산)에서 산 선택
-- 추천 코스 카드 → 탭하면 해당 코스로 바로 이동
-
-### 등반
-- 상단 고정 카드: 선택 코스의 거리·예상 시간·난이도·**고도 정보**(최고/최저/누적상승) + 프로파일 그래프
-- 카드 아래 **"저장된 지도"** 목록(용량·저장일·삭제) — 여러 개면 목록만 스크롤
-- **등반 시작 → 지도 기반 실시간 트래킹**: 선택 코스만 표시된 지도로 전환 + 현재위치 추적,
-  HUD(경과 시간·실측 이동거리·GPS 지점 수), 5m 필터로 GPS 트랙 기록
-- **종료 시 실측 기록 저장** — 실측 거리(50m+)·소요 시간·GPS 트랙(`track` jsonb, 최대 2000지점)
-- 웹 한계(iOS CoreLocation 에서 해소): 화면이 꺼지면 GPS 중단(백그라운드 추적 불가)
-
-### 기록 (계정)
-- **이메일 + 비밀번호 회원가입/로그인** (Supabase Auth)
-- 등반 기록 목록 + 요약 통계(총 산행·총 거리·누적 고도)
-- 기록은 서버(Postgres + RLS)에 저장 — **본인만 조회 가능**, 새로고침/재접속에도 유지
-
-### 인트로
-- 접속 시 스플래시: "끊임없이 걷다, 오롯이 몰입하다" → **하이-하잇(HI-Hike)** 순차 페이드인
-  → 탐험 화면 진입 (라이트/다크 대응, 초기 지도 로딩 가림 겸용)
-
-### 오프라인 지도 저장 (핵심 기능)
-- **로그인 필요** — 저장된 지도 목록은 본인 계정(`saved_packs`) 기준으로만 노출,
-  로그아웃 시 숨김(팩 파일은 기기에 유지되어 재로그인 시 재표시)
-- 코스 목록 상단 **"지도 다운"** → Wi-Fi 경고 모달(실제 팩 용량 표시) → 확인 시 다운로드
-- 다운로드 중: 산 이름·용량·**프로그레스바**(타일은 바이트 단위 진행률)
-- 팩(기저 타일 base.pmtiles + 등산로·시설·등고선)이 **기기(IndexedDB)에 저장**되고,
-  완료 시 **등반 탭으로 자동 이동** → **"저장된 지도" 목록**에 추가(용량·저장일·삭제)
-- 저장된 지도 클릭 → **네트워크 없이 로컬 타일로 지도 렌더**(`pmtiles://local-<id>`) +
-  최근 코스 자동선택 → 바로 **등반 시작** 가능
-- 웹 한계(iOS 파일시스템에서 해소): 앱 셸·글리프 폰트는 네트워크 필요 → 페이지가 열린
-  상태의 오프라인 지도 사용까지 지원. IndexedDB 는 브라우저 용량 정책에 따라 퇴거될 수 있음
+## 목차
+1. [무엇을 하는 앱인가](#1-무엇을-하는-앱인가)
+2. [주요 기능](#2-주요-기능)
+3. [어떻게 동작하나 (아키텍처)](#3-어떻게-동작하나-아키텍처)
+4. [빠르게 실행하기](#4-빠르게-실행하기)
+5. [배포 (Vercel)](#5-배포-vercel)
+6. [산 데이터 추가하기 (관리자 콘솔)](#6-산-데이터-추가하기-관리자-콘솔)
+7. [지도 자산은 전부 자체 호스팅](#7-지도-자산은-전부-자체-호스팅)
+8. [저장소 구조](#8-저장소-구조)
+9. [iOS 네이티브 이식 계획](#9-ios-네이티브-이식-계획)
+10. [데이터 출처 · 라이선스](#10-데이터-출처--라이선스)
+11. [함께 보면 좋은 문서](#11-함께-보면-좋은-문서)
 
 ---
 
-## 3. 아키텍처
+## 1. 무엇을 하는 앱인가
 
+### 세 가지 원칙
+- **오프라인 우선** — 산에는 전파가 안 닿는 곳이 많습니다. 지도·등산로·시설 정보를 미리
+  기기에 저장해 두고, 등반 중에는 **네트워크 없이** 동작하는 것이 목표입니다.
+- **배터리 절약** — 등산에서 배터리는 안전입니다. 화면 소비를 줄이려고 **흑백(모노크롬) UI** 만
+  씁니다. 다크 모드는 순수 검정(OLED 절전), 라이트 모드는 순수 흰색.
+- **대한민국 특화** — 지도 범위를 남한 전역(제주·독도 포함)으로 제한하고, 명산의 등산로·등고선·
+  시설을 산별 "팩" 단위로 관리합니다.
+
+### 사용자 흐름
 ```
-┌─ 프런트엔드 (정적, 빌드 없음) ──────────────────┐
-│  index.html · app.js · basemap-style.js · style.css │
-│  MapLibre GL JS 4.7 + pmtiles 3.2 (CDN ESM)          │
-│  supabase-client.js (@supabase/supabase-js, CDN ESM) │
-└──────────────┬───────────────────┬──────────────┘
-               │                   │
-   /pmtiles/*  │                   │  REST / Auth / Storage
-   (리라이트)   ▼                   ▼
-   Protomaps demo bucket      Supabase (서울 권장)
-   (기저 벡터 타일)            ├ Postgres + RLS
-                              │  mountains / profiles /
-                              │  climb_records / saved_packs
-                              └ Storage: packs/<산>/…
+산 검색 → 지도·등산로 확인 → 지도 오프라인 저장 → 코스 선택 → 등반 시작(GPS 트래킹) → 기록 저장
 ```
 
-- **프런트**: 순수 정적 파일. 번들러/빌드 스텝 없음. 브라우저 네이티브 ES 모듈.
-- **기저 타일**: PMTiles 는 HTTP Range 요청으로 필요한 타일만 읽음.
-  - 로컬 개발: `scripts/serve.py` 가 정적 서빙 + `/pmtiles/*` CORS 프록시
-  - 배포(Vercel): `vercel.json` 의 rewrite 가 같은 역할 (same-origin → CORS 문제 없음)
-- **백엔드(Supabase)**: 온라인 기능 전용 — 계정, 기록 동기화, 팩 배포.
-  등반 런타임(지도·경로)은 항상 로컬이 담당하는 **로컬 우선(local-first)** 모델.
-  - 모든 사용자 테이블에 **RLS(Row Level Security)** — `auth.uid() = user_id` 본인만 접근
-  - 클라이언트는 **publishable 키**(공개, RLS 보호)만 사용.
-    **secret 키는 로컬 시드 스크립트 전용**(절대 커밋/프런트 금지)
-
 ---
 
-## 4. 데이터 파이프라인 (`scripts/`)
+## 2. 주요 기능
 
-산 하나의 "팩" = `routes.geojson`(등산로) + `spots.geojson`(경로 지점) + `contours.geojson`(등고선).
-
-| 스크립트 | 역할 |
+| 탭 | 핵심 기능 |
 |---|---|
-| `admin_server.py` | **관리자 콘솔(현행)**: `http://127.0.0.1:8891/admin/` — 산 추가·GPX 코스 큐레이션·분기점 편집·배포. 로컬 전용(127.0.0.1), secret 키는 `.env` 로만 |
-| `pack_lib.py` | 공용 라이브러리: EPSG:5186→WGS84, 산림청 구간 그래프, Dijkstra, DEM 보간, 48pt 프로파일 |
-| `draft_store.py` | 산별 큐레이션 초안(`admin_data/<산코드>/draft.json`) 저장소 + 배포 geojson 변환 |
-| `gpx_match.py` | GPX 업로드 → 구간망 맵매칭 (스냅 25m, 갭 Dijkstra 보간, 데이터 부실 구간은 GPX 원 좌표 하이브리드) |
-| `dem_cache.py` | Copernicus GLO-30 타일 캐시(`cache/dem/`) — bbox 커버 타일 자동 다운로드 |
-| `publish_pack.py` | 배포 파이프라인: draft → geojson·등고선·기저타일 → Storage 업로드 + `mountains` upsert |
-| `build_forest_pack.py` | 산림청 원본 → 자동 코스 추출 CLI (들머리→정상 Dijkstra, 신규 산 초안 시드에도 사용) |
-| `convert_knps_courses.py` | 국립공원 코스: KNPS 탐방로 API(공원사무소코드 필터) → 공식 코스 GeoJSON, 3km+ 큐레이션 |
-| `add_elevation_copernicus.py` | 코스 고도 주입: Copernicus DEM 샘플링 → profile/min/max/ascent |
-| `make_contours_copernicus.py` | 등고선 생성: Copernicus GLO-30 DEM(AWS Open Data, COG) → shapely 단순화 |
-| `osm_trails.py` / `make_contours.py` / `add_elevation.py` / `convert_spots.py` | 대안·레거시 파이프라인 (OSM 코스, SRTM 등고선 등) |
-| `upload_packs.py` | (레거시) 3산 일괄 시드 — 현행 배포는 관리자 콘솔/`publish_pack.py` |
-| `serve.py` | 로컬 개발 서버 (정적 + PMTiles CORS 프록시, 포트 8890) |
+| **탐험** | 흑백 벡터 지도, 공식 탐방코스(국립공원공단), 등고선, 분기점·봉우리 라벨, 산 검색, **산 소개 카드**(높이·소개·관리주체), **오늘 날씨**(기상청 단기예보) |
+| **추천** | 100대 명산 목록에서 산 선택, 추천 코스 카드 |
+| **등반** | 코스 카드(거리·시간·난이도·고도 그래프), 저장된 지도 목록, **실시간 GPS 트래킹**, **현재 위치 국가지점번호** 표시 |
+| **기록** | 이메일 로그인(Supabase Auth), 산행 기록 목록·통계 (본인만 조회, RLS 보호) |
 
-### 새 산 추가하는 법 (관리자 콘솔)
-```bash
-bash scripts/setup_admin.sh                      # 최초 1회: .venv + go-pmtiles
-.venv/bin/python scripts/admin_server.py         # 0.0.0.0:8890 — 앱(/)+관리자(/admin/)+API 통합
-```
-- 원격 접속: `http://<호스트>:8890/admin/` → **비밀번호 로그인** (.env `ADMIN_PASSWORD`).
-  **5회 실패 시 해당 IP 10분 잠금.** 성공하면 API 토큰이 브라우저에 저장되어 재입력 불필요.
-  (localhost 는 인증 면제 · `?token=<ADMIN_TOKEN>` 직접 진입도 가능)
-- serve.py(구 개발 서버)와 같은 포트를 쓰므로 동시에 띄우지 말 것.
-1. **검색**: 산 이름/산코드 검색(전국 5,360) → "추가" — 산림청 원본(`mountain/<산코드>/`)에서
-   스팟·bbox 자동 구성 + 자동 코스 시드 (DEM 자동 다운로드)
-2. **큐레이션**: GPX 업로드로 코스 생성(맵매칭 미리보기 → "코스로 추가"), 이름·난이도·설명 편집,
-   배포 여부(ready/초안) 선별, 분기점 이름 부여·이동·추가
-3. **배포** 버튼 → 등고선·기저 타일 생성 → Supabase 반영 → **사용자 앱 새로고침만으로 등장**
-   (앱은 `mountains` 카탈로그 주도 — 코드 배포 불필요)
+**오프라인 지도 저장** (핵심 기능)
+- 코스 목록의 **"지도 다운"** → 팩(기저 타일 + 등산로 + 시설 + 등고선)을 기기(IndexedDB)에 저장
+- 저장된 지도를 열면 **네트워크 없이** 로컬 타일로 렌더 → 바로 등반 시작
+- (웹의 한계는 iOS 파일시스템 단계에서 완전 해소 — 아래 [9번](#9-ios-네이티브-이식-계획) 참고)
 
-편집 소스는 `admin_data/<산코드>/draft.json`(커밋 대상), 배포 산출물 `data/packs/`·`cache/`·`tools/`·`.venv/` 는 gitignore.
-
-### 팩 업로드 규격 (Pack Specification)
-
-팩을 업로드/추가할 때 반드시 아래 규격을 따릅니다. 웹앱·시드 스크립트·(향후) iOS 가
-모두 이 규격을 전제로 동작합니다.
-
-**① 식별자 (`mountain_id`) = 산림청 산코드 9자리**
-- 전국 산 코드 원천: `scripts/MNT_CODE.xlsx`(목록 2,931산) + `scripts/mnt.xlsx`(산정보 4,704산,
-  항공본부) → `scripts/convert_mnt_codes.py` 병합 → `data/mnt-codes.json`
-  (5,360산 `{code, name, region, elev?}`, 공통 코드는 산정보가 정본)
-- **대표 코드 규칙**: 산림청 체계엔 "산 전체" 코드가 없고 조사구역/봉우리 단위다.
-  따라서 **산의 대표 코드 = 주봉(정상) 코드 중 산정보가 충실한 쪽**으로 정한다.
-  예: 북한산→**백운대 `113050202`**(835.6m) · 설악산→**대청봉 `428302602`** · 지리산→**천왕봉 `488605302`**
-- **산 이름은 전국 중복이 317건**(가야산·지리산 등) — 이름을 키로 쓰지 말 것. 표시할 때는
-  `region` 을 함께 노출해 구분한다.
-- 이 코드가 Storage 폴더명 · `mountains.id` · `admin_data/<산코드>/` · `saved_packs.mountain_id` ·
-  `climb_records.mountain_id` · IndexedDB 팩 키로 **전부 공유**됩니다 (한 곳이라도 다르면 연결이 끊어짐)
-- 앱의 산 목록·메타(`PARKS`)는 `mountains` 테이블에서 부팅 시 로드(카탈로그 주도) —
-  데이터 파일은 전부 Storage `packs/<산코드>/` 에서 fetch (로컬 `data/<slug>-*.geojson` 은 레거시 원본)
-
-**② Storage 파일 레이아웃** — 버킷 `packs` (공개 읽기), **파일명 고정**
-
-```
-packs/<mountain_id>/base.pmtiles       필수 — 기저 벡터 타일 (bbox 추출본, z0~15)
-packs/<mountain_id>/routes.geojson     필수 — 등산로 코스
-packs/<mountain_id>/spots.geojson      선택 — 경로 지점
-packs/<mountain_id>/contours.geojson   선택 — 등고선
-```
-- Content-Type: pmtiles = `application/octet-stream`, GeoJSON = `application/geo+json` (`x-upsert: true`)
-- 파일명은 앱(`app.js` `downloadPack`)이 위 이름을 그대로 조회하므로 변경 금지
-- `base.pmtiles` 생성(go-pmtiles CLI):
-  ```bash
-  pmtiles extract https://demo-bucket.protomaps.com/v4.pmtiles \
-    data/tiles/<id>-base.pmtiles --bbox=<minLon>,<minLat>,<maxLon>,<maxLat> --maxzoom=15
-  ```
-  (북한산 기준 약 8.5MB. `data/tiles/` 는 gitignore — Storage 로만 배포)
-
-**③ GeoJSON 본문 규격**
-- 좌표계: **WGS84(EPSG:4326)**, 좌표 순서 **[경도, 위도]** — 국내 좌표계(EPSG:5186 등)는
-  업로드 전 반드시 변환 (`convert_spots.py` 참고)
-- 최상위: `FeatureCollection`
-- geometry / properties 필드 정의는 **§7.2 데이터 스키마** 를 그대로 준수
-  - `routes`: `MultiLineString` + 필수 `name`(고유)·`difficulty`(초급/중급/고급)·`distance_km`,
-    권장 `time_hr`·`kind`·`desc`·`min_elev`·`max_elev`·`ascent`·`descent`·`profile[48]`
-  - `spots`: `Point` + `category`(분기점/시종점 …)·`detail`·`etc`
-  - `contours`: `LineString` + `elev`(m)·`idx`(0=50m 보조, 1=100m 주선)
-- `routes` 의 `name` 은 **산 내에서 고유**해야 함 (코스 선택·필터·기록이 name 기준)
-
-**④ `mountains` 카탈로그 행 규격** — 팩 업로드와 함께 upsert
-
-| 필드 | 타입 | 규격 | 예시 |
-|---|---|---|---|
-| `id` | text | ① 의 mountain_id | `"bukhansan"` |
-| `name` | text | 한글 산 이름 | `"북한산"` |
-| `region` | text | 지역 표기 | `"서울·경기"` |
-| `elev` | int | 최고봉 고도(m) | `836` |
-| `center` | jsonb | `[경도, 위도]` — 지도 초기 중심 | `[126.990, 37.672]` |
-| `zoom` | real | 지도 초기 줌 | `11.3` |
-| `bbox` | jsonb | `[minLon, minLat, maxLon, maxLat]` — 타일 추출·카메라 제한용 | `[126.90, 37.59, 127.06, 37.75]` |
-| `pack_version` | int | 팩 버전 — **내용 변경 시 +1** (클라이언트가 saved_packs 의 버전과 비교해 갱신 감지) | `1` |
-| `pack_size_kb` | int | 팩 총 용량(KB) — 시드 스크립트가 자동 계산 | `627` |
-
-**⑤ `scripts/upload_packs.py` 등록 형식** — 새 산은 두 곳에 추가
-
-```python
-PACKS = {
-    "488605302": {   # ← mountain_id = 산코드 (지리산_천왕봉, data/mnt-codes.json 에서 조회)
-        "data/tiles/jirisan-base.pmtiles": "base.pmtiles",
-        "data/jirisan-routes.geojson":   "routes.geojson",    # 로컬 경로: Storage 파일명
-        "data/jirisan-spots.geojson":    "spots.geojson",     # (없으면 줄 생략)
-        "data/jirisan-contours.geojson": "contours.geojson",
-    },
-}
-MOUNTAINS = [
-    {"id": "488605302", "name": "지리산", "region": "전남·전북·경남", "elev": 1915,
-     "center": [127.731, 35.337], "zoom": 11.0,
-     "bbox": [127.62, 35.27, 127.83, 35.42], "pack_version": 1},
-]
-```
-
-**⑥ 체크리스트 (업로드 전)**
-- [ ] `mountain_id` 가 `data/mnt-codes.json` 에 있는 **산코드 9자리**인가? (이름 슬러그 금지)
-- [ ] 좌표가 WGS84 [lng, lat] 인가? (한국이면 lng 124~132, lat 33~39 범위)
-- [ ] `routes` 의 코스 `name` 이 산 내 고유한가?
-- [ ] `difficulty` 값이 `초급/중급/고급` 중 하나인가? (표시 라벨과 혼동 금지)
-- [ ] 산코드가 `PARKS`/`MNT`(app.js)·`PACKS`/`MOUNTAINS`(시드)에서 동일한가?
-- [ ] 내용이 바뀐 재업로드라면 `pack_version` 을 올렸는가?
+**날씨 · 국가지점번호**
+- 날씨: 검색한 산 위치 기준 기상청 예보. 탐험=실시간, 등반=출발 시점 오프라인 스냅샷
+- 국가지점번호: 등반 중 현재 GPS 위치를 국가지점번호(예: `다사 5394 6231`)로 표시
+  (UTM-K/EPSG:5179 정변환, `npn.js`)
 
 ---
 
-## 5. 개발 계획 (로드맵)
+## 3. 어떻게 동작하나 (아키텍처)
 
-### 전략: 웹에서 ~80% → iOS 네이티브로 완성
-UI/UX·데이터 모델·백엔드를 웹에서 빠르게 설계·검증한 뒤,
-맥북 로컬에서 **MapLibre Native iOS + SwiftUI** 로 이식해 완성합니다.
-상세 이식 계획: `~/.claude/plans/moonlit-rolling-tulip.md` (+ 부록 A: Supabase 연동).
+```
+┌─ 프런트엔드 (빌드 없는 정적 파일) ──────────────────────┐
+│  index.html · app.js · basemap-style.js · style.css      │
+│  MapLibre GL JS + PMTiles + supabase-js (ESM)            │
+└──────┬──────────────────┬───────────────────┬──────────┘
+       │ /pmtiles/*       │ /api/weather      │ REST·Auth·Storage
+       ▼                  ▼                   ▼
+  Cloudflare R2      기상청 프록시         Supabase (서울 리전)
+  기저 지도 타일      (api/weather.js)      ├ Postgres + RLS
+  (자체 호스팅,                            │  mountains · mountain_info
+   egress 무료)                            │  profiles · climb_records · saved_packs
+                                           └ Storage: packs/<산코드>/…
+```
 
-### 그대로 이관되는 것
-- 지도 스타일 JSON(흑백 라이트/다크) · PMTiles · GeoJSON 데이터 → MapLibre Native 가 동일 소비
-- Supabase 스키마·RLS·Storage → `supabase-swift` SDK 로 재사용 (백엔드 재작업 없음)
-- 데이터 파이프라인(`scripts/`) → 명산 팩 빌드 도구로 유지
-
-### iOS 에서 새로 구현되는 것 (현재 웹은 스텁/부분 구현)
-| 기능 | 웹(현재) | iOS(계획) |
-|---|---|---|
-| 등반 GPS 트래킹 | watchPosition 실시간 트랙(화면 켠 상태만) | CoreLocation + **백그라운드 위치** |
-| 오프라인 저장 | IndexedDB 팩 실저장 + 로컬 타일 렌더(퇴거 가능) | 파일시스템 영구 저장 (Application Support) |
-| 기저 타일 | Protomaps CDN (리라이트 경유) | 산별 `pmtiles extract` 로컬 번들 |
-| 글리프 폰트 | protomaps.github.io CDN | 앱 번들 포함 |
-| 테마/상태 저장 | localStorage | UserDefaults / SwiftData |
-
-### 다음 할 일 (웹 단계)
-- [ ] 새 명산 팩 추가(지리산·한라산 등) + 스팟/등고선 산별 로드 일반화
-- [ ] 보관함(저장한 산) UI — 기록 탭과 분리 검토
-- [ ] 설악산 실데이터 교체(현재 샘플)
-- [ ] (선택) 기저 타일 자가호스팅 — `pmtiles extract` → Supabase Storage (iOS 준비 겸용)
+- **프런트엔드**: 순수 정적 파일. 번들러·빌드 단계 없음. 브라우저 네이티브 ES 모듈.
+- **기저 지도 타일**: 대한민국 전역 벡터 타일 하나(`kr-base.pmtiles`, 505MB)를
+  **Cloudflare R2** 에 자체 호스팅. PMTiles 는 HTTP Range 로 **보이는 타일만** 내려받습니다.
+  브라우저 CORS 회피를 위해 same-origin 프록시(`/pmtiles/*`)를 거칩니다.
+  → 자세한 구축 과정은 **[CLOUDFLARE.md](CLOUDFLARE.md)**
+- **백엔드(Supabase)**: 온라인 기능 전용 — 로그인, 기록 동기화, 팩 배포, 산 정보.
+  등반 런타임(지도·경로)은 항상 로컬이 담당하는 **로컬 우선(local-first)** 모델.
+  - 모든 사용자 테이블에 **RLS(Row Level Security)** — 본인 데이터만 접근
+  - 클라이언트는 **공개(publishable) 키만** 사용. **비밀(secret) 키는 `.env` 전용**(절대 커밋·프런트 금지)
 
 ---
 
-## 6. 로컬 개발
+## 4. 빠르게 실행하기
 
 ```bash
 git clone https://github.com/ksthink/hihi.git
 cd hihi
-python3 scripts/serve.py          # 정적 서버 + PMTiles CORS 프록시 (포트 8890)
+python3 scripts/serve.py        # 정적 서버 + /pmtiles 프록시 (포트 8890)
 # → http://localhost:8890
 ```
 
-> `python3 -m http.server` 로도 페이지는 뜨지만 `/pmtiles/*` 프록시가 없어
-> 기저 지도가 나오지 않습니다. 반드시 `serve.py` 를 사용하세요.
-
-### 배포 (Vercel)
-`main` 브랜치에 push 하면 자동 재배포됩니다.
-- `vercel.json` — `/pmtiles/*` 를 Protomaps 로 리라이트 (로컬 프록시의 배포판)
-- `.vercelignore` — 파이프라인 스크립트·SQL·문서를 배포에서 제외
-- 환경변수 불필요: publishable 키는 공개키(RLS 보호)라 코드에 포함되어 있습니다.
-  secret 키는 어떤 경우에도 Vercel/프런트에 두지 않습니다 (`QA.md` 참고).
-
-### Supabase 셋업 (새 프로젝트 기준)
-1. Supabase 프로젝트 생성 (**서울 리전 권장** — 한국 지도 데이터 규제 리스크 완화)
-2. SQL Editor 에서 `supabase/schema.sql` 실행 → 테이블 4개 + RLS + `packs` 버킷
-3. `supabase-client.js` 의 URL·publishable 키를 본인 프로젝트 값으로 교체
-4. `scripts/upload_packs.py` 로 팩 시드 (secret 키는 env 로만)
-5. Authentication → URL Configuration 에 배포 도메인 추가 (가입 확인 메일 복귀 경로)
+> ⚠️ `python3 -m http.server` 로도 페이지는 뜨지만, `/pmtiles/*` 프록시가 없어 **기저 지도가
+> 나오지 않습니다.** 반드시 `serve.py`(또는 관리자 서버 `admin_server.py`)를 사용하세요.
 
 ---
 
-## 7. 저장소 구조 (상세)
+## 5. 배포 (Vercel)
 
-> iOS 이식 시 시행착오를 줄이기 위한 **정밀 구조도**입니다. 각 항목에 이식 처리 방식을 표기합니다.
-> **[이관]** 그대로 재사용 · **[치환]** 네이티브 대응물로 교체 · **[폐기]** 웹 전용 · **[도구]** 콘텐츠 빌드용(앱 외부)
+`main` 브랜치에 push 하면 자동 재배포됩니다.
 
-### 7.1 전체 트리
+- `api/tiles.js` — `/pmtiles/*` 를 R2 기저 타일로 중계(Range 전달 + CDN 캐시)
+- `api/weather.js` — 기상청 예보 프록시 (환경변수 `KMA_KEY`)
+- `vercel.json` — `/pmtiles/*` → `/api/tiles` 리라이트
+- `.vercelignore` — 파이프라인 스크립트·관리자 콘솔·문서를 배포에서 제외
+
+**환경변수**
+| 변수 | 용도 | 위치 |
+|---|---|---|
+| `KMA_KEY` | 기상청 API 키 | Vercel 환경변수 |
+| 공개(publishable) 키 | Supabase 클라이언트 | 코드에 포함(공개키, RLS 보호) |
+| secret 키·R2 키·`ADMIN_PASSWORD` | 시드·업로드·관리자 | **`.env` 전용 (커밋·Vercel 금지)** |
+
+---
+
+## 6. 산 데이터 추가하기 (관리자 콘솔)
+
+산림청 등산로 원본은 코스가 과다하고 분기점이 부정확합니다. 그래서 운영자가 코스를
+**선별·명명·보정**해서 배포하는 로컬 관리자 콘솔을 제공합니다.
+
+```bash
+bash scripts/setup_admin.sh                    # 최초 1회: .venv + go-pmtiles 설치
+.venv/bin/python scripts/admin_server.py       # 0.0.0.0:8890 — 앱(/) + 관리자(/admin/) + API 통합
+```
+
+- 접속: `http://<호스트>:8890/admin/` → **비밀번호 로그인**(`.env` 의 `ADMIN_PASSWORD`).
+  5회 실패 시 해당 IP **10분 잠금**. (localhost 는 인증 면제)
+- 사용 순서:
+  1. **검색** — 전국 5,360개 산에서 이름/산코드로 검색 → "추가"(스팟·범위 자동 구성)
+  2. **큐레이션** — GPX 업로드로 코스 생성(맵매칭 미리보기), 이름·난이도·설명 편집, 분기점 정리
+  3. **배포** — 등고선·기저 타일 생성 → Supabase 반영 → **사용자 앱은 새로고침만으로 반영**
+     (앱이 `mountains` 카탈로그를 읽어 동작하므로 코드 재배포 불필요)
+
+> **산 식별자 = 산림청 산코드 9자리.** 이 코드가 Storage 폴더명·DB·저장 팩 키에서 전부
+> 공유되므로 한 곳이라도 다르면 연결이 끊깁니다. (자세한 팩 규격은 아래 [8번](#8-저장소-구조) 및
+> `scripts/draft_store.py` 참고)
+
+---
+
+## 7. 지도 자산은 전부 자체 호스팅
+
+외부 CDN이 파일을 지우면 지도가 깨집니다(실제로 Protomaps 데모버킷 삭제로 한 번 겪음).
+그래서 지도에 필요한 자산은 **전부 자체 호스팅**합니다. iOS 이식 시 그대로 앱 번들이 됩니다.
+
+| 자산 | 호스팅 | 비고 |
+|---|---|---|
+| 기저 지도 타일 | **Cloudflare R2** (`kr-base.pmtiles`) | egress 무료 · [CLOUDFLARE.md](CLOUDFLARE.md) |
+| 지도 라벨 글리프 | **리포 내 `fonts/`** (same-origin) | 나눔고딕코딩 라틴 글리프(PBF) |
+| 지도 한글 폰트 | **리포 내 `fonts/`** (`.woff2`) | 나눔고딕코딩 (localIdeographFontFamily) |
+| UI 폰트 | **리포 내 `fonts/`** (`.woff2`) | KakaoSmallSans |
+
+**지도 라벨 폰트 구조** (참고)
+- 한글·CJK → `localIdeographFontFamily` 가 기기 canvas 로 렌더 (자체 호스팅 woff2)
+- 라틴·숫자·기호 → SDF 글리프 PBF (`fonts/Nanum Gothic Coding Regular/`)
+- → 지도 전체가 **나눔고딕코딩**으로 통일됨
+
+> 남은 외부 의존은 `maplibre-gl`·`pmtiles`·`supabase-js` 라이브러리(ESM CDN)뿐이며,
+> 이는 iOS 에서 네이티브 SDK로 대체되는 부분입니다.
+
+---
+
+## 8. 저장소 구조
 
 ```
 hihi/
-├── index.html              [치환→SwiftUI] 앱 셸. ⚠️ 시뮬레이터 크롬(.sim-window/.statusbar/
-│                             .island/.home-indicator)은 목업 — iOS 에서 전량 폐기
-├── app.js                  [치환→Swift]  전체 앱 로직 (§7.3 내부 구조 참고 — 인터랙션 스펙으로 사용)
-├── basemap-style.js        [이관]        buildStyle(url, theme) → 흑백 MapLibre 스타일 JSON.
-│                             출력 JSON 을 MapLibre Native 가 그대로 소비 (glyphs URL 만 로컬로 교체)
-├── style.css               [치환→SwiftUI] 흑백 디자인 시스템. CSS 변수(:root/--*)가 디자인 토큰 원본
-├── supabase-client.js      [치환→supabase-swift] URL·publishable 키·인증 헬퍼.
-│                             스키마/RLS/버킷은 그대로 재사용 (백엔드 재작업 없음)
+├── index.html            앱 셸 (HTML)
+├── app.js                앱 전체 로직 (지도·검색·등반·기록·오프라인·날씨·국가지점번호)
+├── basemap-style.js      흑백 MapLibre 스타일 생성 buildStyle(url, theme)
+├── style.css             흑백 디자인 시스템 (CSS 변수 = 디자인 토큰)
+├── supabase-client.js    Supabase 초기화 + 인증 헬퍼 (공개 키)
+├── weather.js            기상청 예보 도메인 로직 (격자변환·병합·아이콘)
+├── npn.js                국가지점번호 변환 (WGS84 → UTM-K/EPSG:5179)
 │
-├── fonts/                  [이관] UI 폰트 — iOS 앱 번들에 그대로 포함 (CDN 미의존)
-│   ├── KakaoSmallSans-Light.woff2     (300 — 설명·힌트)
-│   ├── KakaoSmallSans-Regular.woff2   (400 — 본문·메타)
-│   └── KakaoSmallSans-Bold.woff2      (700 — 제목·버튼·수치)
+├── fonts/                자체 호스팅 폰트 + 지도 글리프 (§7)
+│   ├── KakaoSmallSans-*.woff2            UI 폰트
+│   ├── NanumGothicCoding-Regular.woff2   지도 한글 폰트
+│   └── Nanum Gothic Coding Regular/*.pbf 지도 라틴 글리프
 │
-├── data/                   [이관] 명산 팩 원본 — MLNShapeSource 로 그대로 로드 (§7.2 스키마)
-│   ├── bukhansan-routes.geojson    북한산 등산로 40코스 (OSM, 190KB)
-│   ├── bukhansan-spots.geojson     경로 지점 221개: 분기점·시종점 (38KB)
-│   ├── bukhansan-contours.geojson  등고선 343개: 50m 간격 (397KB)
-│   ├── peaks.geojson               주요 봉우리 7개 (북한산+설악산 공용)
-│   ├── seoraksan-routes.geojson    설악산 대청봉 등산로 57구간 (산림청 변환, 미큐레이션)
-│   ├── seoraksan-spots.geojson     설악산 대청봉 스팟 45개 (분기점·시종점)
-│   ├── seoraksan.geojson           (레거시 샘플 4코스 — 미사용, 삭제 후보)
-│   ├── bukhansan.geojson           (레거시 샘플 3코스 — 미사용, 삭제 후보)
-│   ├── mnt-codes.json              전국 산 카탈로그 5,360건 {code,name,region,elev?} — id 표준의 원천
-│   └── tiles/                      (gitignore) base.pmtiles 추출본 — Storage 로만 배포
+├── api/                  Vercel 서버리스 함수
+│   ├── tiles.js          기저 타일 프록시 (→ Cloudflare R2)
+│   └── weather.js        기상청 예보 프록시
 │
-├── supabase/
-│   └── schema.sql          [이관] DB 스키마 + RLS + packs 버킷. 새 환경 셋업 시 1회 실행
+├── admin/                관리자 콘솔 SPA (로컬 운영 도구, 배포 제외)
+│   ├── index.html · admin.js · admin.css
 │
-├── scripts/                [도구] 콘텐츠 파이프라인 — 앱에 포함되지 않음, 맥북에서도 그대로 사용
-│   ├── serve.py                    [폐기 예정] 로컬 개발 서버(정적+PMTiles CORS 프록시, :8890).
-│   │                                 iOS 는 로컬 파일 접근이라 프록시 개념 자체가 없음
-│   ├── osm_trails.py               ★ 등산로 생성(현행): Overpass 결과 → routes.geojson
-│   ├── make_contours_copernicus.py ★ 등고선 생성(현행): Copernicus GLO-30(COG) → bbox 등고선 (rasterio/contourpy/shapely)
-│   ├── make_contours.py            등고선 생성(대안): SRTM DEM 50m (venv: numpy/contourpy)
-│   ├── add_elevation.py            ★ 고도 주입: 코스에 profile/ascent/min·max_elev (venv)
-│   ├── convert_spots.py            ★ 스팟 변환: 산림청 Esri JSON, EPSG:5186→WGS84 (의존성 없음)
-│   ├── convert_seoraksan.py        설악산 산림청 Esri JSON(등산로+스팟) → WGS84 GeoJSON 변환
-│   ├── raw_428302602_geojson/      설악산 대청봉 산림청 원본(Esri JSON, EPSG:5186)
-│   ├── MNT_CODE.xlsx               산코드 목록 원본(산림청, 2,931산)
-│   ├── mnt.xlsx                    산정보 원본(산림청 항공본부, 4,704산 — 소재지·높이·설명)
-│   ├── convert_mnt_codes.py        ★ 산코드 병합 변환: 두 xlsx → data/mnt-codes.json (openpyxl)
-│   ├── upload_packs.py             ★ Supabase 시드: 팩 업로드 + mountains 카탈로그
-│   │                                 (env: SUPABASE_URL, SUPABASE_SECRET_KEY)
-│   ├── osm_routes.py               (대안) OSM route=hiking 릴레이션 → 코스
-│   ├── extract_routes.py           (대안) 산림청 네트워크에서 Dijkstra 로 코스 추출
-│   ├── convert_baegundae.py        (대안) 백운대 Esri JSON 변환
-│   ├── convert_routes.py           (대안) 홍은동 자락길 변환
-│   ├── osm_dulle.json / osm_named.json / osm_named_geom.json   Overpass 원본 캐시
-│   ├── route_raw.json / spots_raw_북한산.json / baegundae_*.json 산림청 원본 캐시
-│   └── (gitignore: *.hgt DEM 원본, dl_gpx.bin, __pycache__/)
+├── scripts/              콘텐츠 파이프라인 + 서버 (앱에 포함 안 됨)
+│   ├── serve.py              로컬 개발 서버 (정적 + /pmtiles 프록시)
+│   ├── admin_server.py       관리자 서버 (serve.py 상속 + /admin + /api)
+│   ├── r2_upload.py          R2 업로드 (boto3 멀티파트) — CLOUDFLARE.md 참고
+│   ├── draft_store.py        산별 큐레이션 초안 저장소
+│   ├── gpx_match.py          GPX → 구간망 맵매칭
+│   ├── publish_pack.py       배포: draft → geojson·등고선·타일 → Storage
+│   ├── pack_lib.py           공용 라이브러리 (좌표변환·그래프·DEM·프로파일)
+│   ├── dem_cache.py          Copernicus DEM 타일 캐시
+│   ├── seed_mountain_info.py 전국 산 정보(mountain_info) 시드
+│   └── (그 외 변환·대안 파이프라인 스크립트)
 │
-├── vercel.json             [폐기] 배포 설정 — /pmtiles/* → Protomaps 리라이트 (웹 전용)
-├── .vercelignore           [폐기] 배포 제외 목록 (⚠️ gitignore 문법 — 인라인 주석 금지)
-├── .gitignore              공통 (.env 시크릿 차단 포함)
+├── supabase/schema.sql   DB 스키마 + RLS + Storage 버킷
+├── vercel.json           배포 리라이트
+├── data/                 팩 원본 GeoJSON (일부 gitignore: tiles/, packs/)
 │
-├── README.md · WORKLOG.md(작업일지) · QA.md(질문/답변) · CLAUDE.md(개발 지침)
-└── (외부) ~/.claude/plans/moonlit-rolling-tulip.md   iOS 이식 계획서 + 부록 A(Supabase)
+└── 문서: README.md · CLOUDFLARE.md · WORKLOG.md · QA.md · CLAUDE.md
 ```
 
-### 7.2 데이터 스키마 (GeoJSON properties) — iOS 모델 정의 시 그대로 사용
-
-**`data/<산>-routes.geojson`** — geometry: `MultiLineString`
-
-| 필드 | 타입 | 의미 |
-|---|---|---|
-| `name` | string | 코스명 (앱 전역에서 **코스 식별자**로 사용 — 선택/필터/기록) |
-| `difficulty` | string | 데이터 값 `초급`/`중급`/`고급` — **표시 라벨은 별도**(보통/어려움/매우 어려움, app.js `DIFF_LABEL`) |
-| `distance_km` | number | 코스 길이(km) |
-| `time_hr` | number | 예상 소요(시간) |
-| `kind` | string | 코스 유형 (능선·계곡 등산로 / 둘레길) |
-| `desc` | string | 설명 |
-| `segments` | number | 병합된 OSM way 수 (참고용) |
-| `min_elev` / `max_elev` | number | 최저/최고 고도(m) |
-| `ascent` / `descent` | number | 누적 상승/하강(m) |
-| `profile` | number[48] | 등간격 고도 샘플 — 스파크라인 그래프용 |
-
-**`data/<산>-spots.geojson`** — geometry: `Point`
-
-| 필드 | 타입 | 의미 |
-|---|---|---|
-| `id` | string | 원본 스팟 ID |
-| `category` | string | `분기점`/`시종점` 등 — 지도 표시는 app.js `SHOWN` 목록으로 필터 |
-| `detail` / `etc` | string | 팝업 상세 텍스트 |
-
-**`data/<산>-contours.geojson`** — geometry: `LineString`
-
-| 필드 | 타입 | 의미 |
-|---|---|---|
-| `elev` | number | 등고선 고도(m) |
-| `idx` | 0\|1 | `0`=50m 보조선(줌 12.5+), `1`=100m 주선(줌 10.5+, 라벨 13.5+) |
-
-**`data/peaks.geojson`** — geometry: `Point` — `name`, `elev`(m), `park`(소속 산 id)
-
-### 7.3 `app.js` 내부 구조 (이식용 인터랙션 스펙)
-
-| 블록 | 핵심 심볼 | iOS 대응 |
-|---|---|---|
-| 설정 | `PMTILES_URL`, `PARKS{center,zoom,bbox,file}`, `DIFF_LEVEL/DIFF_LABEL`, `SHOWN` | 상수/Config 구조체 |
-| 테마 | `theme`, `applyTheme()`, localStorage `hiheight-theme` | UserDefaults + ColorScheme |
-| 지도 | `map`(maxBounds 한국, minZoom 5, hash), `ThemeControl` | MLNMapView 카메라 제한 |
-| 오버레이 | `ensureOverlays()` — 등고선 3레이어·trail casing/line(난이도별 굵기)·spots·peaks | MLNStyleLayer 1:1 이식 |
-| 코스 상태 | `currentPark`, `selectedName`, `trailCache`, `applyTrailFilter()`, `focusTrail()` | 앱 상태(@Observable) |
-| 목록/추천 | `renderTrailList()`, `FAMOUS`, `RECO`, `profileSVG()` | SwiftUI List + Path 스파크라인 |
-| 검색 | `setupSearch()` — 접두 우선 매칭, 한글 IME 조합 대응 자동완성 | 네이티브 검색(IME 이슈 없음) |
-| 인증 | `setupAuth()`, `currentUser`, onAuthStateChange | supabase-swift Auth |
-| 등반 | `startClimb()/stopClimb()`(HUD·watchPosition 트랙), `saveClimb()` → climb_records INSERT | CoreLocation 백그라운드 트래킹 |
-| 기록 | `renderRecords()` — SELECT + 요약 집계 | SwiftUI + supabase-swift |
-| 오프라인 | `downloadPack()`(프로그레스 다운로드)·`idb*`(IndexedDB)·`openSavedMap()`(로컬 타일 렌더)·`renderSavedMaps()` | 파일시스템 저장 + 번들 타일로 승격 |
-| 시트 | `setupSheet()` 드래그 바텀시트 | `.presentationDetents` |
-
-### 7.4 Supabase 리소스 (백엔드 — iOS 와 공유)
-
+**Supabase 리소스**
 | 리소스 | 내용 |
 |---|---|
-| `mountains` | 팩 카탈로그 (id=산코드/name/region/elev/center/zoom/bbox/pack_version/pack_size_kb) |
-| `mountain_info` | 전국 산 카탈로그 5,360건 = 산정보 4,704(높이·관리주체·설명 포함) + 목록 전용 656(이름·소재지만) 병합 — data/mnt-codes.json 과 동일 기준. 공개 읽기, 시드: `scripts/seed_mountain_info.py` |
-| `profiles` | 사용자 프로필 (RLS: 본인만) |
-| `climb_records` | 등반 기록 (started/ended_at, distance_km, ascent_m, duration_s, track jsonb — RLS: 본인만) |
-| `saved_packs` | 저장한 산 (user_id+mountain_id PK — RLS: 본인만) |
-| Storage `packs/` | `packs/<산id>/routes.geojson`·`spots.geojson`·`contours.geojson` (공개 읽기) |
-| 키 정책 | 클라이언트 = **publishable 키만**. secret 키는 시드 스크립트 env 전용(커밋 금지) |
-
-### 7.5 외부(CDN) 의존 현황 — iOS 이식 시 전부 해소 대상
-
-| 의존 | 현재(웹) | iOS 처리 |
-|---|---|---|
-| `maplibre-gl@4.7.1` ESM | jsdelivr CDN (app.js import) | MapLibre Native SDK |
-| `pmtiles@3.2.1` ESM | jsdelivr CDN | Native PMTiles 리더 |
-| `@supabase/supabase-js@2` ESM | jsdelivr CDN | supabase-swift |
-| 기저 타일 | 온라인 탐색: Protomaps demo(리라이트) / **오프라인: Storage 팩 base.pmtiles → IndexedDB** ✅ | 산별 추출본 번들·파일시스템 |
-| 지도 글리프 폰트 | protomaps.github.io (basemap-style.js `glyphs`) | 앱 번들 PBF |
-| ~~UI 폰트~~ | ~~CDN~~ → **fonts/ 로컬 번들 완료** ✅ | 번들 그대로 복사 |
+| `mountains` | 팩 카탈로그 (id=산코드, name, region, elev, center, zoom, bbox, pack_version) |
+| `mountain_info` | 전국 산 정보 5,360건 (높이·관리주체·전화·소개) — 산 소개 카드 소스 |
+| `profiles` · `climb_records` · `saved_packs` | 사용자 데이터 (RLS: 본인만) |
+| Storage `packs/<산코드>/` | `base.pmtiles`(오프라인 팩) · `routes`/`spots`/`contours.geojson` |
 
 ---
 
-## 8. 데이터 출처 · 라이선스 · 주의
+## 9. iOS 네이티브 이식 계획
 
-- **기저 지도**: [Protomaps](https://protomaps.com) PMTiles · © [OpenStreetMap](https://openstreetmap.org) 기여자 (ODbL — 저작자 표시 및 파생 데이터 share-alike)
-- **등산로**: OpenStreetMap (ODbL)
-- **등고선/고도**: NASA SRTM 1-arcsec (퍼블릭 도메인, AWS Open Data 배포)
-- **경로 지점**: 산림청 등산로 공간정보 (해당 약관 준수)
-- ⚠️ **등산로 라인은 개략 데이터입니다.** 실제 위치·거리와 다를 수 있으니
-  산행 시 국립공원공단 등 공식 지도를 반드시 확인하세요.
+**전략: 웹에서 ~80% 설계·검증 → 맥북 로컬에서 MapLibre Native + SwiftUI 로 완성.**
+상세 계획: `~/.claude/plans/moonlit-rolling-tulip.md`
+
+| 항목 | 웹(현재) | iOS(계획) |
+|---|---|---|
+| 지도 스타일·타일·데이터 | MapLibre GL JS + PMTiles + GeoJSON | MapLibre Native 가 동일 소비 |
+| 백엔드 | Supabase (스키마·RLS·Storage) | `supabase-swift` 로 그대로 재사용 |
+| GPS 트래킹 | `watchPosition` (화면 켠 상태만) | CoreLocation **백그라운드** |
+| 오프라인 저장 | IndexedDB (퇴거 가능) | 파일시스템 영구 저장 |
+| 기저 타일 | Cloudflare R2 (프록시 경유) | 산별 추출본 **앱 번들** |
+| 폰트·글리프 | 자체 호스팅(`fonts/`) | 앱 번들 그대로 복사 |
+| CORS 프록시 | 웹 전용 (`serve.py`·`api/tiles.js`) | **불필요** (로컬 파일 range 접근) |
+
+---
+
+## 10. 데이터 출처 · 라이선스
+
+- **기저 지도**: [Protomaps](https://protomaps.com) Basemap · © [OpenStreetMap](https://openstreetmap.org) 기여자
+  (ODbL — 저작자 표시 및 파생 데이터 share-alike). 타일은 Cloudflare R2 에 자체 호스팅.
+- **등산로·시설**: OpenStreetMap (ODbL) / 산림청·국립공원공단 공간정보 (약관 준수)
+- **등고선·고도**: Copernicus GLO-30 DEM (AWS Open Data) / NASA SRTM (퍼블릭 도메인)
+- **날씨**: 기상청 단기예보 (data.go.kr)
+- **지도 폰트**: 나눔고딕코딩 (SIL Open Font License) — `fonts/NanumGothicCoding-OFL.txt`
+- ⚠️ **등산로 라인은 개략 데이터입니다.** 실제 산행 시 국립공원공단 등 **공식 지도를 반드시 확인**하세요.
 - 한국 정밀 국가기본도의 국외 반출 규제를 고려해, 지도 데이터 호스팅은 국내(서울) 리전을 권장합니다.
+
+---
+
+## 11. 함께 보면 좋은 문서
+
+| 문서 | 내용 |
+|---|---|
+| **[CLOUDFLARE.md](CLOUDFLARE.md)** | Cloudflare R2 기저 타일 자체 호스팅 **구축 순서**(처음 하는 사람용) |
+| [WORKLOG.md](WORKLOG.md) | 작업일지 (날짜별 생성·수정 기록) |
+| [QA.md](QA.md) | 설계 질문/답변 기록 |
+| [CLAUDE.md](CLAUDE.md) | 개발 지침 (iOS 이식 전제 규칙 등) |
+| `~/.claude/plans/moonlit-rolling-tulip.md` | iOS 네이티브 이식 상세 계획서 |
