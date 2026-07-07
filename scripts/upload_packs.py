@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Supabase 시드 스크립트.
+"""레거시 시드 스크립트 (현행 배포는 관리자 콘솔/publish_pack.py).
 
-- 'packs' Storage 버킷 생성(공개)
-- data/*.geojson 을 packs/<mountain_id>/ 로 업로드
-- mountains 카탈로그 행 upsert
+- data/*.geojson 을 **Cloudflare R2** packs/<mountain_id>/ 로 업로드 (egress 무료)
+- mountains 카탈로그 행 upsert (Supabase DB)
+- R2 자격증명은 .env (R2_* 키), mountains upsert 는 SUPABASE_SECRET_KEY
 
 사용:
   export SUPABASE_URL=https://durnojryhhsajnlwvdzt.supabase.co
@@ -19,6 +19,8 @@ import os
 import sys
 import urllib.error
 import urllib.request
+
+import r2_lib
 
 URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 KEY = os.environ.get("SUPABASE_SECRET_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE", "")
@@ -94,14 +96,10 @@ def ensure_bucket():
 
 
 def upload(local, dest):
-    with open(os.path.join(ROOT, local), "rb") as f:
-        content = f.read()
-    st, out = req("POST", f"/storage/v1/object/packs/{dest}", content,
-                  {"Content-Type": content_type(dest), "x-upsert": "true"}, raw=True)
-    ok = st in (200, 201)
-    print(("업로드 OK   " if ok else f"업로드 실패({st}) ") + dest +
-          ("" if ok else f"  {out[:150]}"))
-    return len(content)
+    # 팩 파일은 Cloudflare R2(hihi/packs/) 로 업로드 — egress 무료. (mountains 카탈로그는 Supabase DB)
+    size = r2_lib.upload_file(os.path.join(ROOT, local), f"packs/{dest}")
+    print("업로드 OK(R2)  " + dest)
+    return size
 
 
 def seed_mountains(sizes):
@@ -114,7 +112,7 @@ def seed_mountains(sizes):
 
 
 def main():
-    ensure_bucket()
+    # ensure_bucket()  # R2 로 이관 — 버킷은 이미 존재(Supabase 버킷 생성 불필요)
     sizes = {}
     for mid, files in PACKS.items():
         total = 0
