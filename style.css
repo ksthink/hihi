@@ -220,6 +220,8 @@ footer .warn { margin-top: 6px; }
 .view.active { display: flex; }
 .view-head { flex: 0 0 auto; padding: 62px 20px 14px; background: var(--bg); border-bottom: .5px solid var(--line); }
 .view-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+.view-head h1 .head-div { color: var(--muted); font-weight: 400; margin: 0 9px; vertical-align: 2px; }
+.view-head h1 .mtn-badge { background: var(--text); color: var(--bg); font-size: 20px; font-weight: 700; padding: 2px 12px; border-radius: 9px; letter-spacing: -.3px; vertical-align: 2px; }
 .view-head p { font-size: 13px; color: var(--muted); margin-top: 3px; }
 .view-body { flex: 1; overflow-y: auto; padding: 16px 18px 24px; -webkit-overflow-scrolling: touch; }
 
@@ -418,6 +420,19 @@ footer .warn { margin-top: 6px; }
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: none; }
 }
+
+/* ── 산 소개 카드 (mountain_info: 높이/소개/관리주체) ── */
+.mi-section { padding: 8px 0 14px; border-bottom: .5px solid var(--line); }
+.mi-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.mi-name { font-size: 18px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+.mi-elev { font-size: 13px; font-weight: 700; color: var(--muted); }
+.mi-desc { font-size: 13px; line-height: 1.6; color: var(--text); margin: 0; word-break: keep-all; }
+.mi-desc.open { cursor: pointer; }
+.mi-more { border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+.mi-mgr { position: relative; display: inline-flex; align-items: center; margin-left: auto; }
+.mi-mgr-btn { border: 1px solid var(--line); background: var(--elevated); color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.mi-tel { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; border: 1px solid var(--line); background: var(--elevated); color: var(--text); font-family: inherit; font-size: 13px; font-weight: 700; border-radius: 10px; padding: 8px 14px; cursor: pointer; letter-spacing: .3px; white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.24); }
+.mi-tel::before { content: ""; position: absolute; top: -5px; right: 16px; width: 9px; height: 9px; background: var(--elevated); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
 
 /* ── 날씨 스트립 (기상청 단기예보, 흑백) ───────────── */
 .wx-section h2 { margin-bottom: 6px; }

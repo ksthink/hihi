@@ -449,7 +449,74 @@ async function loadPark(park) {
   renderTrailList(geojson);
   refreshMapBtn();
   renderClimbWeather();  // 스냅샷/캐시로 등반 카드 즉시 표시
+  loadMountainInfo(park); // 산 소개/높이/관리주체 카드 (날씨 위)
   loadWeather(park);     // 온라인이면 최신 예보로 갱신(비동기)
+}
+
+// ── 산 소개 카드 (mountain_info: 산코드 조인 · 높이/소개/관리주체) ──
+// 검색된 산의 코스 목록 최상단(날씨 위)에 표시. iOS 이식: 동일 테이블을 supabase-swift 로 소비.
+const esc = (s) => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const miCache = {}; // park(산코드) -> mountain_info 행 | null (세션 메모리)
+async function loadMountainInfo(park) {
+  const sec = document.getElementById("mi-sec");
+  if (!sec) return;
+  if (miCache[park] !== undefined) { renderMountainInfo(sec, park, miCache[park]); return; }
+  sec.hidden = true; sec.innerHTML = ""; // 조회 전 이전 산 카드 제거
+  let info = null;
+  try {
+    const { data } = await supabase.from("mountain_info")
+      .select("name,elev,manager,manager_tel,description").eq("code", park).maybeSingle();
+    info = data || null;
+  } catch (_) { info = null; }
+  miCache[park] = info;
+  if (park === currentPark) renderMountainInfo(sec, park, info);
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (_) {}
+  try { // 비보안 컨텍스트(http) 폴백
+    const ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand("copy"); ta.remove(); return ok;
+  } catch (_) { return false; }
+}
+function renderMountainInfo(sec, park, info) {
+  const cfg = PARKS[park] || {};
+  const name = cfg.label || (info && info.name) || "";
+  const elev = (info && info.elev != null) ? info.elev : cfg.elev;
+  const desc = ((info && info.description) || "").trim();
+  const mgr = info && info.manager;
+  const tel = info && info.manager_tel;
+  if (!name || (!desc && !mgr && elev == null)) { sec.hidden = true; sec.innerHTML = ""; return; }
+  const LIMIT = 100;
+  const long = desc.length > LIMIT;
+  let expanded = false, telShown = false;
+  function draw() {
+    const shown = (!long || expanded) ? desc : desc.slice(0, LIMIT).trim() + "…";
+    sec.innerHTML =
+      `<div class="mi-head"><span class="mi-name">${esc(name)}</span>` +
+      (elev != null ? `<span class="mi-elev">${Math.round(elev)}m</span>` : "") +
+      (mgr ? `<span class="mi-mgr"><button class="mi-mgr-btn" type="button">관리 · ${esc(mgr)}</button>` +
+        (telShown && tel ? `<button class="mi-tel" type="button">${esc(tel)}</button>` : "") + `</span>` : "") +
+      `</div>` +
+      (desc ? `<p class="mi-desc${expanded ? " open" : ""}">${esc(shown)}` +
+        (long && !expanded ? ` <button class="mi-more" type="button">더 읽기</button>` : "") + `</p>` : "");
+    sec.hidden = false;
+    const more = sec.querySelector(".mi-more");
+    if (more) more.onclick = (e) => { e.stopPropagation(); expanded = true; draw(); };
+    const descEl = sec.querySelector(".mi-desc");
+    if (descEl && long) descEl.onclick = () => { if (expanded) { expanded = false; draw(); } }; // 본문 누르면 접힘
+    const mgrBtn = sec.querySelector(".mi-mgr-btn");
+    if (mgrBtn) mgrBtn.onclick = () => { telShown = !telShown; draw(); };
+    const telEl = sec.querySelector(".mi-tel");
+    if (telEl) telEl.onclick = async () => {
+      const ok = await copyText(tel);
+      telEl.textContent = ok ? "복사됨 ✓" : tel;
+      if (ok) setTimeout(() => { const e = sec.querySelector(".mi-tel"); if (e) e.textContent = tel; }, 1200);
+    };
+  }
+  draw();
 }
 
 // ── 날씨 (기상청 단기예보 · 오프라인 스냅샷) ──────────
@@ -683,6 +750,10 @@ async function openTrailByName(park, name) {
 // ── 등반 뷰 ──────────────────────────────────────────
 function updateClimb(feature) {
   const p = feature.properties;
+  const mtn = (PARKS[currentPark] && PARKS[currentPark].label) || "";
+  const badge = document.getElementById("climb-mtn"), div = document.getElementById("climb-div");
+  if (badge) { badge.textContent = mtn; badge.hidden = !mtn; }
+  if (div) div.hidden = !mtn;
   document.getElementById("climb-course").textContent = p.name;
   document.getElementById("climb-dist").textContent = p.distance_km;
   document.getElementById("climb-time").textContent = p.time_hr || "–";
@@ -761,11 +832,9 @@ function startClimb() {
   document.getElementById("ch-pts").textContent = "0";
   document.getElementById("ch-note").textContent = "";
 
-  // 등반 중 날씨: 시작 시점의 스냅샷(오프라인에서도 유지)
-  const w = currentWeather(currentPark);
+  // 등반 중 HUD 에는 날씨 미표시 (출발 전 등반 카드에서만 확인)
   const wxHud = document.getElementById("wx-hud");
-  if (w) { renderStrip(wxHud, w.data, { offline: w.offline || !navigator.onLine }); wxHud.hidden = false; }
-  else if (wxHud) wxHud.hidden = true;
+  if (wxHud) wxHud.hidden = true;
 
   // 경과 시간 타이머
   climbSession.timer = setInterval(() => {
@@ -979,18 +1048,6 @@ function setupAuth() {
 }
 
 // ── 다운로드 ─────────────────────────────────────────
-function download(filename, text, mime = "application/json") {
-  const blob = new Blob([text], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
-document.getElementById("dl-geojson").addEventListener("click", () => {
-  const g = trailCache[currentPark];
-  if (g) download(`${currentPark}-trails.geojson`, JSON.stringify(g, null, 2));
-});
-
 // ── 로컬 팩 저장소 (IndexedDB) ───────────────────────
 // 온라인일 때 지도(타일)+팩 데이터를 기기에 저장 → 등반 시 오프라인 사용.
 // 웹 한계(iOS 파일시스템에서 해소): IndexedDB 는 브라우저 저장소라 용량 압박 시 퇴거될 수 있고,

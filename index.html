@@ -57,6 +57,7 @@
           <div id="sheet" class="explore-only">
             <div class="grabber" id="grabber"></div>
             <div class="sheet-content">
+              <div class="section mi-section" id="mi-sec" hidden></div>
               <div class="section wx-section" id="wx-explore-sec" hidden>
                 <h2 id="wx-explore-title">오늘 날씨</h2>
                 <div class="wx" id="wx-explore"></div>
@@ -75,12 +76,6 @@
                   <p class="dp-status" id="dp-status"></p>
                 </div>
                 <ul id="trail-list"></ul>
-              </div>
-
-              <div class="section">
-                <h2>데이터 내보내기</h2>
-                <button class="dl-btn" id="dl-geojson">등산로 데이터 내보내기 (GeoJSON)</button>
-                <p class="hint small" id="dl-note"></p>
               </div>
 
               <footer>
@@ -106,7 +101,7 @@
 
           <!-- 등반 뷰 -->
           <section class="view" id="view-deung">
-            <div class="view-head"><h1>등반</h1><p>코스를 골라 산행을 시작하세요</p></div>
+            <div class="view-head"><h1>등반<span class="head-div" id="climb-div" hidden>|</span><span class="mtn-badge" id="climb-mtn" hidden></span></h1><p>코스를 골라 산행을 시작하세요</p></div>
             <div class="view-body">
               <div class="climb-card">
                 <div class="climb-course" id="climb-course">선택된 코스가 없습니다</div>
