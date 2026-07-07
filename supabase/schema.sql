@@ -83,8 +83,6 @@ alter table mountain_info enable row level security;
 drop policy if exists mountain_info_read on mountain_info;
 create policy mountain_info_read on mountain_info for select using (true);
 
--- Storage 버킷 (공개 읽기). SQL Editor 에서 권한으로 막히면 이 3줄만 빼고 실행 후
--- 대시보드 Storage 에서 packs 버킷(Public)을 수동 생성한다.
-insert into storage.buckets (id, name, public)
-values ('packs', 'packs', true)
-on conflict (id) do nothing;
+-- 팩 파일(base.pmtiles·routes/spots/contours.geojson) + 기저 타일은 Cloudflare R2 에
+-- 자체 호스팅한다(egress 무료). Supabase Storage 는 사용하지 않음 → 버킷 생성 불필요.
+-- R2 구축·이관 절차: CLOUDFLARE.md 참고.
