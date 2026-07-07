@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-07-07 · Cloudflare R2 저장 10GB·대역폭 무제한이 맞나?
+
+**Q.** Cloudflare에서 지도를 서빙 중인데, 저장 10GB까지 무료가 맞고 대역폭(전송량)은 무제한 무료가 맞아?
+
+**A.** 대체로 맞다. 단 "무제한"에 조건이 있다.
+
+- **저장 용량**: **10 GB-월 무료** (우리 지도 `kr-base.pmtiles` 505MB → 여유). 초과 시 $0.015/GB-월.
+- **전송량(egress)**: **바이트 과금 자체가 없음(무료)** — S3 API·Workers·`r2.dev` 전부. R2의 핵심 장점.
+- **⚠️ "무제한"의 실제 = 바이트는 무제한 무료지만 "요청 횟수(operations)"엔 무료 한도가 있다**:
+  - 읽기(Class B, GetObject) **월 1천만 회** 무료 → 초과 시 100만당 $0.36
+  - 쓰기(Class A, 업로드 등) 월 100만 회 무료 → 초과 시 100만당 $4.50
+  - **지도 타일 조각 요청 1개 = 읽기 1회.** 개인/소규모는 1천만을 넘기 어려움.
+- **🔎 우리 구조의 실제 병목은 Vercel**: 프로덕션은 타일을 `api/tiles.js`(Vercel) 프록시로 서빙 → `R2→Vercel`은 무료지만 `Vercel→사용자`는 **Vercel 대역폭(무료 Hobby 월 100GB)** 에 잡힌다. (타일 CDN 캐시로 반복 요청은 완화.) R2 무료 egress를 100% 누리려면 타일을 **R2에서 직접**(커스텀 도메인+CORS) 서빙해야 함.
+- **정리**: 저장 10GB·전송량 무료는 맞다. 단 ①요청 월 1천만까지 무료 ②현재는 Vercel(월 100GB)이 먼저 걸리는 한도. 개인 규모면 셋 다 넉넉.
+- 출처: [R2 Pricing(공식)](https://developers.cloudflare.com/r2/pricing/)
+
+---
+
+## 2026-07-07 · 이 정도면 Supabase 말고 Cloudflare로 전부 옮기는 게 경제적 아닌가?
+
+**Q.** 이미 Cloudflare(R2)를 쓰고 있는데, Supabase 대신 Cloudflare로 다 옮기면 훨씬 경제적인 거 아냐?
+
+**A.** 지금 규모에선 갈아탈 실익이 거의 없고 오히려 잃는 게 크다. 단 "부분 이동"은 이득이 있다.
+
+- **경제성의 실제**:
+  - **지금 규모**: Supabase 무료 티어도 **이미 공짜**(500MB DB·소규모 트래픽) → 갈아타도 **절약액 ≈ 0**.
+  - **대규모로 크면**: Cloudflare가 확실히 쌈(egress 무료, D1/Workers 저렴). Supabase는 egress·Pro($25/월)가 붙기 시작. 즉 "싸다"의 이점은 트래픽 폭발 시에만.
+- **전부 옮기면 잃는 것**:
+  1. **Auth** — Supabase Auth(회원가입·세션·비번)는 공짜로 다 해줌. Cloudflare엔 **소비자용 인증 서비스가 없음**(Access는 팀/사내용) → Workers+D1로 직접 구현하거나 Clerk/Auth0 붙여야 함(큰 재작업). **가장 큰 걸림돌.**
+  2. **RLS** — Postgres는 "본인 데이터만"을 선언적으로 보장. D1(SQLite)은 없어서 Workers 코드로 일일이 권한검사 → 코드↑·보안 실수 위험.
+  3. **iOS 전략 충돌** — 이식 계획이 `supabase-swift`로 스키마·RLS·Auth 재사용인데, Cloudflare로 가면 iOS도 자체 API 클라이언트를 새로 짜야 함.
+- **이미 최적 분업 중**: 대역폭 폭식하는 것(지도 타일 505MB) → **R2(egress 무료, 이미 이동)**, 인증+관계형+RLS → **Supabase(공짜·강력)**. 각자 잘하는 걸 맡긴 구조.
+- **진짜 할 만한 최적화**: 남은 **Supabase Storage `packs/`(오프라인 팩)도 R2로 이동**. 이 파일도 다운로드 대역폭을 먹으므로 R2로 옮기면 egress 무료 + Supabase 5GB egress 압박 해소. 그러면 Supabase는 **인증+DB(수 MB)만** 담당 → 사실상 영구 무료. (base 타일 옮긴 것과 동일 패턴, 저위험)
+- **결론**: 전부 이전 ❌(지금은 손실>절약). 부분 이전(packs→R2) ✅ 고려 가치. 앱이 크게 성장하면 그때 전면 재검토.
+
+---
+
 ## 2026-07-04 · Vercel에 Supabase URL/anon/service_role 을 env 로 등록하면 안전한가?
 
 **Q.** Vercel에 Supabase url, anon, role key 등의 환경변수를 등록하도록 해줘. 그게 안전한 게 맞지?
