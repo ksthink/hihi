@@ -18,8 +18,8 @@ export function buildStyle(pmtilesUrl, theme = "light") {
 
   return {
     version: 8,
-    // 자체 호스팅 글리프(same-origin 정적). 한글/CJK 는 localIdeographFontFamily 로
-    // 기기 폰트 렌더 → 여기엔 Noto Sans Regular 의 라틴·기호 범위만 필요.
+    // 자체 호스팅 글리프(same-origin 정적). 한글/CJK 는 localIdeographFontFamily(Nanum)로
+    // 기기/번들 폰트 렌더 → 여기엔 Nanum Gothic Coding 의 라틴·기호 범위만 필요.
     glyphs: "/fonts/{fontstack}/{range}.pbf",
     sources: {
       protomaps: {
@@ -105,7 +105,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         layout: {
           "symbol-placement": "line",
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"], "text-size": 10.5, "symbol-spacing": 400
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 10.5, "symbol-spacing": 400
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
       },
@@ -116,7 +116,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         layout: {
           "symbol-placement": "line",
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"], "text-size": 11, "symbol-spacing": 350
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 11, "symbol-spacing": 350
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
@@ -128,7 +128,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
           "icon-image": ["concat", "poi-", ["get", "kind"]],
           "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 17, 0.95],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"],
+          "text-font": ["Nanum Gothic Coding Regular"],
           "text-size": ["step", ["zoom"], 0, 15.5, 10],
           "text-offset": [0, 1.1], "text-anchor": "top", "text-max-width": 8,
           "text-optional": true
@@ -143,7 +143,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
           "icon-image": "poi-bus_stop",
           "icon-size": ["interpolate", ["linear"], ["zoom"], 14.5, 0.55, 17, 0.9],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"],
+          "text-font": ["Nanum Gothic Coding Regular"],
           "text-size": ["step", ["zoom"], 0, 15.5, 10],
           "text-offset": [0, 1], "text-anchor": "top", "text-max-width": 9,
           "text-optional": true
@@ -158,7 +158,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
           "icon-image": "poi-place_of_worship",
           "icon-size": ["interpolate", ["linear"], ["zoom"], 13.5, 0.6, 17, 0.9],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"], "text-size": 11.5, "text-max-width": 8,
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 11.5, "text-max-width": 8,
           "text-offset": [0, 1.1], "text-anchor": "top",
           "text-optional": true
         },
@@ -172,7 +172,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
           "icon-image": "poi-station",
           "icon-size": ["interpolate", ["linear"], ["zoom"], 12, 0.7, 16, 1],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"],
+          "text-font": ["Nanum Gothic Coding Regular"],
           "text-size": ["step", ["zoom"], 0, 12.5, 12],
           "text-offset": [0, 1.2], "text-anchor": "top", "text-max-width": 8,
           "text-optional": true
@@ -185,7 +185,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         minzoom: 12, filter: ["in", "kind", "macrohood", "neighbourhood"],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"],
+          "text-font": ["Nanum Gothic Coding Regular"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11, 16, 13],
           "text-max-width": 7
         },
@@ -197,7 +197,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         minzoom: 13, filter: ["==", "kind", "administrative"],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"], "text-size": 11, "text-max-width": 7
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 11, "text-max-width": 7
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
@@ -206,7 +206,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         filter: ["in", "kind", "locality", "region", "country"],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Noto Sans Regular"],
+          "text-font": ["Nanum Gothic Coding Regular"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 6, 11, 12, 16],
           "text-max-width": 6
         },

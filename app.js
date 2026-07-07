@@ -79,7 +79,7 @@ const map = new maplibregl.Map({
   // 대한민국으로 이동/축소 범위 제한 (제주·독도가 잘리지 않도록 여백 포함, 한 단계 더 축소 허용)
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], // [SW, NE] — 남한 전역 + 주변 여백
   minZoom: 5,
-  localIdeographFontFamily: "'KakaoSmallSans', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif"
+  localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace"
 });
 // 확대/축소 버튼 없이 나침반만 + 현재위치 — 지도 하단 우측에 배치
 // (bottom 코너는 나중에 추가한 컨트롤이 위로 쌓임 → 나침반을 위, 현재위치를 아래로)
@@ -231,7 +231,7 @@ function ensureOverlays() {
       filter: ["==", ["get", "idx"], 1],
       layout: {
         "symbol-placement": "line", "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
-        "text-font": ["Noto Sans Regular"], "text-size": 10, "symbol-spacing": 300
+        "text-font": ["Nanum Gothic Coding Regular"], "text-size": 10, "symbol-spacing": 300
       },
       paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 }
     });
@@ -279,7 +279,7 @@ function ensureOverlays() {
       id: "spots-labels", type: "symbol", source: "spots", minzoom: 12.5,
       filter: ["all", ["in", ["get", "category"], ["literal", SHOWN]], ["has", "name"]],
       layout: {
-        "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"],
+        "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
         "text-size": 10.5, "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
@@ -292,7 +292,7 @@ function ensureOverlays() {
       id: "peak-symbols", type: "symbol", source: "peaks",
       layout: {
         "text-field": ["get", "name"],
-        "text-font": ["Noto Sans Regular"],
+        "text-font": ["Nanum Gothic Coding Regular"],
         "text-size": 13, "text-offset": [0, -0.6], "text-anchor": "bottom"
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.8 }

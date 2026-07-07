@@ -73,7 +73,7 @@ const map = new maplibregl.Map({
   style: buildStyle(`${location.origin}/pmtiles/v4.pmtiles`, "light"),
   center: [127.5, 36.5], zoom: 6.5,
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], minZoom: 5,
-  localIdeographFontFamily: "'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif",
+  localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
 });
 map.addControl(new maplibregl.NavigationControl({ showZoom: true }), "bottom-right");
 
@@ -114,7 +114,7 @@ map.on("load", () => {
     } });
   map.addLayer({ id: "spots-names", type: "symbol", source: "spots",
     layout: {
-      "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"],
+      "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
       "text-size": 11, "text-offset": [0, 0.9], "text-anchor": "top",
       "text-allow-overlap": true,
     },
