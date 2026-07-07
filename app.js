@@ -59,8 +59,8 @@ document.documentElement.dataset.theme = theme;
 
 function trailColors() {
   return theme === "dark"
-    ? { line: "#ffffff", casing: "#000000" }
-    : { line: "#111111", casing: "#ffffff" };
+    ? { line: "#ffffff", casing: "#000000", faded: "#5c5c5c" }
+    : { line: "#111111", casing: "#ffffff", faded: "#b8b8b8" };
 }
 
 // ── PMTiles 프로토콜 등록 ────────────────────────────
@@ -251,6 +251,13 @@ function ensureOverlays() {
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": c.line, "line-width": widthExpr }
     });
+    // 선택된 코스 강조 레이어 (검정, 나머지 회색 위에 얹음)
+    map.addLayer({
+      id: "trail-hl", type: "line", source: "trails",
+      layout: { "line-cap": "round", "line-join": "round" },
+      filter: ["==", ["get", "name"], "__none__"],
+      paint: { "line-color": c.line, "line-width": widthExpr }
+    });
   }
 
   if (!map.getSource("spots")) {
@@ -292,9 +299,11 @@ function ensureOverlays() {
 
   // 상호작용은 한 번만 바인딩 (레이어 id 기준이라 테마 재부착 후에도 유효)
   if (!interactionsBound && map.getLayer("trail-line")) {
-    map.on("click", "trail-line", (e) => selectByName(e.features[0].properties.name));
-    map.on("mouseenter", "trail-line", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "trail-line", () => (map.getCanvas().style.cursor = ""));
+    ["trail-line", "trail-hl"].forEach((id) => {
+      map.on("click", id, (e) => selectByName(e.features[0].properties.name));
+      map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+      map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+    });
     map.on("click", "spots-dots", (e) => {
       const p = e.features[0].properties;
       new maplibregl.Popup({ maxWidth: "240px" })
@@ -328,21 +337,25 @@ function applyContourVisibility() {
   });
 }
 
-// 등산로 선택 시 해당 루트만 표시(필터), 미선택이면 전체 표시
+// 등산로 선택 시: 선택 코스는 검정(trail-hl), 나머지는 회색(trail-line faded).
+// 미선택이면 전체를 검정으로 표시.
 function applyTrailFilter() {
-  const f = selectedName ? ["==", ["get", "name"], selectedName] : null;
-  ["trail-casing", "trail-line"].forEach((id) => {
-    if (map.getLayer(id)) map.setFilter(id, f);
-  });
+  const c = trailColors();
+  if (map.getLayer("trail-line"))
+    map.setPaintProperty("trail-line", "line-color", selectedName ? c.faded : c.line);
+  if (map.getLayer("trail-hl"))
+    map.setFilter("trail-hl", ["==", ["get", "name"], selectedName || "__none__"]);
   const btn = document.getElementById("show-all");
   if (btn) btn.hidden = !selectedName;
   const cc = document.getElementById("cur-course");
   const dv = document.getElementById("title-div");
   if (cc) cc.textContent = selectedName || "";
   if (dv) dv.hidden = !selectedName;
-  document.querySelectorAll(".trail-item").forEach((x) =>
-    x.classList.toggle("selected", x.dataset.name === selectedName)
-  );
+  document.querySelectorAll(".trail-item").forEach((x) => {
+    const on = x.dataset.name === selectedName;
+    x.classList.toggle("selected", on);
+    if (on) x.scrollIntoView({ block: "nearest", behavior: "smooth" }); // 목록도 해당 코스로 이동
+  });
 }
 
 function selectByName(name) {
@@ -354,6 +367,34 @@ function clearSelection() {
   selectedName = null;
   applyTrailFilter();
   document.querySelectorAll(".maplibregl-popup").forEach((p) => p.remove());
+  fitPark(); // 전체 코스가 화면에 꽉 차도록 다시 맞춤
+}
+
+// GeoJSON 전체 좌표의 경계 [minLng, minLat, maxLng, maxLat]
+function geojsonBounds(gj) {
+  let b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const f of (gj.features || [])) {
+    const g = f.geometry;
+    const flat = (g.type === "MultiLineString" ? g.coordinates : [g.coordinates]).flat();
+    for (const c of flat) b = [Math.min(b[0], c[0]), Math.min(b[1], c[1]), Math.max(b[2], c[0]), Math.max(b[3], c[1])];
+  }
+  return b;
+}
+
+// 하단 시트/상단 검색을 피해 화면에 최적화된 패딩 (작은 화면에서 과도한 패딩 방지)
+function fitPadding() {
+  const h = map.getContainer().clientHeight;
+  return { top: 110, bottom: Math.min(300, Math.round(h * 0.32)), left: 36, right: 36 };
+}
+
+// 현재 산의 전체 코스 범위에 맞춰 지도 축소/확대
+function fitPark(duration = 800) {
+  const gj = trailCache[currentPark];
+  if (!gj || !gj.features || !gj.features.length) return;
+  const b = geojsonBounds(gj);
+  if (!isFinite(b[0])) return;
+  document.getElementById("sheet")?.classList.remove("expanded");
+  map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(), maxZoom: 15.5, duration });
 }
 
 // setStyle(테마/기저 변경) 후 오버레이 재부착
@@ -403,7 +444,7 @@ async function loadPark(park) {
   applySpotsVisibility();
   applyContourVisibility();
   applyTrailFilter();
-  map.flyTo({ center: cfg.center, zoom: cfg.zoom, duration: 900 });
+  fitPark(900); // 코스 전체 범위에 맞춰 축소/확대 (고정 줌 대신 화면 최적화)
   renderTrailList(geojson);
   refreshMapBtn();
 }
@@ -486,24 +527,31 @@ function selectMountain(park) {
   const results = document.getElementById("search-results");
   let composing = false;
 
-  // 접두 우선, 없으면 포함 매치 (가장 유사한 산부터) — 공개 카탈로그 전체 대상
+  // 접두 우선, 없으면 포함 매치 (가장 유사한 산부터) — 공개 카탈로그 전체 대상.
+  // 빈 입력이면 아무것도 반환하지 않음(타이핑에 따른 자동완성 목록만 노출).
   function matches(q) {
+    if (!q) return [];
     const all = catalogList();
-    if (!q) return all;
     const pre = all.filter((m) => m.name.startsWith(q));
     const inc = all.filter((m) => !m.name.startsWith(q) && m.name.includes(q));
     return [...pre, ...inc];
   }
+  // 입력한 글자는 진하게(typed), 자동완성된 나머지는 흐리게(ghost)
   function highlight(name, q) {
-    const i = q ? name.indexOf(q) : -1;
-    return i < 0 ? name : name.slice(0, i) + "<strong>" + name.slice(i, i + q.length) + "</strong>" + name.slice(i + q.length);
+    if (name.startsWith(q)) {
+      return `<span class="sr-typed">${q}</span><span class="sr-ghost">${name.slice(q.length)}</span>`;
+    }
+    const i = name.indexOf(q); // 접두가 아닌 포함 매치: 매치 부분만 진하게
+    return i < 0 ? `<span class="sr-ghost">${name}</span>`
+      : `<span class="sr-ghost">${name.slice(0, i)}</span><span class="sr-typed">${name.slice(i, i + q.length)}</span><span class="sr-ghost">${name.slice(i + q.length)}</span>`;
   }
   function render(q) {
     const query = (q || "").trim();
+    if (!query) { results.innerHTML = ""; return; } // 입력 전에는 목록 미노출
     const list = matches(query);
     if (!list.length) { results.innerHTML = '<li class="sr-empty">검색 결과 없음</li>'; return; }
     results.innerHTML = list
-      .map((m, i) => `<li data-park="${m.park}" class="${i === 0 ? "active" : ""}">${highlight(m.name, query)}<span class="sr-meta">${m.elev} · ${m.region}</span></li>`)
+      .map((m, i) => `<li data-park="${m.park}" class="${i === 0 ? "active" : ""}"><span class="sr-name">${highlight(m.name, query)}</span><span class="sr-meta">${m.elev} · ${m.region}</span></li>`)
       .join("");
     results.querySelectorAll("li[data-park]").forEach((li) =>
       li.addEventListener("click", () => { selectMountain(li.dataset.park); close(); })
@@ -521,15 +569,19 @@ function selectMountain(park) {
     const m = catalogList().find((x) => x.name === q) || matches(q)[0];
     if (m) { selectMountain(m.park); close(); }
   }
-  function open() { panel.hidden = false; render(""); input.focus(); }
+  function open() { panel.hidden = false; results.innerHTML = ""; input.focus(); }
   function close() { panel.hidden = true; input.value = ""; }
 
   btn.addEventListener("click", (e) => { e.stopPropagation(); panel.hidden ? open() : close(); });
   input.addEventListener("compositionstart", () => { composing = true; });
-  input.addEventListener("compositionend", () => { composing = false; render(input.value); autocomplete(); });
-  input.addEventListener("input", (e) => {
-    if (composing) return;                 // 한글 조합 중에는 조합 종료 후 처리
+  input.addEventListener("compositionend", () => {
+    composing = false;
     render(input.value);
+    autocomplete();                        // 인라인 자동완성은 조합 종료 후에만(IME 간섭 방지)
+  });
+  input.addEventListener("input", (e) => {
+    render(input.value);                   // 목록은 한글 조합 중에도 매 글자 갱신
+    if (composing) return;                 // 값 채우는 인라인 자동완성만 조합 종료 후
     const del = e.inputType && e.inputType.startsWith("delete");
     if (!del) autocomplete();
   });

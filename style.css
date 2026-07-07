@@ -124,6 +124,9 @@ html, body { height: 100%; font-family: "KakaoSmallSans", -apple-system, "Apple 
 .search-results { list-style: none; margin-top: 6px; max-height: 220px; overflow-y: auto; }
 .search-results li { padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text); display: flex; flex-direction: column; gap: 2px; }
 .search-results li:active, .search-results li.active { background: var(--surface); }
+.search-results .sr-name { display: block; }
+.search-results .sr-typed { color: var(--text); }
+.search-results .sr-ghost { color: var(--muted); }
 .search-results .sr-meta { font-size: 12px; font-weight: 400; color: var(--muted); }
 .search-results .sr-empty { padding: 10px 12px; color: var(--muted); font-size: 13px; font-weight: 400; }
 #theme-toggle .sun { display: none; }
