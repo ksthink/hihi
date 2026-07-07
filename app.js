@@ -462,9 +462,11 @@ function wxKey(park) {
 async function loadWeather(park) {
   const cfg = PARKS[park];
   const sec = document.getElementById("wx-explore-sec");
+  const title = document.getElementById("wx-explore-title");
   if (!cfg || !cfg.center) { if (sec) sec.hidden = true; return; }
+  if (title && cfg.label) title.textContent = `${cfg.label} 부근 오늘 날씨`;
   try {
-    const data = await fetchWeather(cfg.center[1], cfg.center[0]);
+    const data = await fetchWeather(cfg.center[1], cfg.center[0]); // 산 위치 격자 기준
     wxCache[park] = data;
     try { localStorage.setItem(wxKey(park), JSON.stringify(data)); } catch (_) {} // 오프라인 스냅샷
     if (park === currentPark) {

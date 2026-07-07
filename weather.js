@@ -61,8 +61,8 @@ function byHour(items, fcst = true) {
 }
 
 // ── 산 위치 시간대별 예보 조회 (초단기예보 + 단기예보 병합) ──
-// 반환: { baseLabel, hours: [{ key, hh, tmp, sky, pty, lgt, pop, pcp, sno, wsd }] }
-export async function fetchWeather(lat, lon, maxHours = 12) {
+// 2시간 간격(지금·+2h·+4h…)으로 count 개. 반환: { baseLabel, hours: [...] }
+export async function fetchWeather(lat, lon, { stepHours = 2, count = 8, spanHours = 24 } = {}) {
   const { nx, ny } = dfsXy(lat, lon);
   const [uf, vf] = await Promise.allSettled([
     callKma("ufcst", nx, ny, ultraBase()),  // 초단기예보(6h, 낙뢰 포함)
@@ -76,7 +76,7 @@ export async function fetchWeather(lat, lon, maxHours = 12) {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
   const num = (v) => (v == null || v === "" ? null : Number(v));
   const hours = [];
-  for (let h = 0; h < maxHours; h++) {
+  for (let h = 0; h < spanHours && hours.length < count; h += stepHours) {
     const t = new Date(start.getTime() + h * 3600000);
     const key = ymd(t) + String(t.getHours()).padStart(2, "0") + "00";
     const u = U[key], v = V[key];
@@ -93,7 +93,7 @@ export async function fetchWeather(lat, lon, maxHours = 12) {
       wsd: num(u?.WSD) ?? num(v?.WSD),
     });
   }
-  return { baseLabel: `${now.getHours()}시 기준`, savedAt: now.toISOString(), hours: hours.slice(0, maxHours) };
+  return { baseLabel: `${now.getHours()}시 기준`, savedAt: now.toISOString(), hours };
 }
 
 // ── 날씨 → 상태(아이콘 키·라벨). 우선순위: 낙뢰 > 강수 > 강풍 > 하늘 ──
