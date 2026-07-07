@@ -418,3 +418,31 @@ footer .warn { margin-top: 6px; }
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: none; }
 }
+
+/* ── 날씨 스트립 (기상청 단기예보, 흑백) ───────────── */
+.wx-section h2 { margin-bottom: 6px; }
+.wx-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.wx-strip::-webkit-scrollbar { height: 0; }
+.wx-chip {
+  flex: 0 0 auto; min-width: 52px; padding: 7px 8px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+}
+.wx-chip.now { border-color: var(--text); }
+.wx-time { font-size: 11px; color: var(--muted); font-weight: 600; }
+.wx-chip.now .wx-time { color: var(--text); }
+.wx-ic { color: var(--text); line-height: 0; }
+.wx-svg { display: block; }
+.wx-tmp { font-size: 13px; font-weight: 700; color: var(--text); }
+.wx-pop { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.wx-foot { margin-top: 5px; }
+.wx-note { font-size: 11px; color: var(--muted); }
+.wx-empty { font-size: 12px; color: var(--muted); padding: 4px 0; }
+
+/* 등반 카드 안 */
+#wx-climb { margin: 10px 0 4px; }
+/* 등반 HUD(오버레이) — 더 촘촘하게 */
+.wx-hud { margin: 8px 0 0; }
+.wx-hud .wx-chip { min-width: 46px; padding: 5px 6px; background: transparent; }
+.wx-hud .wx-tmp { font-size: 12px; }
+.wx-hud .wx-note { font-size: 10px; }

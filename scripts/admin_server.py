@@ -22,6 +22,7 @@ import threading
 import time
 import traceback
 import urllib.parse
+import urllib.request
 import uuid
 from functools import partial
 from http.server import ThreadingHTTPServer
@@ -172,6 +173,35 @@ class AdminHandler(BaseHandler):
         return (self.headers.get("X-Admin-Token") == tok
                 or (q.get("token") or [None])[0] == tok)
 
+    _KMA_OPS = {"ncst": "getUltraSrtNcst", "ufcst": "getUltraSrtFcst", "vfcst": "getVilageFcst"}
+
+    def _weather(self, q):
+        """기상청 단기예보 프록시 (CORS 회피 + 키 은닉). api/weather.js 와 동일 계약."""
+        op = (q.get("op") or [""])[0]
+        path = self._KMA_OPS.get(op)
+        need = {k: (q.get(k) or [""])[0] for k in ("nx", "ny", "base_date", "base_time")}
+        if not path or not all(need.values()):
+            return self._err("bad params", 400)
+        key = os.environ.get("KMA_KEY") or os.environ.get("KNPS_KEY")
+        if not key:
+            return self._err("no KMA_KEY", 500)
+        sk = key if re.search(r"%[0-9A-Fa-f]{2}", key) else urllib.parse.quote(key, safe="")
+        qs = urllib.parse.urlencode({"dataType": "JSON", "numOfRows": "300", "pageNo": "1", **need})
+        url = (f"https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/{path}"
+               f"?serviceKey={sk}&{qs}")
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "hiheight/1.0"})
+            resp = urllib.request.urlopen(req, timeout=20)
+            body = resp.read()
+        except Exception as e:
+            return self._err(f"upstream: {e}", 502)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "public, max-age=600")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _login(self):
         """비밀번호(.env ADMIN_PASSWORD) 검증 → 성공 시 API 토큰 발급."""
         ip = self.client_address[0]
@@ -203,6 +233,8 @@ class AdminHandler(BaseHandler):
         parts = [p for p in u.path.split("/") if p]  # ["api", ...]
         if method == "POST" and parts[1:] == ["login"]:
             return self._login()  # 로그인은 인증 없이 (실패 잠금으로 보호)
+        if method == "GET" and parts[1:] == ["weather"]:
+            return self._weather(q)  # 앱 공개 기능 — 인증 제외
         if not self._authorized(q):
             return self._err("관리자 인증 필요", 401)
         try:
@@ -217,6 +249,10 @@ class AdminHandler(BaseHandler):
 
     # ── 라우팅 ──
     def _dispatch(self, method, p, q):
+        # GET /api/weather?op=&nx=&ny=&base_date=&base_time=  (기상청 프록시)
+        if method == "GET" and p == ["weather"]:
+            return self._weather(q)
+
         # GET /api/mnt-codes?q=
         if method == "GET" and p == ["mnt-codes"]:
             kw = (q.get("q") or [""])[0].strip()

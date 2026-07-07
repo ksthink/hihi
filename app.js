@@ -2,6 +2,7 @@ import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm";
 import { Protocol, PMTiles, FileSource } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
 import { buildStyle } from "./basemap-style.js";
 import { supabase, signUp, signIn, signOut } from "./supabase-client.js";
+import { fetchWeather, renderStrip } from "./weather.js";
 
 // ── 설정 ──────────────────────────────────────────────
 const PMTILES_URL = `${location.origin}/pmtiles/v4.pmtiles`; // 로컬 프록시 경유 (CORS 회피)
@@ -447,6 +448,51 @@ async function loadPark(park) {
   fitPark(900); // 코스 전체 범위에 맞춰 축소/확대 (고정 줌 대신 화면 최적화)
   renderTrailList(geojson);
   refreshMapBtn();
+  renderClimbWeather();  // 스냅샷/캐시로 등반 카드 즉시 표시
+  loadWeather(park);     // 온라인이면 최신 예보로 갱신(비동기)
+}
+
+// ── 날씨 (기상청 단기예보 · 오프라인 스냅샷) ──────────
+// 탐험(온라인): 실시간 시간대별 예보. 등반(오프라인): 마지막 온라인 스냅샷.
+const wxCache = {}; // park -> fetchWeather 결과 (세션 메모리)
+function wxKey(park) {
+  const d = new Date(Date.now() + 9 * 3600000); // KST 날짜
+  return `hiheight-wx:${park}:${d.toISOString().slice(0, 10)}`;
+}
+async function loadWeather(park) {
+  const cfg = PARKS[park];
+  const sec = document.getElementById("wx-explore-sec");
+  if (!cfg || !cfg.center) { if (sec) sec.hidden = true; return; }
+  try {
+    const data = await fetchWeather(cfg.center[1], cfg.center[0]);
+    wxCache[park] = data;
+    try { localStorage.setItem(wxKey(park), JSON.stringify(data)); } catch (_) {} // 오프라인 스냅샷
+    if (park === currentPark) {
+      renderStrip(document.getElementById("wx-explore"), data);
+      if (sec) sec.hidden = false;
+      renderClimbWeather();
+    }
+  } catch (_) {
+    if (park === currentPark && sec) sec.hidden = true; // 조회 실패 시 탐험엔 숨김
+  }
+}
+// 등반 카드/HUD 용: 온라인 캐시 우선, 없으면 오늘 스냅샷(오프라인)
+function currentWeather(park) {
+  if (wxCache[park]) return { data: wxCache[park], offline: false };
+  try {
+    const raw = localStorage.getItem(wxKey(park));
+    if (raw) return { data: JSON.parse(raw), offline: true };
+  } catch (_) {}
+  return null;
+}
+function renderClimbWeather() {
+  const park = climbSession ? climbSession.park : currentPark;
+  const el = document.getElementById("wx-climb");
+  if (!el) return;
+  const w = park && currentWeather(park);
+  if (!w) { el.hidden = true; return; }
+  renderStrip(el, w.data, { offline: w.offline });
+  el.hidden = false;
 }
 
 // ── 사이드바(시트) 등산로 목록 ───────────────────────
@@ -712,6 +758,12 @@ function startClimb() {
   document.getElementById("ch-dist").textContent = "0.00";
   document.getElementById("ch-pts").textContent = "0";
   document.getElementById("ch-note").textContent = "";
+
+  // 등반 중 날씨: 시작 시점의 스냅샷(오프라인에서도 유지)
+  const w = currentWeather(currentPark);
+  const wxHud = document.getElementById("wx-hud");
+  if (w) { renderStrip(wxHud, w.data, { offline: w.offline || !navigator.onLine }); wxHud.hidden = false; }
+  else if (wxHud) wxHud.hidden = true;
 
   // 경과 시간 타이머
   climbSession.timer = setInterval(() => {

@@ -57,6 +57,10 @@
           <div id="sheet" class="explore-only">
             <div class="grabber" id="grabber"></div>
             <div class="sheet-content">
+              <div class="section wx-section" id="wx-explore-sec" hidden>
+                <h2 id="wx-explore-title">오늘 날씨</h2>
+                <div class="wx" id="wx-explore"></div>
+              </div>
               <div class="section">
                 <h2>등산로
                   <span class="h2-btns">
@@ -117,6 +121,7 @@
                   <div><span id="climb-emin">–</span><small>최저(m)</small></div>
                 </div>
                 <div id="climb-profile" class="profile"></div>
+                <div class="wx" id="wx-climb" hidden></div>
                 <button class="start-btn" id="start-btn">등반 시작</button>
                 <p class="hint" id="climb-hint">탐험 탭에서 등산로를 선택하면 여기에 표시됩니다.</p>
               </div>
@@ -172,6 +177,7 @@
               <div><span id="ch-course-dist">–</span><small>코스(km)</small></div>
               <div><span id="ch-pts">0</span><small>GPS 지점</small></div>
             </div>
+            <div class="wx wx-hud" id="wx-hud" hidden></div>
             <button id="ch-stop">등반 종료</button>
             <p class="ch-note" id="ch-note"></p>
           </div>
