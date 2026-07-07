@@ -3,6 +3,7 @@ import { Protocol, PMTiles, FileSource } from "https://cdn.jsdelivr.net/npm/pmti
 import { buildStyle } from "./basemap-style.js";
 import { supabase, signUp, signIn, signOut } from "./supabase-client.js";
 import { fetchWeather, renderStrip } from "./weather.js";
+import { nationalPointNumber } from "./npn.js";
 
 // ── 설정 ──────────────────────────────────────────────
 const PMTILES_URL = `${location.origin}/pmtiles/v4.pmtiles`; // 로컬 프록시 경유 (CORS 회피)
@@ -836,6 +837,12 @@ function startClimb() {
   const wxHud = document.getElementById("wx-hud");
   if (wxHud) wxHud.hidden = true;
 
+  // 국가지점번호: 지도 우측 상단(산·코스 박스 아래) — 현재 위치로 갱신
+  const npnCode = document.getElementById("npn-code");
+  const npnBox = document.getElementById("npn-box");
+  if (npnCode) npnCode.textContent = "측정 중…";
+  if (npnBox) npnBox.hidden = false;
+
   // 경과 시간 타이머
   climbSession.timer = setInterval(() => {
     if (!climbSession) return;
@@ -852,6 +859,7 @@ function startClimb() {
       (pos) => {
         if (!climbSession) return;
         const pt = [pos.coords.longitude, pos.coords.latitude];
+        updateNpn(pos.coords.latitude, pos.coords.longitude); // 국가지점번호는 매 위치마다 갱신
         const last = climbSession.track[climbSession.track.length - 1];
         if (last) {
           const d = haversine(last, pt);
@@ -879,8 +887,18 @@ async function stopClimb() {
   if (climbSession.timer) clearInterval(climbSession.timer);
   appEl.classList.remove("climbing");
   document.getElementById("climb-hud").hidden = true;
+  const npnBox = document.getElementById("npn-box");
+  if (npnBox) npnBox.hidden = true;
   setStartBtn(false);
   await saveClimb();
+}
+
+// 현재 위치 → 국가지점번호 (지도 우측 상단 박스 갱신)
+function updateNpn(lat, lon) {
+  const el = document.getElementById("npn-code");
+  if (!el) return;
+  const r = nationalPointNumber(lat, lon);
+  el.textContent = r ? r.code : "격자 밖";
 }
 
 document.getElementById("start-btn").disabled = true;

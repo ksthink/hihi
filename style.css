@@ -145,6 +145,14 @@ html, body { height: 100%; font-family: "KakaoSmallSans", -apple-system, "Apple 
 .title-block .divider { color: var(--muted); font-weight: 400; }
 .title-block .divider[hidden] { display: none; }
 .title-block .cur-mtn, .title-block .cur-course { font-weight: 700; color: var(--text); }
+/* 국가지점번호 박스: 제목 블록 아래(우측 상단), 등반 중에만 표시 */
+.npn-box { display: inline-flex; align-items: baseline; gap: 7px; margin-top: 5px; padding: 6px 12px; background: rgba(255, 255, 255, .6); font-size: 12.8px; }
+.npn-box[hidden] { display: none; }
+.npn-box .npn-label { font-size: 10.5px; font-weight: 400; color: var(--muted); }
+.npn-box .npn-code { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: .3px; }
+:root[data-theme="dark"] .npn-box { background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 255, 255, .3); }
+:root[data-theme="dark"] .npn-box .npn-code { color: #fff; }
+:root[data-theme="dark"] .npn-box .npn-label { color: rgba(255, 255, 255, .65); }
 .park-tabs { display: inline-flex; background: var(--panel); backdrop-filter: blur(10px); border-radius: 12px; padding: 3px; box-shadow: 0 2px 10px rgba(0,0,0,.15); pointer-events: auto; }
 .park-tabs .tab { border: none; background: transparent; cursor: pointer; padding: 8px 20px; border-radius: 9px; font-size: 14px; font-weight: 700; color: var(--muted); font-family: inherit; }
 .park-tabs .tab.active { background: var(--accent); color: var(--on-accent); }
