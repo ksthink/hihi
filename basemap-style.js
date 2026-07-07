@@ -105,7 +105,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         layout: {
           "symbol-placement": "line",
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 10.5, "symbol-spacing": 400
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.9, "symbol-spacing": 400
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
       },
@@ -116,7 +116,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         layout: {
           "symbol-placement": "line",
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 11, "symbol-spacing": 350
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 9.2, "symbol-spacing": 350
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
@@ -129,7 +129,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
           "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 17, 0.95],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
           "text-font": ["Nanum Gothic Coding Regular"],
-          "text-size": ["step", ["zoom"], 0, 15.5, 10],
+          "text-size": ["step", ["zoom"], 0, 15.5, 8.4],
           "text-offset": [0, 1.1], "text-anchor": "top", "text-max-width": 8,
           "text-optional": true
         },
@@ -144,7 +144,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
           "icon-size": ["interpolate", ["linear"], ["zoom"], 14.5, 0.55, 17, 0.9],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
           "text-font": ["Nanum Gothic Coding Regular"],
-          "text-size": ["step", ["zoom"], 0, 15.5, 10],
+          "text-size": ["step", ["zoom"], 0, 15.5, 8.4],
           "text-offset": [0, 1], "text-anchor": "top", "text-max-width": 9,
           "text-optional": true
         },
@@ -153,12 +153,12 @@ export function buildStyle(pmtilesUrl, theme = "light") {
       {
         // 사찰·암자 — 卍 아이콘 + 이름 (한국 산행 랜드마크)
         id: "temple-names", type: "symbol", source: "protomaps", "source-layer": "pois",
-        minzoom: 13.5, filter: ["all", ["==", "kind", "place_of_worship"], ["has", "name"]],
+        minzoom: 13.5, filter: ["all", ["==", ["get", "kind"], "place_of_worship"], ["has", "name"]],
         layout: {
           "icon-image": "poi-place_of_worship",
           "icon-size": ["interpolate", ["linear"], ["zoom"], 13.5, 0.6, 17, 0.9],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 11.5, "text-max-width": 8,
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 9.7, "text-max-width": 8,
           "text-offset": [0, 1.1], "text-anchor": "top",
           "text-optional": true
         },
@@ -173,7 +173,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
           "icon-size": ["interpolate", ["linear"], ["zoom"], 12, 0.7, 16, 1],
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
           "text-font": ["Nanum Gothic Coding Regular"],
-          "text-size": ["step", ["zoom"], 0, 12.5, 12],
+          "text-size": ["step", ["zoom"], 0, 12.5, 10.1],
           "text-offset": [0, 1.2], "text-anchor": "top", "text-max-width": 8,
           "text-optional": true
         },
@@ -186,7 +186,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
           "text-font": ["Nanum Gothic Coding Regular"],
-          "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11, 16, 13],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 12, 9.2, 16, 10.9],
           "text-max-width": 7
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.5 }
@@ -197,7 +197,7 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         minzoom: 13, filter: ["==", "kind", "administrative"],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 11, "text-max-width": 7
+          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 9.2, "text-max-width": 7
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
@@ -207,7 +207,12 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
           "text-font": ["Nanum Gothic Coding Regular"],
-          "text-size": ["interpolate", ["linear"], ["zoom"], 6, 11, 12, 16],
+          // 봉우리(정상, 12px)보다 작게: locality(행궁지 등 잡지명) 8px 고정,
+          // region/country(도·국가명)만 줌에 따라 크게 — 등산 지도 위계상 정상이 최상위.
+          // ⚠️ zoom 은 최상위 interpolate 에만 허용 → match(kind)를 각 stop 출력으로 중첩
+          "text-size": ["interpolate", ["linear"], ["zoom"],
+            6, ["match", ["get", "kind"], "locality", 9.6, 10.8],
+            12, ["match", ["get", "kind"], "locality", 9.6, 15.6]],
           "text-max-width": 6
         },
         paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.5 }

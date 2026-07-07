@@ -231,7 +231,7 @@ function ensureOverlays() {
       filter: ["==", ["get", "idx"], 1],
       layout: {
         "symbol-placement": "line", "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
-        "text-font": ["Nanum Gothic Coding Regular"], "text-size": 10, "symbol-spacing": 300
+        "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.4, "symbol-spacing": 300
       },
       paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 }
     });
@@ -280,7 +280,7 @@ function ensureOverlays() {
       filter: ["all", ["in", ["get", "category"], ["literal", SHOWN]], ["has", "name"]],
       layout: {
         "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
-        "text-size": 10.5, "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
+        "text-size": 8.9, "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
     });
@@ -291,9 +291,12 @@ function ensureOverlays() {
     map.addLayer({
       id: "peak-symbols", type: "symbol", source: "peaks",
       layout: {
-        "text-field": ["get", "name"],
-        "text-font": ["Nanum Gothic Coding Regular"],
-        "text-size": 13, "text-offset": [0, -0.6], "text-anchor": "bottom"
+        // 봉우리 표식: 라이트 ▲(채움) / 다크 △(외곽) + 지명. 테마 토글 시 재부착으로 갱신
+        "text-field": ["concat", theme === "dark" ? "△" : "▲", ["get", "name"]],
+        "text-font": ["Nanum Gothic Coding Bold"],
+        // 정상(main=true, 대청봉·백운대)만 최상위 14.4px, 능선·바위 등 나머지는 11px
+        "text-size": ["case", ["==", ["get", "main"], true], 14.4, 11],
+        "text-offset": [0, -0.6], "text-anchor": "bottom"
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.8 }
     });

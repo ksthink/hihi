@@ -21,6 +21,11 @@
   src: url("fonts/NanumGothicCoding-Regular.woff2") format("woff2");
   font-weight: 400; font-style: normal; font-display: swap;
 }
+@font-face {
+  font-family: "Nanum Gothic Coding";
+  src: url("fonts/NanumGothicCoding-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
