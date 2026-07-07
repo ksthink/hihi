@@ -18,7 +18,9 @@ export function buildStyle(pmtilesUrl, theme = "light") {
 
   return {
     version: 8,
-    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+    // 자체 호스팅 글리프(same-origin 정적). 한글/CJK 는 localIdeographFontFamily 로
+    // 기기 폰트 렌더 → 여기엔 Noto Sans Regular 의 라틴·기호 범위만 필요.
+    glyphs: "/fonts/{fontstack}/{range}.pbf",
     sources: {
       protomaps: {
         type: "vector",
