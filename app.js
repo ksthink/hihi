@@ -6,7 +6,7 @@ import { fetchWeather, renderStrip } from "./weather.js";
 import { nationalPointNumber } from "./npn.js";
 
 // ── 설정 ──────────────────────────────────────────────
-const PMTILES_URL = `${location.origin}/pmtiles/v4.pmtiles`; // 로컬 프록시 경유 (CORS 회피)
+const PMTILES_URL = `${location.origin}/pmtiles/kr-base.pmtiles`; // same-origin 프록시 → 자체 호스팅 R2 base (CORS 회피)
 // 현재 기저 소스: 온라인(PMTILES_URL) 또는 로컬 팩("local-<산id>", IndexedDB Blob 등록 후)
 let baseUrl = PMTILES_URL;
 

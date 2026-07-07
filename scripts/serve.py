@@ -10,45 +10,21 @@
 import os
 import sys
 import shutil
-import datetime
-import threading
 import urllib.request
 import urllib.error
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
-# Protomaps 기저 타일 소스. 과거 demo-bucket 의 고정 파일(v4.pmtiles)이 삭제되어(2026-07)
-# 날짜별 빌드(build.protomaps.com/<YYYYMMDD>.pmtiles, 약 1주 보관)를 자동 탐지해 사용한다.
-# 앱은 /pmtiles/<무엇이든> 로 요청 → 항상 최신 빌드로 매핑(로테이션에도 안 깨짐).
-BUILD_HOST = os.environ.get("PMTILES_BUILD_HOST", "https://build.protomaps.com/")
+# 기저 타일 소스: 자체 호스팅 Cloudflare R2(한국 영역 base, egress 무료).
+# 과거 demo-bucket.protomaps.com/v4.pmtiles(고정 파일)가 2026-07 삭제된 이후 R2 로 이관.
+# 이 프록시는 웹 전용 same-origin 계층(브라우저 CORS 회피용) — iOS 네이티브는 로컬 번들
+# range 접근이라 불필요(폐기 대상). 앱은 /pmtiles/* 로 요청 → R2 고정 객체로 매핑.
+PMTILES_URL = os.environ.get(
+    "PMTILES_URL",
+    "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/kr-base.pmtiles",
+)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
-
-_build_lock = threading.Lock()
-_build_file = None  # 예: "20260707.pmtiles" (프로세스 캐시)
-
-
-def resolve_build(force=False):
-    """가장 최근 유효한 build.protomaps.com 날짜 빌드 파일명을 찾아 캐시."""
-    global _build_file
-    with _build_lock:
-        if _build_file and not force:
-            return _build_file
-        today = datetime.datetime.utcnow().date()
-        for i in range(0, 15):
-            fn = (today - datetime.timedelta(days=i)).strftime("%Y%m%d") + ".pmtiles"
-            try:
-                req = urllib.request.Request(BUILD_HOST + fn)
-                req.add_header("Range", "bytes=0-0")
-                req.add_header("User-Agent", "hiheight/1.0")  # build.protomaps.com 은 기본 urllib UA 를 403 차단
-                r = urllib.request.urlopen(req, timeout=10)
-                if r.status < 400:
-                    _build_file = fn
-                    return fn
-            except Exception:
-                continue
-        _build_file = today.strftime("%Y%m%d") + ".pmtiles"  # 폴백
-        return _build_file
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -72,23 +48,17 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def _proxy(self):
-        # 요청 파일명은 무시하고 항상 최신 Protomaps 빌드로 매핑
-        def fetch(build):
-            url = BUILD_HOST + build
-            req = urllib.request.Request(url)
-            req.add_header("User-Agent", "hiheight/1.0")  # build.protomaps.com 은 기본 urllib UA 를 403 차단
-            for h in ("Range", "If-Match", "If-None-Match"):
-                v = self.headers.get(h)
-                if v:
-                    req.add_header(h, v)
-            try:
-                return urllib.request.urlopen(req, timeout=30)
-            except urllib.error.HTTPError as e:
-                return e  # 206/304/416 등도 헤더/본문 보유
+        # 요청 파일명은 무시하고 R2 고정 base 객체로 매핑(Range 그대로 전달)
+        req = urllib.request.Request(PMTILES_URL)
+        req.add_header("User-Agent", "hiheight/1.0")  # R2 pub.r2.dev 는 기본 urllib UA 를 403 차단
+        for h in ("Range", "If-Match", "If-None-Match"):
+            v = self.headers.get(h)
+            if v:
+                req.add_header(h, v)
         try:
-            resp = fetch(resolve_build())
-            if getattr(resp, "status", 200) == 404:  # 빌드가 로테이션됨 → 재탐지 후 1회 재시도
-                resp = fetch(resolve_build(force=True))
+            resp = urllib.request.urlopen(req, timeout=30)
+        except urllib.error.HTTPError as e:
+            resp = e  # 206/304/416 등도 헤더/본문 보유
         except Exception as e:
             self.send_error(502, f"upstream error: {e}")
             return

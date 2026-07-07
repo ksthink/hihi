@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-07-07
+
+### 생성 / 추가
+- `weather.js` — 기상청 단기예보 도메인 모듈(LCC 격자변환 `dfsXy`, 발표시각 계산, 초단기+단기예보 병합, 흑백 SVG 아이콘, 시간대별 스트립 렌더). iOS 이식 1:1 참조용
+- `api/weather.js` — 기상청 프록시 서버리스(CORS 회피 + 인증키 서버측 은닉, `KMA_KEY`)
+- `npn.js` — 국가지점번호 도메인 모듈. WGS84→UTM-K(EPSG:5179) 정변환 + 국가지점번호 산출. Redfearn·Krüger 두 급수 교차검증(전국 오차 <0.1mm), 규정 예시('다사') 격자 일치 확인
+- `api/tiles.js` — Protomaps 기저 타일 프록시 서버리스(최신 날짜 빌드 자동 탐지 + Range 전달)
+- 산 소개 카드: `index.html`(#mi-sec), `app.js`(`loadMountainInfo`/`renderMountainInfo`) — Supabase `mountain_info`를 산코드로 조인, 산이름·높이 한 줄 + 소개 100자+더읽기(본문 클릭 접힘) + 관리주체 우측 배치·클릭 시 전화번호 팝업·번호 클릭 자동복사
+- 등반 국가지점번호 표시: `index.html`(#npn-box, top-overlay 내), `app.js`(`updateNpn` + `watchPosition` 매 위치 갱신) — 등반 시작 시 지도 우측 상단 산·코스 박스 아래에 현재 위치 국가지점번호
+
+### 수정 / 변경
+- 기상청 날씨 기능: `index.html`(#wx-explore-sec/#wx-climb/#wx-hud), `app.js`(`loadWeather`·`wxCache`·localStorage 스냅샷·`renderClimbWeather`), `style.css`(.wx-*) — 탐험=온라인 실시간, 등반=오프라인 스냅샷, 산 위치 격자 기준, 제목 "〈산이름〉 부근 오늘 날씨", 2시간 간격
+- 관리자 콘솔 보안/편집: `scripts/admin_server.py`(비밀번호 로그인 `/api/login`, IP별 5회 실패 시 10분 잠금), `admin/admin.js`(로그인 게이트·로그아웃·코스명 인라인 수정 버그 수정)
+- 탐험 검색·코스 표시: `app.js`·`style.css` — 빈 입력 시 목록 미노출(자동완성만, sr-typed 검정/sr-ghost 회색), 검색·전체코스 시 `fitBounds`로 화면 최적화, 선택 코스 검정·나머지 회색(trail-hl), 지도 코스 선택 시 목록 `scrollIntoView`
+- 등반 탭 헤더: `index.html`·`app.js`(`updateClimb`)·`style.css` — "등반 | 〈산이름〉" 반전 강조 배지(라이트=검정배경 흰글씨/다크=흰배경 검정글씨)
+- 등반 시작 HUD 날씨 제거: `app.js`(`startClimb`에서 wx-hud 숨김) — 출발 전 등반 카드에서만 확인
+- 데이터 내보내기(GeoJSON) 섹션 삭제: `index.html`, `app.js`(`download` 헬퍼·리스너 제거)
+- 지도 기저 타일 자체 호스팅(Cloudflare R2): `demo-bucket.protomaps.com/v4.pmtiles`(고정 파일) 삭제 대응
+  - `scripts/build_forest_pack.py`용 `tools/pmtiles`로 한국 영역 base 추출(bbox 124.5,33–132,43.5 · maxzoom 14 · 505MB)
+  - `scripts/r2_upload.py`(신규) boto3 멀티파트 업로드로 R2 버킷 `hihi`에 `kr-base.pmtiles` 업로드(egress 무료), 공개 URL `pub-…r2.dev` + CORS
+  - `scripts/serve.py`·`api/tiles.js`·`vercel.json`: 프록시를 R2 고정 객체로 재지정(same-origin·Range 전달, `hiheight/1.0` UA — R2 pub 은 기본 urllib/UA 차단). CDN Cache-Control 추가
+  - `app.js` `PMTILES_URL` → `/pmtiles/kr-base.pmtiles`. R2 자격증명은 `.env`만(커밋 금지). 프록시는 웹 전용 계층(iOS 는 로컬 번들 range 접근)
+
 ## 2026-07-04
 
 ### 생성 / 초기 구축
