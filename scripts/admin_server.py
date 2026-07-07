@@ -19,6 +19,7 @@ import re
 import secrets
 import sys
 import threading
+import time
 import traceback
 import urllib.parse
 import uuid
@@ -139,6 +140,11 @@ def _mnt_codes():
     return _MNT_CACHE
 
 
+# 로그인 실패 잠금 (IP 별): 5회 실패 → 10분 잠금
+LOGIN_FAILS = {}          # ip -> {"n": 실패 횟수, "until": 잠금 해제 시각}
+MAX_FAILS, LOCK_SEC = 5, 600
+
+
 class AdminHandler(BaseHandler):
     # ── 공통 ──
     def _json(self, obj, status=200):
@@ -166,12 +172,39 @@ class AdminHandler(BaseHandler):
         return (self.headers.get("X-Admin-Token") == tok
                 or (q.get("token") or [None])[0] == tok)
 
+    def _login(self):
+        """비밀번호(.env ADMIN_PASSWORD) 검증 → 성공 시 API 토큰 발급."""
+        ip = self.client_address[0]
+        now = time.time()
+        rec = LOGIN_FAILS.setdefault(ip, {"n": 0, "until": 0.0})
+        if now < rec["until"]:
+            wait = int(rec["until"] - now)
+            return self._json({"error": f"로그인 잠금 — {wait // 60 + 1}분 후 다시 시도하세요",
+                               "retry_after": wait}, 429)
+        try:
+            data = json.loads(self._body() or b"{}")
+        except ValueError:
+            data = {}
+        pw = os.environ.get("ADMIN_PASSWORD")
+        if pw and str(data.get("password", "")) == pw:
+            LOGIN_FAILS.pop(ip, None)
+            return self._json({"token": os.environ["ADMIN_TOKEN"]})
+        rec["n"] += 1
+        if rec["n"] >= MAX_FAILS:
+            rec["n"] = 0
+            rec["until"] = now + LOCK_SEC
+            return self._json({"error": f"{MAX_FAILS}회 실패 — 10분 동안 접속이 차단됩니다",
+                               "retry_after": LOCK_SEC}, 429)
+        return self._json({"error": f"비밀번호가 틀렸습니다 (남은 시도 {MAX_FAILS - rec['n']}회)"}, 401)
+
     def _route(self, method):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
-        if not self._authorized(q):
-            return self._err("관리자 토큰 필요", 401)
         parts = [p for p in u.path.split("/") if p]  # ["api", ...]
+        if method == "POST" and parts[1:] == ["login"]:
+            return self._login()  # 로그인은 인증 없이 (실패 잠금으로 보호)
+        if not self._authorized(q):
+            return self._err("관리자 인증 필요", 401)
         try:
             return self._dispatch(method, parts[1:], q)
         except FileNotFoundError as e:

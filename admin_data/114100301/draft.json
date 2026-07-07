@@ -1036,7 +1036,7 @@
    "detail": "조망점",
    "etc": null,
    "origin": "forest",
-   "moved": false,
+   "moved": true,
    "deleted": false
   },
   {
@@ -1876,7 +1876,7 @@
    "detail": "정상부",
    "etc": null,
    "origin": "forest",
-   "moved": false,
+   "moved": true,
    "deleted": false
   },
   {

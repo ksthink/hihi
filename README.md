@@ -132,8 +132,9 @@
 bash scripts/setup_admin.sh                      # 최초 1회: .venv + go-pmtiles
 .venv/bin/python scripts/admin_server.py         # 0.0.0.0:8890 — 앱(/)+관리자(/admin/)+API 통합
 ```
-- 원격 접속: `http://<호스트>:8890/admin/?token=<ADMIN_TOKEN>` — 토큰은 시작 로그(또는 `.env`)에.
-  `/api` 는 토큰 인증(localhost 는 면제), 최초 진입 후 브라우저에 저장되어 재입력 불필요.
+- 원격 접속: `http://<호스트>:8890/admin/` → **비밀번호 로그인** (.env `ADMIN_PASSWORD`).
+  **5회 실패 시 해당 IP 10분 잠금.** 성공하면 API 토큰이 브라우저에 저장되어 재입력 불필요.
+  (localhost 는 인증 면제 · `?token=<ADMIN_TOKEN>` 직접 진입도 가능)
 - serve.py(구 개발 서버)와 같은 포트를 쓰므로 동시에 띄우지 말 것.
 1. **검색**: 산 이름/산코드 검색(전국 5,360) → "추가" — 산림청 원본(`mountain/<산코드>/`)에서
    스팟·bbox 자동 구성 + 자동 코스 시드 (DEM 자동 다운로드)

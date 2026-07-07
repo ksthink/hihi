@@ -19,23 +19,40 @@ let adminToken = localStorage.getItem(TOKEN_KEY) || "";
   }
 }
 
-const api = async (path, opts = {}, retried = false) => {
+const api = async (path, opts = {}) => {
   const headers = { ...(opts.headers || {}) };
   if (adminToken) headers["X-Admin-Token"] = adminToken;
   const r = await fetch("/api" + path, { ...opts, headers });
   const ct = r.headers.get("Content-Type") || "";
   const body = ct.includes("json") ? await r.json() : await r.text();
-  if (r.status === 401 && !retried) {
-    const t = prompt("관리자 토큰을 입력하세요 (서버 시작 로그의 ADMIN_TOKEN):");
-    if (t) {
-      adminToken = t.trim();
-      localStorage.setItem(TOKEN_KEY, adminToken);
-      return api(path, opts, true);
-    }
-  }
+  if (r.status === 401) showLogin(); // 인증 만료/부재 → 로그인 게이트
   if (!r.ok) throw new Error(body.error || r.status);
   return body;
 };
+
+// ── 로그인 게이트 (비밀번호 → 토큰, 5회 실패 시 서버가 10분 잠금) ──
+function showLogin() {
+  $("login-overlay").hidden = false;
+  $("login-pw").focus();
+}
+$("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = $("login-msg");
+  msg.textContent = "";
+  try {
+    const r = await fetch("/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: $("login-pw").value }),
+    });
+    const body = await r.json();
+    if (!r.ok) { msg.textContent = body.error || r.status; $("login-pw").value = ""; return; }
+    adminToken = body.token;
+    localStorage.setItem(TOKEN_KEY, adminToken);
+    location.reload(); // 토큰 확보 후 재부팅 (초기 로드 재실행)
+  } catch (err) {
+    msg.textContent = "로그인 실패: " + err.message;
+  }
+});
 
 // ── 상태 ──
 const S = {
@@ -266,7 +283,7 @@ function renderCourses() {
     const k = c.computed || {};
     li.innerHTML = `
       <div class="c-head">
-        <input class="c-name" value="${(c.name || "").replace(/"/g, "&quot;")}" />
+        <input class="c-name" title="클릭해서 코스명 수정" value="${(c.name || "").replace(/"/g, "&quot;")}" />
         <span class="badge ${c.source?.type === "gpx" ? "gpx" : ""}">${src}</span>
         <span class="badge ${c.status === "ready" ? "ready" : ""}">${c.status === "ready" ? "배포" : "초안"}</span>
       </div>
@@ -281,7 +298,7 @@ function renderCourses() {
       </div>`;
     li.onclick = (e) => { if (e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT" && e.target.tagName !== "BUTTON") selectCourse(c.id, true); };
     li.querySelector(".c-name").addEventListener("change", (e) => { c.name = e.target.value.trim(); markDirty(); });
-    li.querySelector(".c-name").addEventListener("focus", () => selectCourse(c.id, false));
+    li.querySelector(".c-name").addEventListener("focus", () => selectCourse(c.id, false)); // DOM 재생성 없음 — 편집 유지
     li.querySelector(".c-diff").addEventListener("change", (e) => { c.difficulty = e.target.value; markDirty(); renderCourses(); });
     li.querySelector(".c-desc").addEventListener("change", (e) => { c.desc = e.target.value.trim() || null; markDirty(); });
     li.querySelector(".c-status").onclick = () => {
@@ -304,9 +321,16 @@ function renderCourses() {
   }
 }
 
+// 선택 표시만 갱신 (목록 DOM 은 재생성하지 않음 — 이름 입력 포커스가 죽지 않도록)
+function updateCourseSelection() {
+  if (map.getSource("courses")) map.getSource("courses").setData(courseFC());
+  document.querySelectorAll("#course-list li").forEach((li) =>
+    li.classList.toggle("sel", li.dataset.id === S.selCourse));
+}
+
 function selectCourse(id, fit) {
-  S.selCourse = S.selCourse === id && !fit ? S.selCourse : id;
-  renderCourses();
+  S.selCourse = id;
+  updateCourseSelection();
   const c = S.draft.courses.find((x) => x.id === id);
   if (c && fit) {
     const pts = c.lines.flat();
@@ -530,5 +554,12 @@ function pollJob(id, onDone) {
   }, 1000);
 }
 
-// ── 부팅 ──
-refreshList();
+// ── 로그아웃: 저장된 토큰 제거 → 로그인 게이트로 ──
+$("logout").onclick = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  adminToken = "";
+  location.reload();
+};
+
+// ── 부팅 ── (401 이면 api() 가 로그인 게이트를 띄움)
+refreshList().catch(() => {});
