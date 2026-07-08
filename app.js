@@ -114,7 +114,7 @@ map.addControl(new ThemeControl(), "bottom-right");
 // ── 지도 POI 아이콘 (흑백 뱃지, 런타임 캔버스 생성) ────
 // 외부 스프라이트/CDN 없이 styleimagemissing 때 즉석 생성 — 오프라인·테마 전환 자동 대응.
 // iOS 이식 시 동일 아이콘 id 로 UIImage 를 스타일에 등록하면 됨.
-const POI_TEXT = { toilets: "WC", parking: "P", information: "i", place_of_worship: "卍" };
+const POI_TEXT = { toilets: "WC", parking: "P", information: "i", place_of_worship: "卍", helipad: "H" };
 
 function makePoiIcon(id) {
   const kind = id.replace(/^poi-/, "");
@@ -127,12 +127,12 @@ function makePoiIcon(id) {
   const ctx = cv.getContext("2d");
   ctx.scale(2, 2);
 
-  // 뱃지: 역은 원형, 나머지는 라운드 사각
+  // 뱃지: 역·헬기장은 원형(관제 기호 관례), 나머지는 라운드 사각
   ctx.fillStyle = bg;
   ctx.strokeStyle = fg;
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  if (kind === "station") ctx.arc(S / 2, S / 2, S / 2 - P, 0, Math.PI * 2);
+  if (kind === "station" || kind === "helipad") ctx.arc(S / 2, S / 2, S / 2 - P, 0, Math.PI * 2);
   else ctx.roundRect(P, P, S - 2 * P, S - 2 * P, 4);
   ctx.fill(); ctx.stroke();
 
@@ -167,6 +167,34 @@ function makePoiIcon(id) {
     ctx.arc(S / 2, 12, 4, 0, Math.PI, false);
     ctx.bezierCurveTo(6, 10.5, 6.5, 8.5, S / 2, 4.5);
     ctx.fill();
+  } else if (kind === "viewpoint") {
+    // 조망점: 시점(점) + 부챗살(국제 지도 관례)
+    ctx.lineWidth = 1.3;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    for (const a of [-52, -26, 0, 26, 52]) {
+      const r = (a - 90) * Math.PI / 180;
+      ctx.moveTo(S / 2, 13.5);
+      ctx.lineTo(S / 2 + Math.cos(r) * 8, 13.5 + Math.sin(r) * 8);
+    }
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(S / 2, 13.5, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (kind === "shelter") {
+    // 정자: 지붕(팔작 곡선) + 기둥 2 + 마루
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();                              // 지붕
+    ctx.moveTo(4.5, 9);
+    ctx.quadraticCurveTo(S / 2, 3, 15.5, 9);
+    ctx.lineTo(4.5, 9);
+    ctx.fill();
+    ctx.beginPath();                              // 기둥
+    ctx.moveTo(7, 9.5); ctx.lineTo(7, 14.5);
+    ctx.moveTo(13, 9.5); ctx.lineTo(13, 14.5);
+    ctx.stroke();
+    ctx.fillRect(5, 14.5, 10, 1.4);               // 마루
   } else {
     return; // 모르는 아이콘은 생성하지 않음
   }
@@ -188,8 +216,14 @@ const parkOverlays = {};
 // pmtiles Protocol 에 로컬 Blob 소스가 등록된 산: { <park>: true }
 const localRegistered = {};
 
-// 지도에 표시할 경로 지점 종류
-const SHOWN = ["분기점", "시종점"];
+// 지도에 표시할 경로 지점 종류 — 분기점·시종점은 표시 제외(2026-07-08 결정).
+// 봉우리(정상)는 spot-peaks, 아래 편의시설은 spots-facilities 아이콘 레이어가 렌더.
+const SHOWN = [];
+// 편의시설 → POI 아이콘 id (makePoiIcon 캔버스 생성 — 흑백·테마 자동)
+const FACILITY_ICON = {
+  조망점: "poi-viewpoint", 화장실: "poi-toilets", 정자: "poi-shelter",
+  헬기장: "poi-helipad", 음수대: "poi-drinking_water",
+};
 
 // ── 난이도 미터 (흑백) ───────────────────────────────
 function difMeter(diff) {
@@ -385,7 +419,7 @@ function ensureOverlays() {
   if (!map.getSource("spots")) {
     map.addSource("spots", { type: "geojson", data: ov.spots || EMPTY_FC });
     map.addLayer({
-      id: "spots-dots", type: "circle", source: "spots", minzoom: 10.5,
+      id: "spots-dots", type: "circle", source: "spots", minzoom: 18,
       filter: ["in", ["get", "category"], ["literal", SHOWN]],
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 1.8],
@@ -396,13 +430,23 @@ function ensureOverlays() {
     });
     // 운영자가 이름 붙인 분기점/시종점만 지도 라벨 (관리자 콘솔 큐레이션)
     map.addLayer({
-      id: "spots-labels", type: "symbol", source: "spots", minzoom: 12.5,
+      id: "spots-labels", type: "symbol", source: "spots", minzoom: 18,
       filter: ["all", ["in", ["get", "category"], ["literal", SHOWN]], ["has", "name"]],
       layout: {
         "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
         "text-size": 8.9, "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
+    });
+    // 편의시설 아이콘 (조망점·화장실·정자·헬기장·음수대) — 충돌 시 자동 숨김으로 밀집 정리.
+    // 정상 제외 스팟은 축척 30m 수준(z18)부터 노출 (2026-07-08 결정)
+    map.addLayer({
+      id: "spots-facilities", type: "symbol", source: "spots", minzoom: 18,
+      filter: ["in", ["get", "category"], ["literal", Object.keys(FACILITY_ICON)]],
+      layout: {
+        "icon-image": ["match", ["get", "category"],
+          ...Object.entries(FACILITY_ICON).flat(), ""],
+      }
     });
     // 정상(peak) 스팟 → 봉우리 표식 (팩 주도 — 관리자에서 '정상'으로 찍은 지점).
     // 전역 peaks.geojson(북한산·설악산 레거시)과 별개로, 각 산 팩의 정상을 렌더.
@@ -444,16 +488,18 @@ function ensureOverlays() {
       map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
       map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
     });
-    map.on("click", "spots-dots", (e) => {
-      const p = e.features[0].properties;
-      new maplibregl.Popup({ maxWidth: "240px" })
-        .setLngLat(e.lngLat)
-        .setHTML(`<div class="popup-title">${p.name || p.category || "스팟"}</div>
-          <div class="popup-meta">${p.name ? p.category + "<br>" : ""}${p.detail || ""}${p.etc ? "<br>" + p.etc : ""}</div>`)
-        .addTo(map);
+    ["spots-dots", "spots-facilities"].forEach((id) => {
+      map.on("click", id, (e) => {
+        const p = e.features[0].properties;
+        new maplibregl.Popup({ maxWidth: "240px" })
+          .setLngLat(e.lngLat)
+          .setHTML(`<div class="popup-title">${p.name || p.category || "스팟"}</div>
+            <div class="popup-meta">${p.name ? p.category + "<br>" : ""}${p.detail || ""}${p.etc ? "<br>" + p.etc : ""}</div>`)
+          .addTo(map);
+      });
+      map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+      map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
     });
-    map.on("mouseenter", "spots-dots", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "spots-dots", () => (map.getCanvas().style.cursor = ""));
     interactionsBound = true;
   }
 
@@ -465,7 +511,7 @@ function ensureOverlays() {
 // 스팟/등고선은 현재 산의 데이터가 있을 때만 표시 (산별 일반화)
 function applySpotsVisibility() {
   const vis = (parkOverlays[currentPark] || {}).spots ? "visible" : "none";
-  ["spots-dots", "spots-labels"].forEach((id) => {
+  ["spots-dots", "spots-labels", "spots-facilities"].forEach((id) => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
   });
 }
@@ -532,7 +578,12 @@ function fitPadding() {
 // 현재 산의 전체 코스 범위에 맞춰 지도 축소/확대
 function fitPark(duration = 800) {
   const gj = trailCache[currentPark];
-  if (!gj || !gj.features || !gj.features.length) return;
+  if (!gj || !gj.features || !gj.features.length) {
+    // 코스 0개(빈 배포) 산 — 카탈로그의 중심/줌으로 이동
+    const cfg = PARKS[currentPark];
+    if (cfg?.center) map.flyTo({ center: cfg.center, zoom: cfg.zoom || 12, duration });
+    return;
+  }
   const b = geojsonBounds(gj);
   if (!isFinite(b[0])) return;
   document.getElementById("sheet")?.classList.remove("expanded");

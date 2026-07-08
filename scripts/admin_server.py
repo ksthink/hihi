@@ -364,7 +364,8 @@ class AdminHandler(BaseHandler):
         self.send_error(405)
 
     def log_message(self, fmt, *args):  # /api 폴링 소음 축소
-        if "/api/jobs/" not in (args[0] if args else ""):
+        # args[0] 이 HTTPStatus 등 비문자열일 수 있음(send_error 경로) — str 로 안전 변환
+        if "/api/jobs/" not in str(args[0] if args else ""):
             super().log_message(fmt, *args)
 
 

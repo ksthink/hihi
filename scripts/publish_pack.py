@@ -82,11 +82,10 @@ def publish(code, job=None, step=None):
     m = draft["mountain"]
     bbox = m["bbox"]
     ready = [c for c in draft["courses"] if c["status"] == "ready"]
-    if not ready:
-        raise ValueError("배포(ready) 상태 코스가 없음")
+    # 코스 0개(빈 배포)도 허용 — 삭제한 코스를 앱에서 내리는 용도 (산·스팟·등고선은 유지)
 
     # 1. geojson 산출
-    log(f"팩 생성: 코스 {len(ready)}개, 스팟", 0.05)
+    log(f"팩 생성: 코스 {len(ready)}개{'' if ready else ' (빈 배포 — 앱에서 등산로 제거)'}, 스팟", 0.05)
     pack_dir = os.path.join(pl.ROOT, "data", "packs", code)
     os.makedirs(pack_dir, exist_ok=True)
     routes_fc, spots_fc = draft_store.to_pack(draft)

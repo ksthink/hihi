@@ -100,17 +100,38 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl({ showZoom: true }), "bottom-right");
 
 map.on("load", () => {
-  for (const id of ["network", "courses", "spots", "gpx-raw", "gpx-matched", "compose"])
+  for (const id of ["network", "courses", "spots", "gpx-raw", "gpx-matched",
+                    "compose", "compose-ends"])
     map.addSource(id, { type: "geojson", data: EMPTY });
 
   map.addLayer({ id: "network-line", type: "line", source: "network",
     paint: { "line-color": "#c9c9c9", "line-width": 1.2 } });
+  // 호버 아웃라인: 회색선 아래에 검정 굵은 선 → 어떤 구간이 선택될지 미리보기 (컴포즈 중)
+  map.addLayer({ id: "network-hover", type: "line", source: "network",
+    filter: ["==", ["get", "idx"], -1],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#111", "line-width": 5 } }, "network-line");
   // 컴포즈 모드 전용: 구간 클릭 히트 + 담긴 코스 미리보기(검정 굵은 선)
   map.addLayer({ id: "network-hit", type: "line", source: "network",
     paint: { "line-color": "#000", "line-opacity": 0.001, "line-width": 16 } });
   map.addLayer({ id: "compose-line", type: "line", source: "compose",
     layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": "#111", "line-width": 5 } });
+  // 컴포즈 시점·종점 마커 (시점=검정 채움, 종점=흰 채움+검정 테두리)
+  map.addLayer({ id: "compose-ends-dots", type: "circle", source: "compose-ends",
+    paint: {
+      "circle-radius": 6,
+      "circle-color": ["case", ["==", ["get", "kind"], "start"], "#111111", "#ffffff"],
+      "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], "#ffffff", "#111111"],
+      "circle-stroke-width": 2,
+    } });
+  map.addLayer({ id: "compose-ends-labels", type: "symbol", source: "compose-ends",
+    layout: {
+      "text-field": ["get", "label"], "text-font": ["Nanum Gothic Coding Regular"],
+      "text-size": 11, "text-offset": [0, 1.1], "text-anchor": "top",
+      "text-allow-overlap": true,
+    },
+    paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.6 } });
 
   map.addLayer({ id: "courses-line", type: "line", source: "courses",
     layout: { "line-cap": "round", "line-join": "round" },
@@ -385,6 +406,7 @@ function renderCourses() {
         <select class="c-diff">${["초급", "중급", "고급"].map((d) =>
           `<option ${d === c.difficulty ? "selected" : ""}>${d}</option>`).join("")}</select>
         <button class="c-status">${c.status === "ready" ? "초안으로" : "배포에 포함"}</button>
+        <button class="c-flip" title="시점과 종점을 서로 바꿉니다 (통계 재계산)">시점↔종점</button>
         <button class="c-recompute" title="거리·프로파일·난이도 재계산">재계산</button>
         <button class="c-del danger">삭제</button>
         <input class="c-desc" placeholder="설명" value="${(c.desc || "").replace(/"/g, "&quot;")}" />
@@ -397,6 +419,15 @@ function renderCourses() {
     li.querySelector(".c-status").onclick = () => {
       c.status = c.status === "ready" ? "draft" : "ready";
       markDirty(); renderCourses(); refreshList();
+    };
+    li.querySelector(".c-flip").onclick = async () => {
+      // 등록 후 시점↔종점 수동 변경 — 방향 뒤집고 통계 재계산(오르막/프로파일이 방향 의존)
+      c.lines = c.lines.map((ln) => ln.slice().reverse()).reverse();
+      markDirty();
+      await saveDraft();
+      const upd = await api(`/mountains/${S.code}/courses/${c.id}/recompute`, { method: "POST" });
+      Object.assign(c, upd);
+      renderCourses();
     };
     li.querySelector(".c-recompute").onclick = async () => {
       await saveDraft();
@@ -445,27 +476,72 @@ function havM(a, b) { // 좌표 [lon,lat] 간 거리(m)
     Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-const composeFC = () => ({ type: "FeatureCollection", features: (S.compose?.lines || [])
+// 클릭 목록(picked idx 순서)에서 폴리라인을 매번 재구성 — 중간 구간 해제(토글)에도 안전
+function stitchPicked(picked) {
+  const lines = [];
+  for (const idx of picked) {
+    const pts = S.networkFC.features[idx].geometry.coordinates.map((p) => [p[0], p[1]]);
+    if (!lines.length) { lines.push(pts); continue; }
+    const last = lines[lines.length - 1];
+    const end = last[last.length - 1];
+    if (havM(end, pts[0]) <= SNAP_M) last.push(...pts.slice(1));
+    else if (havM(end, pts[pts.length - 1]) <= SNAP_M) last.push(...pts.slice(0, -1).reverse());
+    else if (lines.length === 1 &&
+             (havM(last[0], pts[0]) <= SNAP_M || havM(last[0], pts[pts.length - 1]) <= SNAP_M)) {
+      // 첫 구간을 반대 방향으로 클릭한 경우 — 두 번째 클릭에서 자동 정렬
+      last.reverse();
+      if (havM(last[last.length - 1], pts[0]) <= SNAP_M) last.push(...pts.slice(1));
+      else last.push(...pts.slice(0, -1).reverse());
+    } else lines.push(pts); // 비연결 갭 — 새 파트
+  }
+  return lines;
+}
+
+// 최종 라인(시점↔종점 뒤집기 반영)
+function composeLines() {
+  const lines = stitchPicked(S.compose.picked);
+  if (S.compose.flip) {
+    lines.reverse();
+    lines.forEach((ln) => ln.reverse());
+  }
+  return lines;
+}
+
+const linesFC = (lines) => ({ type: "FeatureCollection", features: lines
   .map((ln) => ({ type: "Feature", geometry: { type: "LineString", coordinates: ln }, properties: {} })) });
 
+const endsFC = (lines) => {
+  const first = lines[0], last = lines[lines.length - 1];
+  if (!first?.length || !last?.length) return EMPTY;
+  return { type: "FeatureCollection", features: [
+    { type: "Feature", geometry: { type: "Point", coordinates: first[0] },
+      properties: { kind: "start", label: "시점" } },
+    { type: "Feature", geometry: { type: "Point", coordinates: last[last.length - 1] },
+      properties: { kind: "end", label: "종점" } },
+  ] };
+};
+
 function renderCompose(msg) {
-  map.getSource("compose")?.setData(composeFC());
-  const c = S.compose;
-  const parts = c.lines.length;
-  const km = c.lines.reduce((t, ln) => {
+  const lines = composeLines();
+  map.getSource("compose")?.setData(linesFC(lines));
+  map.getSource("compose-ends")?.setData(endsFC(lines));
+  const parts = lines.length;
+  const km = lines.reduce((t, ln) => {
     for (let i = 1; i < ln.length; i++) t += havM(ln[i - 1], ln[i]);
     return t;
   }, 0) / 1000;
   $("compose-stat").textContent =
-    `구간 ${c.segs.length}개 · ${km.toFixed(1)}km` + (parts > 1 ? ` · ⚠ 비연결 파트 ${parts}개` : "");
+    `구간 ${S.compose.picked.length}개 · ${km.toFixed(1)}km` +
+    (parts > 1 ? ` · ⚠ 비연결 파트 ${parts}개` : "") +
+    (S.compose.flip ? " · 방향 뒤집힘" : "");
   $("compose-info").innerHTML = msg ||
-    `시점부터 종점까지 회색 구간을 <b>순서대로 클릭</b>하세요.`;
+    `시점부터 종점까지 회색 구간을 <b>순서대로 클릭</b>하세요. 담긴 구간을 <b>다시 클릭하면 해제</b>됩니다.`;
 }
 
 function startCompose() {
   if (S.compose) return exitCompose();
   if (!S.networkFC?.features?.length) { alert("구간망 원본이 없는 산입니다. GPX 업로드를 사용하세요."); return; }
-  S.compose = { lines: [], segs: [], history: [] };
+  S.compose = { picked: [], flip: false, history: [] };
   S.addingSpot = false;
   $("spot-add").classList.remove("active");
   $("compose-box").hidden = false;
@@ -482,35 +558,26 @@ function exitCompose() {
   $("compose-start").textContent = "＋ 코스 등록 (지도에서 구간 클릭)";
   map.getCanvas().style.cursor = "";
   map.getSource("compose")?.setData(EMPTY);
+  map.getSource("compose-ends")?.setData(EMPTY);
+  if (map.getLayer("network-hover")) map.setFilter("network-hover", ["==", ["get", "idx"], -1]);
 }
 
 function composeClick(idx) {
   const c = S.compose;
-  const f = S.networkFC.features[idx];
-  if (!f) return;
-  const pts = f.geometry.coordinates.map((p) => [p[0], p[1]]);
-  c.history.push({ lines: c.lines.map((ln) => ln.slice()), segs: c.segs.slice() });
-  c.segs.push(f.properties.sn ?? idx);
-  let warn = null;
-  if (!c.lines.length) {
-    c.lines.push(pts);
-  } else {
-    const last = c.lines[c.lines.length - 1];
-    const end = last[last.length - 1];
-    if (havM(end, pts[0]) <= SNAP_M) last.push(...pts.slice(1));
-    else if (havM(end, pts[pts.length - 1]) <= SNAP_M) last.push(...pts.slice(0, -1).reverse());
-    else if (c.lines.length === 1 && c.segs.length === 2 &&
-             (havM(last[0], pts[0]) <= SNAP_M || havM(last[0], pts[pts.length - 1]) <= SNAP_M)) {
-      // 첫 구간을 반대 방향으로 클릭한 경우 — 두 번째 클릭에서 자동 정렬
-      last.reverse();
-      if (havM(last[last.length - 1], pts[0]) <= SNAP_M) last.push(...pts.slice(1));
-      else last.push(...pts.slice(0, -1).reverse());
-    } else {
-      c.lines.push(pts);
-      warn = `<span class="warn">⚠ 이전 구간과 연결되지 않아 새 파트로 추가했습니다 (잘못 클릭했다면 "마지막 취소").</span>`;
-    }
+  if (!S.networkFC.features[idx]) return;
+  c.history.push({ picked: c.picked.slice(), flip: c.flip });
+  const at = c.picked.indexOf(idx);
+  if (at >= 0) { // 담긴 구간 재클릭 → 해제 (나머지는 순서 유지한 채 재구성)
+    c.picked.splice(at, 1);
+    renderCompose(`<span class="dim">구간을 해제했습니다.</span>`);
+    return;
   }
-  renderCompose(warn);
+  const before = stitchPicked(c.picked).length;
+  c.picked.push(idx);
+  const after = stitchPicked(c.picked).length;
+  renderCompose(after > Math.max(before, 1)
+    ? `<span class="warn">⚠ 이전 구간과 연결되지 않아 새 파트로 추가했습니다 (다시 클릭하면 해제).</span>`
+    : null);
 }
 
 $("compose-start").onclick = startCompose;
@@ -519,12 +586,19 @@ $("compose-undo").onclick = () => {
   const c = S.compose;
   if (!c?.history.length) return;
   const prev = c.history.pop();
-  c.lines = prev.lines; c.segs = prev.segs;
+  c.picked = prev.picked; c.flip = prev.flip;
   renderCompose();
+};
+$("compose-flip").onclick = () => {
+  const c = S.compose;
+  if (!c) return;
+  c.history.push({ picked: c.picked.slice(), flip: c.flip });
+  c.flip = !c.flip;
+  renderCompose(`<span class="dim">시점과 종점을 바꿨습니다.</span>`);
 };
 $("compose-done").onclick = async () => {
   const c = S.compose;
-  if (!c?.lines.length) { alert("클릭한 구간이 없습니다."); return; }
+  if (!c?.picked.length) { alert("클릭한 구간이 없습니다."); return; }
   const no = Math.max(0, ...S.draft.courses.map((x) => x.no || 0)) + 1;
   const name = (prompt(`코스 이름 (번호 ${no}번은 자동 부여)`, `${no}코스`) || "").trim();
   if (!name) return; // 취소
@@ -532,9 +606,10 @@ $("compose-done").onclick = async () => {
     id: "c-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4),
     no, name, difficulty: "초급", desc: null, kind: "운영자 큐레이션",
     status: "draft",
-    source: { type: "manual", segments: c.segs },
+    source: { type: "manual",
+      segments: c.picked.map((i) => S.networkFC.features[i]?.properties.sn ?? i) },
     segments: null,
-    lines: c.lines.map((ln) => ln.map((p) => [+p[0].toFixed(5), +p[1].toFixed(5)])),
+    lines: composeLines().map((ln) => ln.map((p) => [+p[0].toFixed(5), +p[1].toFixed(5)])),
     computed: {},
   };
   S.draft.courses.push(course);
@@ -673,12 +748,20 @@ $("spot-add").onclick = () => {
 
 // ── 지도 이벤트 (코스 클릭·스팟 클릭/드래그·스팟 추가) ──
 function wireMapEvents() {
-  // 컴포즈 모드: 구간망 클릭 → 코스에 순서대로 담기
+  // 컴포즈 모드: 구간망 클릭 → 코스에 담기/해제(토글)
   map.on("click", "network-hit", (e) => {
     if (!S.compose) return;
     composeClick(e.features[0].properties.idx);
   });
   map.on("mouseenter", "network-hit", () => { if (S.compose) map.getCanvas().style.cursor = "crosshair"; });
+  // 호버 아웃라인: 어떤 구간이 담길지 클릭 전에 미리보기
+  map.on("mousemove", "network-hit", (e) => {
+    if (!S.compose) return;
+    map.setFilter("network-hover", ["==", ["get", "idx"], e.features[0].properties.idx]);
+  });
+  map.on("mouseleave", "network-hit", () => {
+    map.setFilter("network-hover", ["==", ["get", "idx"], -1]);
+  });
   map.on("click", "courses-hit", (e) => {
     if (S.addingSpot || S.compose) return;
     const id = e.features[0].properties.id;
@@ -731,7 +814,10 @@ function wireMapEvents() {
 $("publish").onclick = async () => {
   if (!S.code) return;
   const ready = S.draft.courses.filter((c) => c.status === "ready").length;
-  if (!confirm(`${S.draft.mountain.name} 배포 — ready 코스 ${ready}개가 Supabase 에 반영됩니다. 진행?`)) return;
+  const msg = ready
+    ? `${S.draft.mountain.name} 배포 — ready 코스 ${ready}개가 앱에 반영됩니다. 진행?`
+    : `${S.draft.mountain.name} 빈 배포 — 코스가 0개입니다. 앱에서 이 산의 등산로가 모두 제거됩니다(산·스팟·등고선은 유지). 진행?`;
+  if (!confirm(msg)) return;
   await saveDraft();
   const { job_id } = await api(`/mountains/${S.code}/publish`, { method: "POST" });
   $("publish").disabled = true;
