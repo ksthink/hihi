@@ -13903,13 +13903,13 @@
    "category": "분기점",
    "name": null,
    "coord": [
-    126.986899,
-    37.668626
+    126.98696,
+    37.668642
    ],
    "detail": "분기점",
    "etc": null,
    "origin": "forest",
-   "moved": false,
+   "moved": true,
    "deleted": false
   },
   {

@@ -77,3 +77,22 @@ def upload_bytes(content, key, s3=None, content_type=None):
     ct = content_type or content_type_for(key)
     s3.put_object(Bucket=bucket(), Key=key, Body=content, ContentType=ct)
     return len(content)
+
+
+def delete_prefix(prefix, s3=None):
+    """prefix 하위 객체 전부 삭제(예: packs/<산코드>/). 삭제한 개수 반환."""
+    s3 = s3 or client()
+    b, n, token = bucket(), 0, None
+    while True:
+        kw = {"Bucket": b, "Prefix": prefix}
+        if token:
+            kw["ContinuationToken"] = token
+        resp = s3.list_objects_v2(**kw)
+        objs = [{"Key": o["Key"]} for o in resp.get("Contents", [])]
+        if objs:
+            s3.delete_objects(Bucket=b, Delete={"Objects": objs})
+            n += len(objs)
+        if resp.get("IsTruncated"):
+            token = resp.get("NextContinuationToken")
+        else:
+            return n

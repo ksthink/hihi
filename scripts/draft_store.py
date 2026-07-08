@@ -182,13 +182,17 @@ def to_pack(draft):
         props = {"name": c["name"], "difficulty": c["difficulty"], **c["computed"],
                  "kind": c.get("kind") or "운영자 큐레이션", "desc": c.get("desc")}
         # 사용자 앱이 기대하는 키 순서와 무관하게 동일 키 집합 유지
+        out = {k: props[k] for k in
+               ("name", "difficulty", "distance_km", "time_hr", "kind",
+                "desc", "profile", "min_elev", "max_elev", "ascent", "descent")}
+        if c.get("no") is not None:  # 코스 번호 — 앱 지도 중앙 라벨 (부록 D)
+            out["no"] = c["no"]
         feats.append({"type": "Feature",
                       "geometry": {"type": "MultiLineString", "coordinates": c["lines"]},
-                      "properties": {k: props[k] for k in
-                                     ("name", "difficulty", "distance_km", "time_hr", "kind",
-                                      "desc", "profile", "min_elev", "max_elev",
-                                      "ascent", "descent")}})
-    feats.sort(key=lambda f: -(f["properties"]["distance_km"] or 0))
+                      "properties": out})
+    feats.sort(key=lambda f: (f["properties"].get("no") is None,
+                              f["properties"].get("no") or 0,
+                              -(f["properties"]["distance_km"] or 0)))
     sp = []
     for s in draft["spots"]:
         if s.get("deleted"):
@@ -199,6 +203,8 @@ def to_pack(draft):
                  "detail": s.get("detail"), "etc": s.get("etc")}
         if s.get("name"):
             props["name"] = s["name"]
+        if s.get("main") is not None:  # 봉우리 위계(정상 main=true/부봉 false) — 앱 peak 크기
+            props["main"] = s["main"]
         sp.append({"type": "Feature",
                    "geometry": {"type": "Point", "coordinates": s["coord"]},
                    "properties": props})

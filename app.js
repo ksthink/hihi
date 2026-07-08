@@ -199,6 +199,93 @@ function difMeter(diff) {
   return s + "</span>";
 }
 
+// ── 코스 번호·시종점 (부록 D) ────────────────────────
+// 번호: 팩 properties.no(관리자 부여), 없으면 레거시 팩 폴백으로 피처 순서(1-based)
+const courseNo = (p, i) => (p && p.no != null ? p.no : i + 1);
+
+// 코스 최장 라인 파트의 누적길이 중간점 — 번호 라벨 위치
+function lineMidpoint(lines) {
+  let best = lines[0] || [];
+  let bestLen = -1;
+  for (const ln of lines) {
+    let L = 0;
+    for (let i = 1; i < ln.length; i++) L += haversine(ln[i - 1], ln[i]);
+    if (L > bestLen) { bestLen = L; best = ln; }
+  }
+  let acc = 0;
+  const half = bestLen / 2;
+  for (let i = 1; i < best.length; i++) {
+    const d = haversine(best[i - 1], best[i]);
+    if (acc + d >= half) {
+      const t = d ? (half - acc) / d : 0;
+      return [best[i - 1][0] + (best[i][0] - best[i - 1][0]) * t,
+              best[i - 1][1] + (best[i][1] - best[i - 1][1]) * t];
+    }
+    acc += d;
+  }
+  return best[best.length - 1] || [0, 0];
+}
+
+const asLines = (g) => (g.type === "LineString" ? [g.coordinates] : g.coordinates);
+
+// 번호 배지 이미지 — 캔버스에 직접 그려 글리프 실측(actualBoundingBox)으로 정중앙 배치.
+// (심볼 text 는 폰트 메트릭 때문에 원 중심과 어긋남.) 흰 원+검정 숫자, 라이트만 검정 테두리.
+function makeBadge(no) {
+  const scale = 2, r = 9.5, pad = 2, size = (r + pad) * 2 * scale;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = size;
+  const ctx = cv.getContext("2d");
+  const cx = size / 2;
+  ctx.beginPath();
+  ctx.arc(cx, cx, r * scale, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  if (theme !== "dark") {
+    ctx.lineWidth = 1.5 * scale;
+    ctx.strokeStyle = "#111111";
+    ctx.stroke();
+  }
+  const s = String(no);
+  ctx.fillStyle = "#111111";
+  ctx.font = `700 ${11.5 * scale}px "Nanum Gothic Coding", monospace`;
+  ctx.textAlign = "center";
+  const m = ctx.measureText(s);
+  ctx.fillText(s, cx, cx + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
+  return ctx.getImageData(0, 0, size, size);
+}
+// 배지는 필요 시점에 생성 — 테마 전환(setStyle)이 이미지를 비우면 현재 테마로 재생성됨
+map.on("styleimagemissing", (e) => {
+  const m = /^badge-(\d+)$/.exec(e.id);
+  if (m && !map.hasImage(e.id)) map.addImage(e.id, makeBadge(+m[1]), { pixelRatio: 2 });
+});
+
+function courseNoFC(fc) {
+  if (!fc || !fc.features) return EMPTY_FC;
+  return { type: "FeatureCollection", features: fc.features.map((f, i) => ({
+    type: "Feature",
+    geometry: { type: "Point", coordinates: lineMidpoint(asLines(f.geometry)) },
+    // name: 배지 클릭 → 코스 선택(selectByName) 연결용
+    properties: { no: courseNo(f.properties, i), name: f.properties.name }
+  })) };
+}
+
+// 선택된 코스의 시점·종점 포인트 (미선택이면 빈 FC)
+function courseEndsData() {
+  const fc = trailCache[currentPark];
+  if (!selectedName || !fc) return EMPTY_FC;
+  const f = fc.features.find((x) => x.properties.name === selectedName);
+  if (!f) return EMPTY_FC;
+  const lines = asLines(f.geometry);
+  const first = lines[0], last = lines[lines.length - 1];
+  if (!first?.length || !last?.length) return EMPTY_FC;
+  return { type: "FeatureCollection", features: [
+    { type: "Feature", geometry: { type: "Point", coordinates: first[0] },
+      properties: { kind: "start", label: "출발" } },
+    { type: "Feature", geometry: { type: "Point", coordinates: last[last.length - 1] },
+      properties: { kind: "end", label: "도착" } },
+  ] };
+}
+
 // ── 오버레이(등산로·봉우리) 레이어 ───────────────────
 function ensureOverlays() {
   const c = trailColors();
@@ -262,6 +349,37 @@ function ensureOverlays() {
       filter: ["==", ["get", "name"], "__none__"],
       paint: { "line-color": c.line, "line-width": widthExpr }
     });
+
+    // 코스 번호 배지 — 코스 중앙에 항상 표시 (부록 D. 데이터 주도 → iOS 이식 안전)
+    // makeBadge 캔버스 아이콘(styleimagemissing 생성): 숫자가 원 정중앙에 실측 배치됨.
+    map.addSource("course-nos", { type: "geojson", data: courseNoFC(trailCache[currentPark]) });
+    map.addLayer({
+      id: "course-no-badges", type: "symbol", source: "course-nos", minzoom: 10.5,
+      layout: {
+        "icon-image": ["concat", "badge-", ["to-string", ["get", "no"]]],
+        "icon-allow-overlap": true, "icon-ignore-placement": true
+      }
+    });
+    // 시점·종점 마커 — 코스 선택 시에만 (applyTrailFilter 가 주입)
+    map.addSource("course-ends", { type: "geojson", data: courseEndsData() });
+    map.addLayer({
+      id: "course-ends-dots", type: "circle", source: "course-ends",
+      paint: {
+        "circle-radius": 5,
+        "circle-color": ["case", ["==", ["get", "kind"], "start"], c.line, c.casing],
+        "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], c.casing, c.line],
+        "circle-stroke-width": 2
+      }
+    });
+    map.addLayer({
+      id: "course-ends-labels", type: "symbol", source: "course-ends",
+      layout: {
+        "text-field": ["get", "label"], "text-font": ["Nanum Gothic Coding Bold"],
+        "text-size": 9.5, "text-offset": [0, 1.1], "text-anchor": "top",
+        "text-allow-overlap": true
+      },
+      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.6 }
+    });
   }
 
   if (!map.getSource("spots")) {
@@ -286,6 +404,20 @@ function ensureOverlays() {
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
     });
+    // 정상(peak) 스팟 → 봉우리 표식 (팩 주도 — 관리자에서 '정상'으로 찍은 지점).
+    // 전역 peaks.geojson(북한산·설악산 레거시)과 별개로, 각 산 팩의 정상을 렌더.
+    map.addLayer({
+      id: "spot-peaks", type: "symbol", source: "spots",
+      filter: ["==", ["get", "category"], "정상"],
+      layout: {
+        "text-field": ["concat", theme === "dark" ? "△" : "▲", ["coalesce", ["get", "name"], ""]],
+        "text-font": ["Nanum Gothic Coding Bold"],
+        // 정상은 기본 최상위(14.4). 부봉으로 낮추려면 스팟 main=false.
+        "text-size": ["case", ["==", ["get", "main"], false], 11, 14.4],
+        "text-offset": [0, -0.6], "text-anchor": "bottom"
+      },
+      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.8 }
+    });
   }
 
   if (!map.getSource("peaks") && peaksData) {
@@ -306,7 +438,8 @@ function ensureOverlays() {
 
   // 상호작용은 한 번만 바인딩 (레이어 id 기준이라 테마 재부착 후에도 유효)
   if (!interactionsBound && map.getLayer("trail-line")) {
-    ["trail-line", "trail-hl"].forEach((id) => {
+    // 번호 배지 클릭도 코스 선택 — focusTrail 이 목록 하이라이트·스크롤까지 처리
+    ["trail-line", "trail-hl", "course-no-badges"].forEach((id) => {
       map.on("click", id, (e) => selectByName(e.features[0].properties.name));
       map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
       map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
@@ -352,6 +485,8 @@ function applyTrailFilter() {
     map.setPaintProperty("trail-line", "line-color", selectedName ? c.faded : c.line);
   if (map.getLayer("trail-hl"))
     map.setFilter("trail-hl", ["==", ["get", "name"], selectedName || "__none__"]);
+  // 시점·종점 마커: 선택 시에만 해당 코스에 표시 (부록 D)
+  if (map.getSource("course-ends")) map.getSource("course-ends").setData(courseEndsData());
   const btn = document.getElementById("show-all");
   if (btn) btn.hidden = !selectedName;
   const cc = document.getElementById("cur-course");
@@ -444,6 +579,7 @@ async function loadPark(park) {
 
   ensureOverlays();
   if (map.getSource("trails")) map.getSource("trails").setData(geojson);
+  if (map.getSource("course-nos")) map.getSource("course-nos").setData(courseNoFC(geojson));
   // 산별 오버레이(스팟/등고선) 데이터 주입
   const ov = parkOverlays[park] || {};
   if (map.getSource("spots")) map.getSource("spots").setData(ov.spots || EMPTY_FC);
@@ -574,14 +710,14 @@ function renderClimbWeather() {
 function renderTrailList(geojson) {
   const ul = document.getElementById("trail-list");
   ul.innerHTML = "";
-  geojson.features.forEach((f) => {
+  geojson.features.forEach((f, i) => {
     const p = f.properties;
     const li = document.createElement("li");
     li.className = "trail-item";
     li.dataset.name = p.name;
     li.innerHTML = `
       <div class="t-left">
-        <div class="t-name">${p.name} <span class="badge">${difLabel(p.difficulty)} ${difMeter(p.difficulty)}</span></div>
+        <div class="t-name"><span class="t-title"><span class="t-no">${courseNo(p, i)}</span>${p.name}</span> <span class="badge">${difLabel(p.difficulty)} ${difMeter(p.difficulty)}</span></div>
         <div class="t-meta">${p.peak ? `<span>${p.peak}</span>` : ""}<span>${p.distance_km}km</span>${p.time_hr ? `<span>${p.time_hr}h</span>` : ""}${p.surface ? `<span>${p.surface}</span>` : ""}</div>
         <div class="t-desc">${p.desc || ""}</div>
       </div>

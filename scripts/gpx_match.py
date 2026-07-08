@@ -290,7 +290,8 @@ def compute_stats(lines, dem):
     coords = []
     for ln in lines:
         coords += ln if not coords else ln[1:]
-    km = _polyline_km(coords)
+    # 거리는 파트별 합산 — 수작업 코스의 비연결 파트 갭을 직선으로 가산하지 않음 (부록 D)
+    km = sum(_polyline_km(ln) for ln in lines)
     prof = pl.profile48(coords, dem.elev)
     asc, desc = pl.ascent_descent(prof)
     return {"distance_km": round(km, 2), "time_hr": pl.naismith_time(km, asc),

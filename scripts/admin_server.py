@@ -114,20 +114,17 @@ def create_draft(code):
     draft = draft_store.new_draft(code, meta)
     draft_store.save(code, draft)
 
+    # 자동 코스 시드는 폐기 (파편화된 국립공원 구간망에서 괴물 코스 생성 — 부록 D).
+    # 코스는 운영자가 클릭 컴포저/GPX 로 직접 입력. DEM 만 미리 받아 첫 recompute 지연을 줄인다.
     def seed(job):
         import dem_cache
-        job_step(job, "DEM 타일 확보", 0.1)
-        tifs = dem_cache.ensure(draft["mountain"]["bbox"],
-                                log=lambda m: job["log"].append(m))
-        job_step(job, "자동 코스 추출 (산림청 그래프)", 0.5)
-        dem = pl.Dem(tifs)
-        d = draft_store.load(code)
-        draft_store.seed_auto_courses(d, dem, log=lambda m: job["log"].append(m))
-        draft_store.save(code, d)
-        job_step(job, f"코스 {len(d['courses'])}개 시드 완료", 0.95)
-        return {"code": code, "courses": len(d["courses"])}
+        job_step(job, "DEM 타일 확보", 0.3)
+        dem_cache.ensure(draft["mountain"]["bbox"],
+                         log=lambda m: job["log"].append(m))
+        job_step(job, "DEM 준비 완료 — 코스는 [코스 등록]으로 직접 입력", 0.95)
+        return {"code": code}
 
-    return draft, JOBS.submit(f"{draft['mountain']['name']} 자동 코스 시드", seed)
+    return draft, JOBS.submit(f"{draft['mountain']['name']} DEM 준비", seed)
 
 
 _MNT_CACHE = None
@@ -278,13 +275,20 @@ class AdminHandler(BaseHandler):
         if len(p) >= 2 and p[0] == "mountains" and re.fullmatch(r"\d{9}", p[1]):
             code, rest = p[1], p[2:]
             if not rest and method == "DELETE":
-                # 초안 제거 (로컬만 — Storage/DB 는 건드리지 않음. 비공개는 published 체크 해제로)
+                # 앱에서 완전 삭제: Supabase 카탈로그 행 + R2 팩 파일 + 로컬 초안.
+                # (초안이 이미 없어도 code 로 배포본을 정리 — 고아 배포본 대응)
                 import shutil
+                import publish_pack
+                result = {"code": code}
+                try:
+                    result.update(publish_pack.unpublish(code))  # 행 + R2 파일
+                except Exception as e:  # 네트워크/권한 실패는 보고하되 초안 제거는 진행
+                    result["unpublish_error"] = str(e)
                 d = os.path.join(draft_store.ADMIN_DATA, code)
-                if not os.path.isdir(d):
-                    raise FileNotFoundError(f"{code} 초안 없음")
-                shutil.rmtree(d)
-                return self._json({"ok": True})
+                if os.path.isdir(d):
+                    shutil.rmtree(d)
+                    result["draft_removed"] = True
+                return self._json({"ok": True, **result})
             if rest == ["draft"]:
                 if method == "GET":
                     d = draft_store.load(code)

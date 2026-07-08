@@ -6,8 +6,8 @@
  2. DEM 확보 (cache/dem, 미보유 시 AWS 다운로드)
  3. 등고선 → contours.geojson (Copernicus 50m/100m)
  4. 기저 타일 → data/tiles/<산코드>-base.pmtiles (tools/pmtiles extract,
-    bbox 불변 + 파일 존재 시 스킵. 소스는 env PMTILES_SOURCE)
- 5. Storage packs/<산코드>/ 4파일 업로드 (x-upsert)
+    bbox 불변 + 파일 존재 시 스킵. 소스는 로컬 마스터 data/tiles/kr-base.pmtiles = env PMTILES_SOURCE)
+ 5. R2 packs/<산코드>/ 4파일 업로드 (base.pmtiles·routes·spots·contours)
  6. mountains upsert (pack_version+1, updated_at)
  7. draft.publish 갱신
 
@@ -28,7 +28,12 @@ import pack_lib as pl
 import r2_lib
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://durnojryhhsajnlwvdzt.supabase.co").rstrip("/")
-PMTILES_SOURCE = os.environ.get("PMTILES_SOURCE", "https://demo-bucket.protomaps.com/v4.pmtiles")
+# 기저 타일 추출 소스: 전국 마스터 kr-base.pmtiles (maxzoom 14) 로컬 파일.
+# (구 demo-bucket.protomaps.com/v4.pmtiles 는 외부에서 삭제됨 → R2 자체 호스팅으로 이관.
+#  extract 는 로컬 파일에서 수행 — 네트워크·r2.dev 요청 한도·UA 차단 무관, 수십 ms.)
+PMTILES_SOURCE = os.environ.get(
+    "PMTILES_SOURCE", os.path.join(pl.ROOT, "data", "tiles", "kr-base.pmtiles"))
+PMTILES_MAXZOOM = os.environ.get("PMTILES_MAXZOOM", "14")  # 마스터 maxzoom 과 일치
 PMTILES_BIN = os.path.join(pl.ROOT, "tools", "pmtiles")
 
 
@@ -55,6 +60,17 @@ def _req(method, path, data=None, headers=None, raw=False):
 def _upload(local, dest):
     # 팩 파일은 Cloudflare R2(hihi/packs/) 에 업로드 — egress 무료. mountains 카탈로그는 Supabase DB 유지.
     return r2_lib.upload_file(local, f"packs/{dest}")
+
+
+def unpublish(code):
+    """앱에서 완전 제거: Supabase mountains 행 삭제 + R2 packs/<code>/ 파일 삭제.
+    초안 존재 여부와 무관하게 산코드로 동작(고아 배포본 정리 가능). 삭제 요약 반환."""
+    st, out = _req("DELETE", f"/rest/v1/mountains?id=eq.{code}",
+                   headers={"Prefer": "return=minimal"})
+    if st not in (200, 204):  # 이미 없는 행은 204 → 에러 아님
+        raise RuntimeError(f"카탈로그 행 삭제 실패({st}): {out[:200]}")
+    n = r2_lib.delete_prefix(f"packs/{code}/")
+    return {"catalog_deleted": True, "r2_deleted": n}
 
 
 def publish(code, job=None, step=None):
@@ -94,13 +110,16 @@ def publish(code, job=None, step=None):
     if os.path.exists(tile_f) and prev.get("tiles_bbox") == bbox:
         log("기저 타일 재사용 (bbox 불변)", 0.5)
     else:
-        log("기저 타일 추출 (pmtiles extract — 수 분 소요)", 0.4)
+        log("기저 타일 추출 (pmtiles extract — 로컬 마스터에서 수십 ms)", 0.4)
+        if not os.path.exists(PMTILES_SOURCE):
+            raise RuntimeError(f"기저 타일 마스터 없음: {PMTILES_SOURCE}")
         bbox_s = ",".join(str(v) for v in bbox)
         r = subprocess.run([PMTILES_BIN, "extract", PMTILES_SOURCE, tile_f,
-                            f"--bbox={bbox_s}", "--maxzoom=15"],
+                            f"--bbox={bbox_s}", f"--maxzoom={PMTILES_MAXZOOM}"],
                            capture_output=True, text=True, timeout=1800)
         if r.returncode != 0:
-            raise RuntimeError(f"pmtiles extract 실패: {r.stderr[-300:]}")
+            # go-pmtiles 는 오류를 stdout 에 로깅 → 둘 다 노출.
+            raise RuntimeError(f"pmtiles extract 실패: {(r.stderr + r.stdout)[-400:]}")
 
     # 5. 업로드
     files = {os.path.join(tiles_dir, f"{code}-base.pmtiles"): "base.pmtiles",

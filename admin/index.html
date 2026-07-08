@@ -19,6 +19,8 @@
 </div>
 
 <aside id="side">
+  <!-- 상단: 검색 + 지역 필터 + 관리 산 목록 (자체 스크롤) -->
+  <div id="side-top">
   <header id="side-head">
     <h1>하이하잇 관리자</h1>
     <span class="head-right">
@@ -33,17 +35,31 @@
     <ul id="mnt-results" hidden></ul>
   </section>
 
-  <!-- 초안 목록 -->
+  <!-- 초안 목록 (지역별) -->
   <section id="sec-list">
     <h2>관리 중인 산</h2>
+    <div id="region-tabs"></div>
     <ul id="draft-list"></ul>
   </section>
+  </div><!-- /#side-top -->
 
-  <!-- 선택 산 편집 -->
+  <!-- 드래그해서 단 크기 조절 (상하 모드=세로, 좌우 모드=가로) -->
+  <div id="side-divider" title="드래그해서 크기 조절"></div>
+
+  <!-- 하단: 선택 산 편집 (드래그로 배치 변경 + 자체 스크롤) -->
+  <div id="side-bottom">
+  <div id="bottom-bar" title="끌어서 배치 변경 — 목록 오른쪽=좌우 2단, 목록 아래=상하 2단">
+    <span class="grip"></span>
+    <span class="bb-label">편집 패널 · 끌어서 배치</span>
+    <button id="dock-toggle" title="좌우 / 상하 배치 전환">⧉</button>
+  </div>
+  <div id="bottom-scroll">
+  <p id="sec-mnt-empty" class="dim">위에서 산을 선택하면 여기서 편집합니다.</p>
   <section id="sec-mnt" hidden>
     <h2 id="mnt-title"></h2>
 
     <div class="mnt-meta">
+      <label>이름 <input id="m-name" placeholder="산 이름" /></label>
       <label>지역 <input id="m-region" /></label>
       <label>높이(m) <input id="m-elev" type="number" /></label>
       <label>정렬 <input id="m-sort" type="number" /></label>
@@ -52,6 +68,21 @@
     </div>
 
     <h3>코스 <span id="course-count"></span></h3>
+
+    <!-- 수작업 코스 입력: 회색 구간망을 시점→종점 순서로 클릭해 코스 구성 (부록 D) -->
+    <div class="row">
+      <button id="compose-start">＋ 코스 등록 (지도에서 구간 클릭)</button>
+    </div>
+    <div id="compose-box" hidden>
+      <div id="compose-info">시점부터 종점까지 회색 구간을 <b>순서대로 클릭</b>하세요.</div>
+      <div id="compose-stat" class="dim"></div>
+      <div class="row">
+        <button id="compose-undo">마지막 취소</button>
+        <button id="compose-done" class="primary">완성</button>
+        <button id="compose-cancel">버리기</button>
+      </div>
+    </div>
+
     <ul id="course-list"></ul>
 
     <div class="gpx-box">
@@ -101,11 +132,14 @@
         <pre id="job-log"></pre>
       </div>
       <div class="row">
-        <button id="draft-del" class="danger">초안 제거 (로컬만)</button>
+        <button id="prod-del" class="danger">앱에서 삭제 (카탈로그·R2·초안 전부)</button>
       </div>
-      <p class="dim">배포된 산을 앱에서 내리려면 삭제가 아니라 "공개" 체크 해제 후 배포.</p>
+      <p class="dim">앱에서 완전히 제거합니다 — Supabase 카탈로그 행 + R2 팩 파일 + 로컬 초안.
+        되돌릴 수 없음. 일시적으로 감추려면 "공개" 체크 해제 후 배포하세요.</p>
     </div>
   </section>
+  </div><!-- /#bottom-scroll -->
+  </div><!-- /#side-bottom -->
 </aside>
 
 <main id="map"></main>

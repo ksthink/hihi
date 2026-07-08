@@ -16,10 +16,87 @@ body {
 
 #side {
   width: 360px; min-width: 360px; height: 100%;
-  overflow-y: auto; border-right: 1px solid #ddd;
-  padding: 14px 16px 40px; background: #fafafa;
+  display: flex; flex-direction: column;
+  border-right: 1px solid #ddd; background: #fafafa;
 }
+/* 상하 2단 — 각각 독립 스크롤. 구분선을 드래그해 높이 조절(기본 상단 42%). */
+#side-top {
+  flex: 0 0 auto; height: 42%; min-height: 80px; overflow-y: auto;
+  padding: 14px 16px 10px;
+}
+#side-bottom {
+  flex: 1 1 auto; min-height: 0; min-width: 0;
+  display: flex; flex-direction: column;
+}
+#bottom-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 16px 40px; }
+
+/* 편집 패널 드래그 바 (배치 변경 손잡이) */
+#bottom-bar {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+  padding: 5px 12px; background: #f0f0f0; border-bottom: 1px solid #ddd;
+  cursor: grab; user-select: none; touch-action: none; font-size: 11.5px; color: #666;
+}
+#bottom-bar.dragging { cursor: grabbing; background: #e6e6e6; }
+#bottom-bar .grip {
+  width: 22px; height: 9px; flex: 0 0 auto;
+  background-image: radial-gradient(#adadad 1px, transparent 1.4px);
+  background-size: 5px 4px; background-position: center;
+}
+#bottom-bar .bb-label { flex: 1; }
+#dock-toggle { padding: 1px 8px; font-size: 13px; line-height: 1.3; color: #444; }
+
+/* 드래그 구분선 (상하 모드=가로 row-resize) */
+#side-divider {
+  flex: 0 0 auto; height: 9px; cursor: row-resize;
+  background: #eee; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc;
+  display: flex; align-items: center; justify-content: center; touch-action: none;
+}
+#side-divider::before {
+  content: ""; width: 34px; height: 3px; border-radius: 2px; background: #bbb;
+}
+#side-divider:hover::before { background: #777; }
+
+/* ── 좌우 2단 모드 (side-by-side) ── #side 를 가로 배치로 뒤집는다 */
+#side.mode-h { flex-direction: row; }              /* 폭은 JS 가 인라인으로 지정 */
+.mode-h #side-top { height: auto; min-width: 0; align-self: stretch; } /* 폭은 인라인 */
+.mode-h #side-divider {
+  height: auto; width: 9px; cursor: col-resize; align-self: stretch;
+  border: 0; border-left: 1px solid #ccc; border-right: 1px solid #ccc;
+}
+.mode-h #side-divider::before { width: 3px; height: 34px; }
+
+/* 드롭 존 힌트 (드래그 중 배치 미리보기) */
+#dock-hint {
+  position: fixed; z-index: 90; pointer-events: none;
+  border: 2px dashed #111; background: rgba(0,0,0,.06); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: #111;
+}
+#sec-mnt-empty { margin: 8px 2px; }
 #map { flex: 1; height: 100%; }
+
+/* 지역 필터 탭 */
+#region-tabs { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 10px; }
+#region-tabs button {
+  font-size: 12px; padding: 3px 10px; border-radius: 14px;
+  border: 1px solid #ccc; background: #fff; color: #555;
+}
+#region-tabs button:hover { border-color: #111; }
+#region-tabs button.active { background: #111; color: #fff; border-color: #111; }
+#region-tabs button.empty { color: #bbb; }
+#region-tabs .cnt { font-size: 10.5px; opacity: .7; margin-left: 4px; }
+
+/* 목록 내 권역 소제목 / 빈 안내 (draft-list 의 li 스타일을 덮어씀) */
+#draft-list li.region-head, #draft-list li.empty-note {
+  display: block; border: 0; background: transparent; padding: 0;
+  cursor: default; box-shadow: none;
+}
+#draft-list li.region-head {
+  font-size: 11px; font-weight: 700; color: #999; letter-spacing: .04em;
+  margin: 8px 2px 4px;
+}
+#draft-list li.region-head:first-child { margin-top: 0; }
+#draft-list li.empty-note { padding: 10px 2px; }
 
 #side-head { display: flex; align-items: baseline; justify-content: space-between; }
 .head-right { display: flex; align-items: center; gap: 8px; }
@@ -37,6 +114,7 @@ input, select, button {
 }
 input[type="search"] { width: 100%; }
 input[type="number"] { width: 72px; }
+#m-name, #m-region { width: 190px; }
 input[type="checkbox"] { width: auto; margin-right: 4px; }
 label { display: block; margin: 5px 0; }
 label.chk { display: flex; align-items: center; }
@@ -101,6 +179,22 @@ button.active { background: #111; color: #fff; }
 }
 .badge.ready { background: #111; color: #fff; border-color: #111; }
 .badge.gpx { border-style: dashed; }
+
+/* 수작업 코스 컴포저 (부록 D) */
+#compose-box {
+  border: 1px solid #111; border-radius: 8px; background: #fff;
+  padding: 10px; margin: 8px 0;
+}
+#compose-info { font-size: 12px; }
+#compose-info .warn { color: #b00020; }
+#compose-stat { margin: 4px 0; }
+#course-list .c-no {
+  flex: 0 0 auto; min-width: 18px; height: 18px; border-radius: 9px;
+  background: #111; color: #fff; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0 3px;
+  line-height: 1; /* 폰트 라인박스 비대칭 제거 — 숫자 수직 정중앙 */
+  font-family: "Nanum Gothic Coding", monospace;
+}
 
 /* GPX / 배포 박스 */
 .gpx-box, .publish-box {

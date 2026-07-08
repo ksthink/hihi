@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-07-08
+
+### 생성 / 추가
+- **수작업 코스 입력(클릭 컴포저)**: `admin/index.html`(#compose-box), `admin/admin.js`(`startCompose`/`composeClick`), `admin/admin.css` — [코스 등록] 버튼 → 회색 구간망을 시점→종점 순서로 클릭해 코스 구성. 끝점 40m 스냅 방향 자동 정렬(첫 구간 역방향 클릭도 보정), 비연결 구간은 새 파트+경고, 검정 미리보기+누적 거리, [마지막 취소]/[완성]/[버리기]. 완성 시 코스 번호 자동 부여 + recompute 로 거리·고도·난이도 자동 계산
+- **코스 번호 체계**: draft 코스 `no` → `scripts/draft_store.py` `to_pack`(routes properties `no` 전달 + 번호순 정렬) → `app.js` 지도 번호 배지(`makeBadge` 캔버스 아이콘 — 흰 원+검정 숫자, 라이트=검정 테두리, 글리프 실측으로 원 정중앙, `styleimagemissing` 즉석 생성으로 테마 자동 대응) + 코스 목록 번호 배지(`style.css` .t-no) + **배지 클릭 = 코스 선택**(목록 하이라이트·스크롤 연동). 번호 없는 레거시 팩은 피처 순서 폴백
+- **시점·종점 마커**: `app.js`(course-ends 소스/레이어) — 코스 선택 시에만 출발(채움 원)·도착(링) 표시
+- **팩 주도 봉우리**: `app.js`(spot-peaks 레이어 — 팩 spots 의 `정상` 분류를 ▲/△ 봉우리로 렌더), `scripts/draft_store.py`(스팟 `main` 위계 전달) — 관리자에서 정상 스팟만 찍으면 앱에 봉우리 표시. 지리산 천왕봉 정상 스팟 R2 배포
+- **앱에서 삭제(전파 삭제)**: `scripts/r2_lib.py`(`delete_prefix`), `scripts/publish_pack.py`(`unpublish`), `scripts/admin_server.py`(DELETE = Supabase 카탈로그 행 + R2 팩 파일 + 로컬 초안), `admin/`(prod-del 버튼·결과 알림) — 기존 "초안 제거(로컬만)"가 앱에 반영 안 되던 문제 해결
+- **관리자 2단 레이아웃**: `admin/` — 상단(검색 + 지역 필터 + 관리 산 목록)/하단(편집 패널) 분할·각각 독립 스크롤, 구분선 드래그 크기 조절, 편집 패널 드래그로 좌우↔상하 배치 전환(드롭 미리보기·⧉ 토글·localStorage 기억)
+- **지역 필터(6권역)**: `admin/admin.js` — 전체·수도권·강원·충청·전라·경상·제주 버튼(개수 표시), 광역시는 소속 권역에 흡수(부산·울산·대구→경상, 광주→전라, 대전·세종→충청, 인천→수도권), 전체 보기 시 권역 소제목 그룹핑
+- **산 이름 편집**: `admin/`(#m-name) — 등록 후에도 이름 수정 가능(빈 이름 방지, 제목·목록 즉시 반영, 배포 시 카탈로그 upsert)
+
+### 수정 / 변경
+- `scripts/publish_pack.py` — pmtiles extract 소스를 삭제된 `demo-bucket.protomaps.com` → **로컬 마스터 `data/tiles/kr-base.pmtiles`**(수십 ms, 네트워크·UA 차단 무관)로 교체, maxzoom 14 정합, 실패 메시지에 stdout 포함(go-pmtiles 는 stdout 에 로깅). 지리산(488605302) 첫 배포 성공
+- `scripts/admin_server.py` — 산 등록 시 **자동 코스 시드(forest_auto) 폐기** → DEM 프리페치만. (지리산 116km 괴물 코스 원인 규명: 파편화 구간망에서 최대 연결요소만 사용 + 가짜 정상으로 Dijkstra 스티칭 — 천왕봉 조각은 통째로 버려짐)
+- `scripts/gpx_match.py` — `compute_stats` 거리를 파트별 합산(수작업 코스의 비연결 갭을 직선으로 가산하지 않음)
+- 지리산 데이터 정리 — forest_auto 코스 8개 삭제(초안 리셋), 천왕봉 정상 스팟 재삽입, 고아 배포본 지리산(482202301, 통영 사량도) 카탈로그·R2 완전 삭제
+- `README.md` — 관리자 사용 순서를 수작업 컴포저 기준으로 재작성(등록=회색 구간망만 → 코스 등록 클릭 입력 → 큐레이션 → 배포), "앱에서 삭제" 안내, 탐험 기능에 코스 번호 배지·시종점 마커 반영
+
 ## 2026-07-07
 
 ### 생성 / 추가
