@@ -10,7 +10,7 @@ const PMTILES_URL = `${location.origin}/pmtiles/kr-base.pmtiles`; // same-origin
 // 현재 기저 소스: 온라인(PMTILES_URL) 또는 로컬 팩("local-<산id>", IndexedDB Blob 등록 후)
 let baseUrl = PMTILES_URL;
 
-// 산 식별자 = 산림청 산코드 9자리 (scripts/MNT_CODE.xlsx → data/mnt-codes.json, 전국 2,931산).
+// 산 식별자 = 산림청 산코드 9자리 (mountain/<산코드>/ 원본 폴더가 곧 목록).
 // 산 이름은 전국 중복(317건)이 있어 코드가 전 시스템 표준 키다:
 // Storage packs/<산코드>/ · mountains.id · saved_packs/climb_records.mountain_id · IndexedDB 팩 키
 // 대표 코드 = 주봉(정상) 코드, 산정보가 충실한 쪽 (북한산→백운대, 설악산→대청봉, 청계산→과천)

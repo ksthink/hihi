@@ -91,7 +91,7 @@ def _forest_spots_to_draft(code):
 
 
 def new_draft(code, mnt_meta=None):
-    """신규 산 초안: mnt-codes 메타 + 산림청 스팟 + 구간망 bbox."""
+    """신규 산 초안: mountain/ 스캔 메타 + 산림청 스팟 + 구간망 bbox."""
     meta = dict(mnt_meta or {})
     segs, mntn_nm = pl.load_forest_segments(code)
     xs = [p[0] for s in segs for p in s["pts"]]

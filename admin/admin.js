@@ -319,6 +319,7 @@ async function selectMountain(code) {
   const b = S.draft.mountain.bbox;
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 30, duration: 600 });
   loadNetwork(code);
+  loadPeakPoi(code); // 공식 봉우리 POI 후보 (비동기 — 실패해도 무시)
 }
 
 async function loadNetwork(code) {
@@ -626,6 +627,43 @@ $("compose-done").onclick = async () => {
   renderCourses(); refreshList();
 };
 
+// ── 공식 봉우리 POI 후보 (100대명산 — 클릭하면 '정상' 스팟 추가) ──
+async function loadPeakPoi(code) {
+  const head = $("poic-head"), ul = $("poic-list");
+  head.textContent = ""; ul.hidden = true; ul.innerHTML = "";
+  let rows = [];
+  try { rows = await api(`/mountains/${code}/peak-poi`); } catch (_) { return; }
+  if (S.code !== code || !rows.length) return; // 산 전환/후보 없음 — 숨김
+  head.textContent = `공식 봉우리 POI ${rows.length}개 — 클릭하면 '정상' 스팟으로 추가`;
+  const near = (a, b) => Math.abs(a[0] - b[0]) < 2e-4 && Math.abs(a[1] - b[1]) < 2e-4; // ≈20m
+  for (const r of rows) {
+    const li = document.createElement("li");
+    const added = () => S.draft.spots.some((s) => s.category === "정상" && !s.deleted && near(s.coord, [r.lon, r.lat]));
+    const render = () => {
+      li.innerHTML = `<span class="nm">${r.name || r.mountain}</span>
+        <span class="dim">${r.alt ? Math.round(r.alt) + "m" : ""}${r.desc && r.desc !== r.name ? " · " + r.desc : ""}</span>
+        <span class="badge">${added() ? "추가됨 ✓" : "정상 추가"}</span>`;
+    };
+    render();
+    li.onclick = () => {
+      if (added()) { map.flyTo({ center: [r.lon, r.lat], zoom: 14 }); return; }
+      const hasMain = S.draft.spots.some((s) => s.category === "정상" && s.main && !s.deleted);
+      const id = "sp-poi-" + r.poiId;
+      S.draft.spots.push({
+        id, category: "정상", name: r.name || r.mountain,
+        coord: [+(+r.lon).toFixed(6), +(+r.lat).toFixed(6)],
+        detail: r.alt ? `${Math.round(r.alt)}m · ${r.mountain}` : r.mountain,
+        etc: null, origin: "manual", moved: false, deleted: false,
+        main: !hasMain, // 첫 정상만 주봉(앱에서 크게) — 이후는 부봉
+      });
+      markDirty(); renderSpots(); refreshList(); openSpotEditor(id);
+      render();
+    };
+    ul.appendChild(li);
+  }
+  ul.hidden = false;
+}
+
 // ── GPX 업로드/매칭 ──
 $("gpx-file").addEventListener("change", async (e) => {
   const f = e.target.files[0];
@@ -833,6 +871,7 @@ $("prod-del").onclick = async () => {
   const nm = S.draft.mountain.name, code = S.code;
   if (!confirm(`"${nm}"(${code})을 앱에서 완전히 삭제합니다.\n\n· Supabase 카탈로그 행 삭제\n· R2 팩 파일(packs/${code}/) 삭제\n· 로컬 초안 삭제\n\n되돌릴 수 없습니다. 진행할까요?`)) return;
   S.dirty = false; // 삭제할 초안을 다시 저장하지 않도록
+  clearTimeout(saveTimer); // 예약된 자동저장도 취소
   const r = await api(`/mountains/${code}`, { method: "DELETE" });
   S.code = null; S.draft = null;
   $("sec-mnt").hidden = true;

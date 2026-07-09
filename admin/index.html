@@ -31,7 +31,7 @@
 
   <!-- 산 검색/추가 -->
   <section id="sec-search">
-    <input id="mnt-q" type="search" placeholder="산 이름·산코드 검색 (전국 5,360)" autocomplete="off" />
+    <input id="mnt-q" type="search" placeholder="산 이름·산코드 검색 (산림청 원본 보유분)" autocomplete="off" />
     <ul id="mnt-results" hidden></ul>
   </section>
 
@@ -116,6 +116,11 @@
     <div class="row">
       <button id="spot-add">＋ 스팟 추가 (지도 클릭)</button>
       <label class="chk"><input id="spot-show-del" type="checkbox" /> 삭제된 것 표시</label>
+    </div>
+    <!-- 공식 봉우리 POI(100대명산) — 클릭하면 '정상' 스팟으로 추가 -->
+    <div id="poic">
+      <div id="poic-head" class="dim"></div>
+      <ul id="poic-list" hidden></ul>
     </div>
     <div id="spot-editor" hidden>
       <div class="row"><b id="sp-cat-label"></b><span id="sp-id" class="dim"></span></div>

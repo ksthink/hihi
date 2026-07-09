@@ -137,10 +137,24 @@ _MNT_CACHE = None
 
 
 def _mnt_codes():
+    """mountain/<산코드>/ 스캔 — 내려받은 산림청 원본이 곧 산 목록.
+    이름은 PMNTN_<이름>_<산코드>.json 파일명에서 추출. 지역·높이는 등록 후 직접 입력."""
     global _MNT_CACHE
     if _MNT_CACHE is None:
-        _MNT_CACHE = json.load(open(os.path.join(ROOT, "data", "mnt-codes.json"),
-                                    encoding="utf-8"))
+        base = os.path.join(ROOT, "mountain")
+        rows = []
+        for code in sorted(os.listdir(base)) if os.path.isdir(base) else []:
+            dp = os.path.join(base, code)
+            if not (re.fullmatch(r"\d{9}", code) and os.path.isdir(dp)):
+                continue
+            name = code
+            for fn in os.listdir(dp):
+                m = re.fullmatch(rf"PMNTN_(.+)_{code}\.json", fn)
+                if m and not m.group(1).startswith(("SPOT_", "SAFE_")):
+                    name = m.group(1).replace("_", " ")
+                    break
+            rows.append({"code": code, "name": name, "region": None, "elev": None})
+        _MNT_CACHE = rows
     return _MNT_CACHE
 
 
@@ -330,6 +344,10 @@ class AdminHandler(BaseHandler):
                         raise FileNotFoundError(f"{code} 초안 없음")
                     return self._json(d)
                 if method == "PUT":
+                    # 갱신 전용 — 생성은 POST /api/mountains 만. 삭제 직후/다른 탭의
+                    # 늦은 자동저장이 지워진 초안을 되살리는 것을 차단.
+                    if not draft_store.load(code):
+                        raise FileNotFoundError(f"{code} 초안 없음 (삭제되었거나 미등록)")
                     d = json.loads(self._body())
                     if d.get("mountain", {}).get("code") != code:
                         raise ValueError("mountain.code 불일치")
@@ -338,6 +356,26 @@ class AdminHandler(BaseHandler):
             if rest == ["network"] and method == "GET":
                 segs, _ = pl.load_forest_segments(code)
                 return self._json(pl.network_geojson(segs))
+            if rest == ["peak-poi"] and method == "GET":
+                # 산 bbox 안의 공식 봉우리 POI (100대명산, cache/peak-poi.json — fetch_peak_poi.py)
+                d = draft_store.load(code)
+                if not d:
+                    raise FileNotFoundError(f"{code} 초안 없음")
+                poi_f = os.path.join(ROOT, "cache", "peak-poi.json")
+                if not os.path.exists(poi_f):
+                    return self._json([])
+                w, s2, e, n = d["mountain"]["bbox"]
+                seen, out = set(), []
+                for r in json.load(open(poi_f, encoding="utf-8")):
+                    if not (w <= (r.get("lon") or 0) <= e and s2 <= (r.get("lat") or 0) <= n):
+                        continue
+                    k = (r.get("name"), round(r["lon"], 4), round(r["lat"], 4))
+                    if k in seen:  # 원본 중복(동일 지점 재등록) 제거
+                        continue
+                    seen.add(k)
+                    out.append(r)
+                out.sort(key=lambda r: -(r.get("alt") or 0))  # 높은 봉우리 우선
+                return self._json(out[:40])
             if rest == ["gpx"] and method == "POST":
                 import gpx_match
                 d = draft_store.load(code)
@@ -366,6 +404,7 @@ class AdminHandler(BaseHandler):
                 jid = JOBS.submit(f"{d['mountain']['name']} 배포",
                                   lambda job: publish_pack.publish(code, job, job_step))
                 return self._json({"job_id": jid})
+
 
         # GET /api/jobs/<id>
         if method == "GET" and len(p) == 2 and p[0] == "jobs":
@@ -406,14 +445,9 @@ class AdminHandler(BaseHandler):
 def main():
     load_env()
     tok = ensure_admin_token()
-    # 기존 배포 3산 초안이 없으면 자동 역임포트 (멱등)
-    for code in draft_store.LEGACY:
-        if not draft_store.load(code):
-            try:
-                draft_store.save(code, draft_store.import_legacy(code))
-                print(f"legacy 초안 임포트: {code}")
-            except FileNotFoundError:
-                pass
+    # (주의) 시작 시 레거시 3산 자동 역임포트는 하지 않는다 — 운영자가 삭제한 산이
+    # 서버 재시작(systemd 자동 재시작 포함)마다 되살아났음. 레거시 복원이 필요하면
+    # 검색 → 추가 (POST /api/mountains 의 LEGACY 분기)로 명시적으로만.
     handler = partial(AdminHandler, directory=ROOT)
     httpd = ThreadingHTTPServer((BIND, PORT), handler)
     print(f"관리자 콘솔: http://{BIND}:{PORT}/admin/?token={tok}")
