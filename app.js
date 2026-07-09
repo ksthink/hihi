@@ -286,8 +286,9 @@ function lineMidpoint(lines) {
 const asLines = (g) => (g.type === "LineString" ? [g.coordinates] : g.coordinates);
 
 // 번호 배지 이미지 — 캔버스에 직접 그려 글리프 실측(actualBoundingBox)으로 정중앙 배치.
-// (심볼 text 는 폰트 메트릭 때문에 원 중심과 어긋남.) 흰 원+검정 숫자, 라이트만 검정 테두리.
-function makeBadge(no) {
+// (심볼 text 는 폰트 메트릭 때문에 원 중심과 어긋남.)
+// 기본: 흰 원+검정 숫자(라이트만 검정 테두리) / 선택(sel): 색 반전 — 검정 원+흰 숫자(다크만 흰 테두리)
+function makeBadge(no, sel) {
   const scale = 2, r = 9.5, pad = 2, size = (r + pad) * 2 * scale;
   const cv = document.createElement("canvas");
   cv.width = cv.height = size;
@@ -295,15 +296,16 @@ function makeBadge(no) {
   const cx = size / 2;
   ctx.beginPath();
   ctx.arc(cx, cx, r * scale, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = sel ? "#111111" : "#ffffff";
   ctx.fill();
-  if (theme !== "dark") {
+  // 테두리: 지도 바탕과 원 색이 비슷해지는 조합에만 (라이트×흰 원, 다크×검정 원)
+  if (sel ? theme === "dark" : theme !== "dark") {
     ctx.lineWidth = 1.5 * scale;
-    ctx.strokeStyle = "#111111";
+    ctx.strokeStyle = sel ? "#ffffff" : "#111111";
     ctx.stroke();
   }
   const s = String(no);
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = sel ? "#ffffff" : "#111111";
   ctx.font = `700 ${11.5 * scale}px "Nanum Gothic Coding", monospace`;
   ctx.textAlign = "center";
   const m = ctx.measureText(s);
@@ -312,8 +314,8 @@ function makeBadge(no) {
 }
 // 배지는 필요 시점에 생성 — 테마 전환(setStyle)이 이미지를 비우면 현재 테마로 재생성됨
 map.on("styleimagemissing", (e) => {
-  const m = /^badge-(\d+)$/.exec(e.id);
-  if (m && !map.hasImage(e.id)) map.addImage(e.id, makeBadge(+m[1]), { pixelRatio: 2 });
+  const m = /^badge-(\d+)(-sel)?$/.exec(e.id);
+  if (m && !map.hasImage(e.id)) map.addImage(e.id, makeBadge(+m[1], !!m[2]), { pixelRatio: 2 });
 });
 
 function courseNoFC(fc) {
@@ -556,6 +558,11 @@ function applyTrailFilter() {
     map.setPaintProperty("trail-line", "line-color", selectedName ? c.faded : c.line);
   if (map.getLayer("trail-hl"))
     map.setFilter("trail-hl", ["==", ["get", "name"], selectedName || "__none__"]);
+  // 선택 코스의 번호 배지는 반전 아이콘(badge-N-sel)으로 교체 — 이미지는 styleimagemissing 이 생성
+  if (map.getLayer("course-no-badges"))
+    map.setLayoutProperty("course-no-badges", "icon-image",
+      ["concat", "badge-", ["to-string", ["get", "no"]],
+        ["case", ["==", ["get", "name"], selectedName || "__none__"], "-sel", ""]]);
   // 시점·종점 마커: 선택 시에만 해당 코스에 표시 (부록 D)
   if (map.getSource("course-ends")) map.getSource("course-ends").setData(courseEndsData());
   const btn = document.getElementById("show-all");

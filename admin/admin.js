@@ -65,8 +65,6 @@ const S = {
   addingSpot: false,
   dirty: false,
   region: "전체",     // 선택된 지역 필터
-  networkFC: null,    // 구간망 GeoJSON (idx 부여 — 클릭 컴포저 조회용)
-  compose: null,      // 수작업 코스 입력 { lines, segs[sn], history[] } (부록 D)
 };
 
 // ── 지역 분류 (region 자유문자열 → 6권역) ──
@@ -100,38 +98,12 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl({ showZoom: true }), "bottom-right");
 
 map.on("load", () => {
-  for (const id of ["network", "courses", "spots", "gpx-raw", "gpx-matched",
-                    "compose", "compose-ends"])
+  for (const id of ["network", "courses", "spots", "gpx-raw", "gpx-matched"])
     map.addSource(id, { type: "geojson", data: EMPTY });
 
+  // 산림청 구간망 원본 — 회색 참조선 (GPX 매칭 결과 검토용 배경)
   map.addLayer({ id: "network-line", type: "line", source: "network",
     paint: { "line-color": "#c9c9c9", "line-width": 1.2 } });
-  // 호버 아웃라인: 회색선 아래에 검정 굵은 선 → 어떤 구간이 선택될지 미리보기 (컴포즈 중)
-  map.addLayer({ id: "network-hover", type: "line", source: "network",
-    filter: ["==", ["get", "idx"], -1],
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": "#111", "line-width": 5 } }, "network-line");
-  // 컴포즈 모드 전용: 구간 클릭 히트 + 담긴 코스 미리보기(검정 굵은 선)
-  map.addLayer({ id: "network-hit", type: "line", source: "network",
-    paint: { "line-color": "#000", "line-opacity": 0.001, "line-width": 16 } });
-  map.addLayer({ id: "compose-line", type: "line", source: "compose",
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": "#111", "line-width": 5 } });
-  // 컴포즈 시점·종점 마커 (시점=검정 채움, 종점=흰 채움+검정 테두리)
-  map.addLayer({ id: "compose-ends-dots", type: "circle", source: "compose-ends",
-    paint: {
-      "circle-radius": 6,
-      "circle-color": ["case", ["==", ["get", "kind"], "start"], "#111111", "#ffffff"],
-      "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], "#ffffff", "#111111"],
-      "circle-stroke-width": 2,
-    } });
-  map.addLayer({ id: "compose-ends-labels", type: "symbol", source: "compose-ends",
-    layout: {
-      "text-field": ["get", "label"], "text-font": ["Nanum Gothic Coding Regular"],
-      "text-size": 11, "text-offset": [0, 1.1], "text-anchor": "top",
-      "text-allow-overlap": true,
-    },
-    paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.6 } });
 
   map.addLayer({ id: "courses-line", type: "line", source: "courses",
     layout: { "line-cap": "round", "line-join": "round" },
@@ -308,8 +280,8 @@ async function selectMountain(code) {
   await saveDraft();
   S.code = code;
   S.selCourse = null; S.selSpot = null; S.gpx = null; S.addingSpot = false;
-  if (S.compose) exitCompose();
   S.draft = await api(`/mountains/${code}/draft`);
+  if (renumberCourses()) markDirty(); // 레거시 초안(번호 없음·구멍)도 순서 기준으로 정규화
   $("sec-mnt").hidden = false;
   $("sec-mnt-empty").hidden = true;
   clearGpxPreview();
@@ -326,12 +298,8 @@ async function loadNetwork(code) {
   const src = map.getSource("network"); // 지도 로드 전이면 map load 핸들러가 재시도
   if (!src) return;
   try {
-    const fc = await api(`/mountains/${code}/network`);
-    // sn 은 path 분할로 중복될 수 있어 클라이언트 인덱스로 피처 식별 (클릭 컴포저)
-    fc.features.forEach((f, i) => { f.properties.idx = i; });
-    S.networkFC = fc;
-    src.setData(fc);
-  } catch (_) { S.networkFC = null; src.setData(EMPTY); } // 원본 없는 legacy 산
+    src.setData(await api(`/mountains/${code}/network`));
+  } catch (_) { src.setData(EMPTY); } // 원본 없는 legacy 산
 }
 
 function renderMountain() {
@@ -373,6 +341,15 @@ $("m-name").addEventListener("change", (e) => {
 });
 
 // ── 코스 ──
+// 코스 번호 = 목록 순서 (위에서부터 1). 추가·삭제·드래그 정렬 때마다 재부여.
+function renumberCourses() {
+  let changed = false;
+  (S.draft?.courses || []).forEach((c, i) => {
+    if (c.no !== i + 1) { c.no = i + 1; changed = true; }
+  });
+  return changed;
+}
+
 function courseFC() {
   return { type: "FeatureCollection", features: (S.draft?.courses || []).map((c) => ({
     type: "Feature",
@@ -396,6 +373,7 @@ function renderCourses() {
     const k = c.computed || {};
     li.innerHTML = `
       <div class="c-head">
+        <span class="c-grip" title="드래그해서 순서 변경 (번호가 순서를 따라감)">⠿</span>
         ${c.no != null ? `<span class="c-no">${c.no}</span>` : ""}
         <input class="c-name" title="클릭해서 코스명 수정" value="${(c.name || "").replace(/"/g, "&quot;")}" />
         ${src ? `<span class="badge gpx">${src}</span>` : ""}
@@ -411,7 +389,7 @@ function renderCourses() {
         <button class="c-del danger">삭제</button>
         <input class="c-desc" placeholder="설명" value="${(c.desc || "").replace(/"/g, "&quot;")}" />
       </div>`;
-    li.onclick = (e) => { if (e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT" && e.target.tagName !== "BUTTON") selectCourse(c.id, true); };
+    li.onclick = (e) => { if (e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT" && e.target.tagName !== "BUTTON" && !e.target.closest(".c-grip")) selectCourse(c.id, true); };
     li.querySelector(".c-name").addEventListener("change", (e) => { c.name = e.target.value.trim(); markDirty(); });
     li.querySelector(".c-name").addEventListener("focus", () => selectCourse(c.id, false)); // DOM 재생성 없음 — 편집 유지
     li.querySelector(".c-diff").addEventListener("change", (e) => { c.difficulty = e.target.value; markDirty(); renderCourses(); });
@@ -439,10 +417,47 @@ function renderCourses() {
       if (!confirm(`코스 "${c.name}" 삭제?`)) return;
       S.draft.courses = S.draft.courses.filter((x) => x.id !== c.id);
       if (S.selCourse === c.id) S.selCourse = null;
+      renumberCourses(); // 남은 코스 번호 당김 (위에서부터 1)
       markDirty(); renderCourses(); refreshList();
     };
+    // 드래그 정렬 — 그립을 잡았을 때만 draggable (이름 입력 등 텍스트 선택과 충돌 방지)
+    const grip = li.querySelector(".c-grip");
+    grip.addEventListener("mousedown", () => { li.draggable = true; });
+    grip.addEventListener("mouseup", () => { li.draggable = false; });
+    li.addEventListener("dragstart", (e) => {
+      li.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", c.id); // Firefox 는 데이터 없으면 드래그 미시작
+    });
+    li.addEventListener("dragend", () => {
+      li.draggable = false;
+      li.classList.remove("dragging");
+      commitCourseOrder();
+    });
     ul.appendChild(li);
   }
+}
+
+// 드래그 중 마우스 위치에 따라 li 를 목록에서 이동 (ul 은 고정 요소 — 1회만 연결)
+$("course-list").addEventListener("dragover", (e) => {
+  e.preventDefault();
+  const ul = $("course-list");
+  const dragging = ul.querySelector("li.dragging");
+  if (!dragging) return;
+  const next = [...ul.querySelectorAll("li:not(.dragging)")].find((li) => {
+    const r = li.getBoundingClientRect();
+    return e.clientY < r.top + r.height / 2;
+  });
+  if (next) ul.insertBefore(dragging, next);
+  else ul.appendChild(dragging);
+});
+
+// 드롭 결과(DOM 순서)를 draft 배열에 반영 + 번호 재부여
+function commitCourseOrder() {
+  const order = [...$("course-list").querySelectorAll("li")].map((li) => li.dataset.id);
+  S.draft.courses.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  if (renumberCourses()) markDirty();
+  renderCourses();
 }
 
 // 선택 표시만 갱신 (목록 DOM 은 재생성하지 않음 — 이름 입력 포커스가 죽지 않도록)
@@ -464,167 +479,6 @@ function selectCourse(id, fit) {
   }
   document.querySelector(`#course-list li[data-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
 }
-
-// ── 수작업 코스 입력 (클릭 컴포저, 부록 D) ──
-// 회색 구간망을 시점→종점 순서로 클릭해 코스를 구성. 끝점이 40m 이내면 방향 맞춰
-// 이어붙이고, 안 닿으면 새 라인 파트로 추가(산림청 데이터의 실제 갭 허용) + 경고.
-const SNAP_M = 40;
-function havM(a, b) { // 좌표 [lon,lat] 간 거리(m)
-  const R = 6371000, r = Math.PI / 180;
-  const dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r;
-  const h = Math.sin(dLa / 2) ** 2 +
-    Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-// 클릭 목록(picked idx 순서)에서 폴리라인을 매번 재구성 — 중간 구간 해제(토글)에도 안전
-function stitchPicked(picked) {
-  const lines = [];
-  for (const idx of picked) {
-    const pts = S.networkFC.features[idx].geometry.coordinates.map((p) => [p[0], p[1]]);
-    if (!lines.length) { lines.push(pts); continue; }
-    const last = lines[lines.length - 1];
-    const end = last[last.length - 1];
-    if (havM(end, pts[0]) <= SNAP_M) last.push(...pts.slice(1));
-    else if (havM(end, pts[pts.length - 1]) <= SNAP_M) last.push(...pts.slice(0, -1).reverse());
-    else if (lines.length === 1 &&
-             (havM(last[0], pts[0]) <= SNAP_M || havM(last[0], pts[pts.length - 1]) <= SNAP_M)) {
-      // 첫 구간을 반대 방향으로 클릭한 경우 — 두 번째 클릭에서 자동 정렬
-      last.reverse();
-      if (havM(last[last.length - 1], pts[0]) <= SNAP_M) last.push(...pts.slice(1));
-      else last.push(...pts.slice(0, -1).reverse());
-    } else lines.push(pts); // 비연결 갭 — 새 파트
-  }
-  return lines;
-}
-
-// 최종 라인(시점↔종점 뒤집기 반영)
-function composeLines() {
-  const lines = stitchPicked(S.compose.picked);
-  if (S.compose.flip) {
-    lines.reverse();
-    lines.forEach((ln) => ln.reverse());
-  }
-  return lines;
-}
-
-const linesFC = (lines) => ({ type: "FeatureCollection", features: lines
-  .map((ln) => ({ type: "Feature", geometry: { type: "LineString", coordinates: ln }, properties: {} })) });
-
-const endsFC = (lines) => {
-  const first = lines[0], last = lines[lines.length - 1];
-  if (!first?.length || !last?.length) return EMPTY;
-  return { type: "FeatureCollection", features: [
-    { type: "Feature", geometry: { type: "Point", coordinates: first[0] },
-      properties: { kind: "start", label: "시점" } },
-    { type: "Feature", geometry: { type: "Point", coordinates: last[last.length - 1] },
-      properties: { kind: "end", label: "종점" } },
-  ] };
-};
-
-function renderCompose(msg) {
-  const lines = composeLines();
-  map.getSource("compose")?.setData(linesFC(lines));
-  map.getSource("compose-ends")?.setData(endsFC(lines));
-  const parts = lines.length;
-  const km = lines.reduce((t, ln) => {
-    for (let i = 1; i < ln.length; i++) t += havM(ln[i - 1], ln[i]);
-    return t;
-  }, 0) / 1000;
-  $("compose-stat").textContent =
-    `구간 ${S.compose.picked.length}개 · ${km.toFixed(1)}km` +
-    (parts > 1 ? ` · ⚠ 비연결 파트 ${parts}개` : "") +
-    (S.compose.flip ? " · 방향 뒤집힘" : "");
-  $("compose-info").innerHTML = msg ||
-    `시점부터 종점까지 회색 구간을 <b>순서대로 클릭</b>하세요. 담긴 구간을 <b>다시 클릭하면 해제</b>됩니다.`;
-}
-
-function startCompose() {
-  if (S.compose) return exitCompose();
-  if (!S.networkFC?.features?.length) { alert("구간망 원본이 없는 산입니다. GPX 업로드를 사용하세요."); return; }
-  S.compose = { picked: [], flip: false, history: [] };
-  S.addingSpot = false;
-  $("spot-add").classList.remove("active");
-  $("compose-box").hidden = false;
-  $("compose-start").classList.add("active");
-  $("compose-start").textContent = "코스 입력 중… (버리기로 종료)";
-  map.getCanvas().style.cursor = "crosshair";
-  renderCompose();
-}
-
-function exitCompose() {
-  S.compose = null;
-  $("compose-box").hidden = true;
-  $("compose-start").classList.remove("active");
-  $("compose-start").textContent = "＋ 코스 등록 (지도에서 구간 클릭)";
-  map.getCanvas().style.cursor = "";
-  map.getSource("compose")?.setData(EMPTY);
-  map.getSource("compose-ends")?.setData(EMPTY);
-  if (map.getLayer("network-hover")) map.setFilter("network-hover", ["==", ["get", "idx"], -1]);
-}
-
-function composeClick(idx) {
-  const c = S.compose;
-  if (!S.networkFC.features[idx]) return;
-  c.history.push({ picked: c.picked.slice(), flip: c.flip });
-  const at = c.picked.indexOf(idx);
-  if (at >= 0) { // 담긴 구간 재클릭 → 해제 (나머지는 순서 유지한 채 재구성)
-    c.picked.splice(at, 1);
-    renderCompose(`<span class="dim">구간을 해제했습니다.</span>`);
-    return;
-  }
-  const before = stitchPicked(c.picked).length;
-  c.picked.push(idx);
-  const after = stitchPicked(c.picked).length;
-  renderCompose(after > Math.max(before, 1)
-    ? `<span class="warn">⚠ 이전 구간과 연결되지 않아 새 파트로 추가했습니다 (다시 클릭하면 해제).</span>`
-    : null);
-}
-
-$("compose-start").onclick = startCompose;
-$("compose-cancel").onclick = exitCompose;
-$("compose-undo").onclick = () => {
-  const c = S.compose;
-  if (!c?.history.length) return;
-  const prev = c.history.pop();
-  c.picked = prev.picked; c.flip = prev.flip;
-  renderCompose();
-};
-$("compose-flip").onclick = () => {
-  const c = S.compose;
-  if (!c) return;
-  c.history.push({ picked: c.picked.slice(), flip: c.flip });
-  c.flip = !c.flip;
-  renderCompose(`<span class="dim">시점과 종점을 바꿨습니다.</span>`);
-};
-$("compose-done").onclick = async () => {
-  const c = S.compose;
-  if (!c?.picked.length) { alert("클릭한 구간이 없습니다."); return; }
-  const no = Math.max(0, ...S.draft.courses.map((x) => x.no || 0)) + 1;
-  const name = (prompt(`코스 이름 (번호 ${no}번은 자동 부여)`, `${no}코스`) || "").trim();
-  if (!name) return; // 취소
-  const course = {
-    id: "c-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4),
-    no, name, difficulty: "초급", desc: null, kind: "운영자 큐레이션",
-    status: "draft",
-    source: { type: "manual",
-      segments: c.picked.map((i) => S.networkFC.features[i]?.properties.sn ?? i) },
-    segments: null,
-    lines: composeLines().map((ln) => ln.map((p) => [+p[0].toFixed(5), +p[1].toFixed(5)])),
-    computed: {},
-  };
-  S.draft.courses.push(course);
-  S.selCourse = course.id;
-  exitCompose();
-  markDirty();
-  await saveDraft(); // recompute 는 디스크의 draft 를 읽으므로 먼저 저장
-  try {
-    const upd = await api(`/mountains/${S.code}/courses/${course.id}/recompute`, { method: "POST" });
-    Object.assign(course, upd);
-  } catch (e) {
-    alert("통계 계산 실패(코스는 저장됨): " + e.message);
-  }
-  renderCourses(); refreshList();
-};
 
 // ── 공식 봉우리 POI 후보 (100대명산 — 클릭하면 '정상' 스팟 추가) ──
 async function loadPeakPoi(code) {
@@ -675,6 +529,7 @@ $("gpx-cancel").onclick = () => { S.gpx = null; clearGpxPreview(); };
 $("gpx-accept").onclick = () => {
   if (!S.gpx?.candidate) return;
   S.draft.courses.push(S.gpx.candidate);
+  renumberCourses(); // 번호 = 목록 순서 (새 코스는 맨 아래 = 마지막 번호)
   S.selCourse = S.gpx.candidate.id;
   S.gpx = null;
   clearGpxPreview();
@@ -777,7 +632,6 @@ $("sp-del").onclick = () => {
 $("sp-close").onclick = closeSpotEditor;
 
 $("spot-add").onclick = () => {
-  if (S.compose) exitCompose(); // 컴포즈와 스팟 추가는 동시 불가
   S.addingSpot = !S.addingSpot;
   $("spot-add").classList.toggle("active", S.addingSpot);
   map.getCanvas().style.cursor = S.addingSpot ? "crosshair" : "";
@@ -785,28 +639,14 @@ $("spot-add").onclick = () => {
 
 // ── 지도 이벤트 (코스 클릭·스팟 클릭/드래그·스팟 추가) ──
 function wireMapEvents() {
-  // 컴포즈 모드: 구간망 클릭 → 코스에 담기/해제(토글)
-  map.on("click", "network-hit", (e) => {
-    if (!S.compose) return;
-    composeClick(e.features[0].properties.idx);
-  });
-  map.on("mouseenter", "network-hit", () => { if (S.compose) map.getCanvas().style.cursor = "crosshair"; });
-  // 호버 아웃라인: 어떤 구간이 담길지 클릭 전에 미리보기
-  map.on("mousemove", "network-hit", (e) => {
-    if (!S.compose) return;
-    map.setFilter("network-hover", ["==", ["get", "idx"], e.features[0].properties.idx]);
-  });
-  map.on("mouseleave", "network-hit", () => {
-    map.setFilter("network-hover", ["==", ["get", "idx"], -1]);
-  });
   map.on("click", "courses-hit", (e) => {
-    if (S.addingSpot || S.compose) return;
+    if (S.addingSpot) return;
     const id = e.features[0].properties.id;
     selectCourse(id, false);
     e.preventDefault?.();
   });
   map.on("click", "spots-dots", (e) => {
-    if (S.addingSpot || S.compose) return;
+    if (S.addingSpot) return;
     openSpotEditor(e.features[0].properties.id);
   });
   map.on("click", (e) => {
@@ -826,7 +666,7 @@ function wireMapEvents() {
   }
   // 스팟 드래그 이동
   map.on("mousedown", "spots-dots", (e) => {
-    if (S.addingSpot || S.compose) return;
+    if (S.addingSpot) return;
     e.preventDefault();
     const id = e.features[0].properties.id;
     const s = S.draft.spots.find((x) => x.id === id);

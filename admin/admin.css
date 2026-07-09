@@ -187,14 +187,11 @@ button.active { background: #111; color: #fff; }
 .spotcfg-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0; font-size: 12px; }
 .spotcfg-row select { font-size: 12px; padding: 2px 4px; }
 
-/* 수작업 코스 컴포저 (부록 D) */
-#compose-box {
-  border: 1px solid #111; border-radius: 8px; background: #fff;
-  padding: 10px; margin: 8px 0;
-}
-#compose-info { font-size: 12px; }
-#compose-info .warn { color: #b00020; }
-#compose-stat { margin: 4px 0; }
+/* 코스 드래그 정렬 그립 */
+#course-list .c-grip { flex: 0 0 auto; cursor: grab; color: #aaa; font-size: 13px; user-select: none; }
+#course-list .c-grip:hover { color: #111; }
+#course-list li.dragging { opacity: .45; cursor: grabbing; }
+/* 코스 번호 배지 */
 #course-list .c-no {
   flex: 0 0 auto; min-width: 18px; height: 18px; border-radius: 9px;
   background: #111; color: #fff; font-size: 11px; font-weight: 700;

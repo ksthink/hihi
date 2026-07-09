@@ -126,13 +126,13 @@ def create_draft(code):
     draft_store.save(code, draft)
 
     # 자동 코스 시드는 폐기 (파편화된 국립공원 구간망에서 괴물 코스 생성 — 부록 D).
-    # 코스는 운영자가 클릭 컴포저/GPX 로 직접 입력. DEM 만 미리 받아 첫 recompute 지연을 줄인다.
+    # 코스는 운영자가 GPX 업로드로 직접 입력. DEM 만 미리 받아 첫 recompute 지연을 줄인다.
     def seed(job):
         import dem_cache
         job_step(job, "DEM 타일 확보", 0.3)
         dem_cache.ensure(draft["mountain"]["bbox"],
                          log=lambda m: job["log"].append(m))
-        job_step(job, "DEM 준비 완료 — 코스는 [코스 등록]으로 직접 입력", 0.95)
+        job_step(job, "DEM 준비 완료 — 코스는 GPX 업로드로 입력", 0.95)
         return {"code": code}
 
     return draft, JOBS.submit(f"{draft['mountain']['name']} DEM 준비", seed, code=code)

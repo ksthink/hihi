@@ -195,7 +195,9 @@ html, body { height: 100%; font-family: "KakaoSmallSans", -apple-system, "Apple 
 .trail-item { border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 14px; padding: 12px 14px; cursor: pointer; transition: transform .1s; background: var(--elevated); display: flex; align-items: center; gap: 12px; }
 .trail-item .t-left { flex: 1 1 auto; min-width: 0; }
 .trail-item:active { transform: scale(.98); }
-.trail-item.selected { border-color: var(--accent); }
+/* 선택 표시: 테두리를 두껍게(레이아웃 안 미는 box-shadow 겹침) + 번호 배지 색 반전 */
+.trail-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2.5px var(--accent); }
+.trail-item.selected .t-no { background: var(--bg); color: var(--text); box-shadow: inset 0 0 0 1.5px var(--text); }
 .trail-item .t-name { font-weight: 700; font-size: 15px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .trail-item .t-title { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 /* 코스 번호 배지 — 지도 중앙 번호 라벨과 대응 (부록 D) */

@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-07-09
+
+### 생성 / 추가
+- **코스 선택 시각 피드백(색 반전)**: `app.js`(`makeBadge(no, sel)` — 선택 배지 `badge-N-sel` 변형: 검정 원+흰 숫자, 다크만 흰 테두리; `applyTrailFilter`에서 선택 코스만 반전 아이콘으로 교체하는 icon-image 표현식 주입, `styleimagemissing` 정규식 `-sel` 확장), `style.css`(선택된 목록 항목 `.t-no` 색 반전: 흰 원+검정 숫자+링) — 지도 배지·목록 번호가 선택 상태를 함께 표시
+- **코스 자동 번호 + 드래그 정렬**: `admin/admin.js`(`renumberCourses` — 번호=목록 순서, 위에서부터 1; GPX 수락·삭제·드래그 정렬·초안 열 때마다 재부여, 레거시 초안 번호 구멍도 정규화), 코스 항목 그립(⠿) 드래그로 순서 변경 → DOM 순서를 draft 에 반영 후 번호 재부여·자동저장(그립을 잡을 때만 draggable — 코스명 입력과 충돌 없음, Firefox `setData` 대응), `admin/admin.css`(.c-grip·li.dragging 스타일)
+
+### 수정 / 변경
+- 선택된 코스 목록 아웃라인 두껍게: `style.css`(`.trail-item.selected` — box-shadow 겹침 2.5px, 레이아웃 안 밈)
+- **수작업 코스 입력(클릭 컴포저) 제거**: `admin/index.html`([＋ 코스 등록] 버튼·컴포즈 박스 UI), `admin/admin.js`(S.compose/S.networkFC 상태, 40m 스냅 스티칭 `stitchPicked`·`havM`, `renderCompose`/`startCompose`/`exitCompose`/`composeClick`, 컴포즈 전용 레이어 6종(network-hover/network-hit/compose-line/compose-ends-dots·labels)·소스 2개, 각 핸들러의 컴포즈 가드), `admin/admin.css`(#compose-box 블록) — 회색 구간망 표시(network-line)·`/network` 엔드포인트는 GPX 매칭 검토 배경으로 유지, 코스 입력 수단은 GPX 업로드로 일원화
+- `scripts/admin_server.py` — DEM 준비 잡 안내 문구를 [코스 등록] → GPX 업로드 기준으로 갱신
+- `admin_data/412900401/draft.json` — 청계산 초안 코스 번호(no 1~5) 순서 기준 정규화(관리자 열람 시 자동저장 반영분)
+
 ## 2026-07-08
 
 ### 생성 / 추가
