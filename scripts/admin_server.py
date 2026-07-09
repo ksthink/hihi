@@ -36,6 +36,12 @@ import pack_lib as pl  # noqa: E402
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
 BIND = os.environ.get("ADMIN_BIND", "0.0.0.0")
 
+# 스팟 표시 정책 기본값 — 값 = 표시 시작 줌(0=항상), null = 끔. 앱 app.js 의 기본값과 일치 유지.
+SPOT_DISPLAY_DEFAULT = {"version": 1, "categories": {
+    "정상": 0, "조망점": 18, "화장실": 18, "정자": 18, "헬기장": 18, "음수대": 18,
+    "주차장": None, "분기점": None, "시종점": None,
+}}
+
 
 def load_env():
     p = os.path.join(ROOT, ".env")
@@ -258,6 +264,34 @@ class AdminHandler(BaseHandler):
             out = [dict(m, has_src=os.path.isdir(os.path.join(ROOT, "mountain", m["code"])),
                         has_draft=draft_store.load(m["code"]) is not None) for m in rows]
             return self._json(out)
+
+        # GET/PUT /api/config/spots — 스팟 표시 정책 (분류별 표시 시작 줌, 앱 전역)
+        # 저장: admin_data/spot-display.json (원본) + R2 config/spot-display.json (앱이 부팅 시 fetch)
+        if p == ["config", "spots"]:
+            cfg_path = os.path.join(draft_store.ADMIN_DATA, "spot-display.json")
+            if method == "GET":
+                if os.path.exists(cfg_path):
+                    return self._json(json.load(open(cfg_path, encoding="utf-8")))
+                return self._json(SPOT_DISPLAY_DEFAULT)
+            if method == "PUT":
+                data = json.loads(self._body())
+                cats = data.get("categories")
+                if not isinstance(cats, dict):
+                    raise ValueError("categories 객체 필요")
+                for k, v in cats.items():
+                    if k not in SPOT_DISPLAY_DEFAULT["categories"]:
+                        raise ValueError(f"알 수 없는 분류: {k}")
+                    if v is not None and not (isinstance(v, (int, float)) and 0 <= v <= 22):
+                        raise ValueError(f"{k}: 줌은 0~22 또는 null(끔)")
+                cfg = {"version": 1, "categories": {**SPOT_DISPLAY_DEFAULT["categories"], **cats}}
+                body = json.dumps(cfg, ensure_ascii=False, indent=1).encode()
+                os.makedirs(draft_store.ADMIN_DATA, exist_ok=True)
+                with open(cfg_path, "wb") as f:
+                    f.write(body)
+                import r2_lib
+                r2_lib.upload_bytes(body, "config/spot-display.json",
+                                    content_type="application/json")
+                return self._json({"ok": True, **cfg})
 
         # GET/POST /api/mountains
         if p == ["mountains"]:

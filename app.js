@@ -216,14 +216,37 @@ const parkOverlays = {};
 // pmtiles Protocol 에 로컬 Blob 소스가 등록된 산: { <park>: true }
 const localRegistered = {};
 
-// 지도에 표시할 경로 지점 종류 — 분기점·시종점은 표시 제외(2026-07-08 결정).
-// 봉우리(정상)는 spot-peaks, 아래 편의시설은 spots-facilities 아이콘 레이어가 렌더.
-const SHOWN = [];
-// 편의시설 → POI 아이콘 id (makePoiIcon 캔버스 생성 — 흑백·테마 자동)
+// ── 스팟 표시 정책 (admin 에서 편집 · R2 config/spot-display.json) ──
+// 값 = 표시 시작 줌(0=항상), null = 끔. 부팅 시 R2 설정을 읽고 실패하면 캐시→기본값.
+// iOS 도 동일 JSON 을 소비 (데이터 주도 정책).
+const SPOT_DISPLAY_DEFAULT = {
+  정상: 0, 조망점: 18, 화장실: 18, 정자: 18, 헬기장: 18, 음수대: 18,
+  주차장: null, 분기점: null, 시종점: null,
+};
+let spotDisplay = { ...SPOT_DISPLAY_DEFAULT };
+const SPOTCFG_KEY = "hiheight-spot-display";
+async function loadSpotDisplay() {
+  try {
+    const url = R2_PACKS_BASE.replace(/\/packs$/, "") + "/config/spot-display.json";
+    const cfg = await fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null));
+    if (!cfg?.categories) throw new Error("no cfg");
+    spotDisplay = { ...SPOT_DISPLAY_DEFAULT, ...cfg.categories };
+    localStorage.setItem(SPOTCFG_KEY, JSON.stringify(spotDisplay));
+  } catch (_) { // 미배포/오프라인 → 마지막 캐시, 없으면 기본값
+    try {
+      spotDisplay = { ...SPOT_DISPLAY_DEFAULT, ...(JSON.parse(localStorage.getItem(SPOTCFG_KEY)) || {}) };
+    } catch (_e) { /* 기본값 유지 */ }
+  }
+}
+// 점·라벨로 그리는 분류 / 아이콘으로 그리는 분류 (정상은 spot-peaks 별도)
+const DOT_CATS = ["분기점", "시종점"];
 const FACILITY_ICON = {
   조망점: "poi-viewpoint", 화장실: "poi-toilets", 정자: "poi-shelter",
-  헬기장: "poi-helipad", 음수대: "poi-drinking_water",
+  헬기장: "poi-helipad", 음수대: "poi-drinking_water", 주차장: "poi-parking",
 };
+// 분류별 노출 줌 게이트 — 끔(null)=99 (필터의 zoom 은 정수 줌에서 평가됨)
+const zoomGate = (cats) => [">=", ["zoom"], ["match", ["get", "category"],
+  ...cats.flatMap((c) => [c, spotDisplay[c] ?? 99]), 99]];
 
 // ── 난이도 미터 (흑백) ───────────────────────────────
 function difMeter(diff) {
@@ -418,9 +441,10 @@ function ensureOverlays() {
 
   if (!map.getSource("spots")) {
     map.addSource("spots", { type: "geojson", data: ov.spots || EMPTY_FC });
+    // 분류별 노출 줌은 admin 설정(spotDisplay) 주도 — zoomGate 가 필터에서 게이팅
     map.addLayer({
-      id: "spots-dots", type: "circle", source: "spots", minzoom: 18,
-      filter: ["in", ["get", "category"], ["literal", SHOWN]],
+      id: "spots-dots", type: "circle", source: "spots",
+      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], zoomGate(DOT_CATS)],
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 1.8],
         "circle-color": c.line,
@@ -430,19 +454,19 @@ function ensureOverlays() {
     });
     // 운영자가 이름 붙인 분기점/시종점만 지도 라벨 (관리자 콘솔 큐레이션)
     map.addLayer({
-      id: "spots-labels", type: "symbol", source: "spots", minzoom: 18,
-      filter: ["all", ["in", ["get", "category"], ["literal", SHOWN]], ["has", "name"]],
+      id: "spots-labels", type: "symbol", source: "spots",
+      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], ["has", "name"], zoomGate(DOT_CATS)],
       layout: {
         "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
         "text-size": 8.9, "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
     });
-    // 편의시설 아이콘 (조망점·화장실·정자·헬기장·음수대) — 충돌 시 자동 숨김으로 밀집 정리.
-    // 정상 제외 스팟은 축척 30m 수준(z18)부터 노출 (2026-07-08 결정)
+    // 편의시설 아이콘 (조망점·화장실·정자·헬기장·음수대·주차장) — 충돌 시 자동 숨김으로 밀집 정리
     map.addLayer({
-      id: "spots-facilities", type: "symbol", source: "spots", minzoom: 18,
-      filter: ["in", ["get", "category"], ["literal", Object.keys(FACILITY_ICON)]],
+      id: "spots-facilities", type: "symbol", source: "spots",
+      filter: ["all", ["in", ["get", "category"], ["literal", Object.keys(FACILITY_ICON)]],
+        zoomGate(Object.keys(FACILITY_ICON))],
       layout: {
         "icon-image": ["match", ["get", "category"],
           ...Object.entries(FACILITY_ICON).flat(), ""],
@@ -452,7 +476,8 @@ function ensureOverlays() {
     // 전역 peaks.geojson(북한산·설악산 레거시)과 별개로, 각 산 팩의 정상을 렌더.
     map.addLayer({
       id: "spot-peaks", type: "symbol", source: "spots",
-      filter: ["==", ["get", "category"], "정상"],
+      filter: ["all", ["==", ["get", "category"], "정상"],
+        [">=", ["zoom"], spotDisplay["정상"] ?? 99]],
       layout: {
         "text-field": ["concat", theme === "dark" ? "△" : "▲", ["coalesce", ["get", "name"], ""]],
         "text-font": ["Nanum Gothic Coding Bold"],
@@ -1541,7 +1566,10 @@ document.getElementById("show-all").addEventListener("click", (e) => {
 setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
 
 map.on("load", async () => {
-  peaksData = await fetch("data/peaks.geojson").then((r) => r.json()).catch(() => null);
+  [peaksData] = await Promise.all([
+    fetch("data/peaks.geojson").then((r) => r.json()).catch(() => null),
+    loadSpotDisplay(), // 스팟 노출 정책 — 레이어(필터) 생성 전에 확보
+  ]);
   ensureOverlays();
   const codes = await loadCatalog(); // mountains 카탈로그 (오프라인 시 캐시)
   if (codes.length) await loadPark(codes[0]); // 첫 산(sort_order 1위) — 오버레이는 산별 지연 로드

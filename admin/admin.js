@@ -971,5 +971,51 @@ const LAYOUT_KEY = "hiheight-admin-layout";   // "v"(상하) | "h"(좌우)
   applyLayout(layout); // 저장된 배치 복원
 }
 
+// ── 스팟 표시 설정 (앱 전역 — 분류별 표시 시작 줌, R2 config/spot-display.json) ──
+const SPOT_ZOOM_OPTS = [
+  [null, "끔"], [0, "항상"], [10, "z10 (광역)"], [12, "z12 (산 전체)"],
+  [14, "z14"], [16, "z16"], [18, "z18 (축척 30m)"],
+];
+let spotCfg = null;
+async function loadSpotCfg() {
+  try {
+    spotCfg = await api("/config/spots");
+  } catch (_) { return; }
+  const box = $("spotcfg-rows");
+  box.innerHTML = "";
+  for (const [cat, val] of Object.entries(spotCfg.categories)) {
+    const row = document.createElement("label");
+    row.className = "spotcfg-row";
+    const sel = document.createElement("select");
+    for (const [v, label] of SPOT_ZOOM_OPTS) {
+      const o = document.createElement("option");
+      o.value = v === null ? "" : v;
+      o.textContent = label;
+      o.selected = (v === null ? null : v) === (val === null ? null : +val);
+      sel.appendChild(o);
+    }
+    sel.onchange = () => {
+      spotCfg.categories[cat] = sel.value === "" ? null : +sel.value;
+      $("spotcfg-state").textContent = "저장 안 됨";
+    };
+    row.append(Object.assign(document.createElement("span"), { textContent: cat }), sel);
+    box.appendChild(row);
+  }
+}
+$("spotcfg-save").onclick = async () => {
+  if (!spotCfg) return;
+  $("spotcfg-state").textContent = "저장 중…";
+  try {
+    await api("/config/spots", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categories: spotCfg.categories }),
+    });
+    $("spotcfg-state").textContent = "저장됨 ✓ (앱 새로고침 시 반영)";
+  } catch (e) {
+    $("spotcfg-state").textContent = "저장 실패: " + e.message;
+  }
+};
+
 // ── 부팅 ── (401 이면 api() 가 로그인 게이트를 띄움)
 refreshList().catch(() => {});
+loadSpotCfg().catch(() => {});

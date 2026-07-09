@@ -180,6 +180,13 @@ button.active { background: #111; color: #fff; }
 .badge.ready { background: #111; color: #fff; border-color: #111; }
 .badge.gpx { border-style: dashed; }
 
+/* 스팟 표시 설정 (앱 전역) */
+#sec-spotcfg { border: 1px solid #ddd; border-radius: 8px; background: #fff; padding: 8px 10px; margin: 10px 0 4px; }
+#sec-spotcfg summary { cursor: pointer; font-weight: 700; font-size: 12.5px; }
+#spotcfg-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin: 8px 0 4px; }
+.spotcfg-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0; font-size: 12px; }
+.spotcfg-row select { font-size: 12px; padding: 2px 4px; }
+
 /* 수작업 코스 컴포저 (부록 D) */
 #compose-box {
   border: 1px solid #111; border-radius: 8px; background: #fff;
