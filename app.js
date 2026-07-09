@@ -650,7 +650,12 @@ async function loadPark(park) {
   if (cur) cur.textContent = cfg.label;
   useBaseFor(park);
   let geojson = trailCache[park];
-  if (!geojson) { geojson = await fetch(packUrl(park, "routes.geojson")).then((r) => r.json()); trailCache[park] = geojson; }
+  if (!geojson) {
+    // 팩 유실/미배포(404 등)여도 부팅을 죽이지 않는다 — 등산로만 비우고 지도는 띄움
+    geojson = (await fetch(packUrl(park, "routes.geojson"))
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null)) || EMPTY_FC;
+    trailCache[park] = geojson;
+  }
   await ensureParkOverlays(park);
 
   ensureOverlays();

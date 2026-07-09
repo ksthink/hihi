@@ -120,7 +120,10 @@ def publish(code, job=None, step=None):
             # go-pmtiles 는 오류를 stdout 에 로깅 → 둘 다 노출.
             raise RuntimeError(f"pmtiles extract 실패: {(r.stderr + r.stdout)[-400:]}")
 
-    # 5. 업로드
+    # 5. 업로드 — 배포 도중 산이 삭제됐으면 여기서 중단
+    # (삭제와의 레이스로 파일 없는 카탈로그 행/고아 파일이 남는 것 방지)
+    if not draft_store.load(code):
+        raise RuntimeError("배포 중 산이 삭제됨 — 업로드·카탈로그 갱신을 중단합니다")
     files = {os.path.join(tiles_dir, f"{code}-base.pmtiles"): "base.pmtiles",
              os.path.join(pack_dir, "routes.geojson"): "routes.geojson",
              os.path.join(pack_dir, "spots.geojson"): "spots.geojson",
@@ -130,7 +133,9 @@ def publish(code, job=None, step=None):
         log(f"업로드 {dest}", 0.55 + 0.08 * i)
         total += _upload(local, f"{code}/{dest}")
 
-    # 6. mountains upsert
+    # 6. mountains upsert — 업로드 사이에 삭제됐어도 행을 되살리지 않는다
+    if not draft_store.load(code):
+        raise RuntimeError("배포 중 산이 삭제됨 — 카탈로그 갱신을 중단합니다")
     version = (prev.get("pack_version") or 0) + 1
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     log(f"카탈로그 갱신 (v{version})", 0.9)
@@ -156,6 +161,8 @@ def publish(code, job=None, step=None):
 
     # 7. draft.publish 갱신 (동시 편집 반영 위해 재로드)
     d = draft_store.load(code)
+    if not d:
+        raise RuntimeError("배포 중 산이 삭제됨 — publish 기록 생략")
     d["publish"] = {"pack_version": version,
                     "published_at": now,
                     "pack_size_kb": total // 1024,

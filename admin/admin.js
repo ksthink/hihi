@@ -391,15 +391,14 @@ function renderCourses() {
     const li = document.createElement("li");
     li.className = (c.id === S.selCourse ? "sel " : "") + (c.status === "ready" ? "" : "off");
     li.dataset.id = c.id;
-    const src = c.source?.type === "gpx" ? `GPX ${Math.round((c.source.matched_ratio ?? 0) * 100)}%`
-      : c.source?.type === "manual" ? "수작업"
-      : c.source?.type === "forest_auto" ? "자동" : "기존";
+    // 출처 배지는 GPX 일치율만 (품질 신호) — 기존/수작업/자동 표기는 정보 가치가 없어 생략
+    const src = c.source?.type === "gpx" ? `GPX ${Math.round((c.source.matched_ratio ?? 0) * 100)}%` : null;
     const k = c.computed || {};
     li.innerHTML = `
       <div class="c-head">
         ${c.no != null ? `<span class="c-no">${c.no}</span>` : ""}
         <input class="c-name" title="클릭해서 코스명 수정" value="${(c.name || "").replace(/"/g, "&quot;")}" />
-        <span class="badge ${c.source?.type === "gpx" ? "gpx" : ""}">${src}</span>
+        ${src ? `<span class="badge gpx">${src}</span>` : ""}
         <span class="badge ${c.status === "ready" ? "ready" : ""}">${c.status === "ready" ? "배포" : "초안"}</span>
       </div>
       <div class="c-meta">${c.difficulty} · ${k.distance_km ?? "?"}km · ↑${k.ascent ?? "?"}m · ${k.min_elev ?? "?"}~${k.max_elev ?? "?"}m</div>

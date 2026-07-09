@@ -73,13 +73,18 @@ class JobManager:
         self.q = queue.Queue()
         threading.Thread(target=self._worker, daemon=True).start()
 
-    def submit(self, title, fn):
+    def submit(self, title, fn, code=None):
         jid = uuid.uuid4().hex[:12]
-        job = {"id": jid, "title": title, "state": "queued", "step": "대기 중",
-               "progress": 0.0, "log": [], "result": None, "error": None}
+        job = {"id": jid, "title": title, "code": code, "state": "queued",
+               "step": "대기 중", "progress": 0.0, "log": [], "result": None, "error": None}
         self.jobs[jid] = job
         self.q.put((job, fn))
         return jid
+
+    def busy(self, code):
+        """해당 산코드의 잡이 대기/실행 중인가 (삭제와 배포의 레이스 방지용)."""
+        return any(j.get("code") == code and j["state"] in ("queued", "running")
+                   for j in self.jobs.values())
 
     def _worker(self):
         while True:
@@ -130,18 +135,53 @@ def create_draft(code):
         job_step(job, "DEM 준비 완료 — 코스는 [코스 등록]으로 직접 입력", 0.95)
         return {"code": code}
 
-    return draft, JOBS.submit(f"{draft['mountain']['name']} DEM 준비", seed)
+    return draft, JOBS.submit(f"{draft['mountain']['name']} DEM 준비", seed, code=code)
 
 
 _MNT_CACHE = None
 
 
+def _xlsx_meta():
+    """산림청 xlsx(산 소개 시드용으로 보관 중) → {산코드: {region, elev}}.
+    이름 중복(전국 317건, 예: 청계산 과천·가평·양평) 구분 표기에 쓴다.
+    소재지·높이는 mnt.xlsx 우선, 없으면 MNT_CODE.xlsx 위치로 보충."""
+    try:
+        import openpyxl
+    except ImportError:
+        return {}
+    meta = {}
+    p = os.path.join(ROOT, "scripts", "MNT_CODE.xlsx")  # 순번/산이름/위치/산코드
+    if os.path.exists(p):
+        ws = openpyxl.load_workbook(p, read_only=True).active
+        for r in list(ws.iter_rows(values_only=True))[1:]:
+            if r and r[3]:
+                loc = str(r[2] or "").strip() or None
+                meta[str(r[3]).strip()] = {"region": loc, "elev": None}
+    p = os.path.join(ROOT, "scripts", "mnt.xlsx")  # 산코드/산명/…/소재지[6]/…/높이[11]
+    if os.path.exists(p):
+        ws = openpyxl.load_workbook(p, read_only=True).active
+        for r in list(ws.iter_rows(values_only=True))[1:]:
+            if not r or not r[0]:
+                continue
+            cur = meta.setdefault(str(r[0]).strip(), {"region": None, "elev": None})
+            loc = str(r[6] or "").strip()
+            if loc:
+                cur["region"] = loc
+            try:
+                if r[11] and float(r[11]) > 0:
+                    cur["elev"] = round(float(r[11]))
+            except (TypeError, ValueError):
+                pass
+    return meta
+
+
 def _mnt_codes():
     """mountain/<산코드>/ 스캔 — 내려받은 산림청 원본이 곧 산 목록.
-    이름은 PMNTN_<이름>_<산코드>.json 파일명에서 추출. 지역·높이는 등록 후 직접 입력."""
+    이름은 PMNTN_<이름>_<산코드>.json 파일명에서 추출, 지역·높이는 xlsx 메타로 보강."""
     global _MNT_CACHE
     if _MNT_CACHE is None:
         base = os.path.join(ROOT, "mountain")
+        xm = _xlsx_meta()
         rows = []
         for code in sorted(os.listdir(base)) if os.path.isdir(base) else []:
             dp = os.path.join(base, code)
@@ -153,7 +193,9 @@ def _mnt_codes():
                 if m and not m.group(1).startswith(("SPOT_", "SAFE_")):
                     name = m.group(1).replace("_", " ")
                     break
-            rows.append({"code": code, "name": name, "region": None, "elev": None})
+            m = xm.get(code) or {}
+            rows.append({"code": code, "name": name,
+                         "region": m.get("region"), "elev": m.get("elev")})
         _MNT_CACHE = rows
     return _MNT_CACHE
 
@@ -325,6 +367,9 @@ class AdminHandler(BaseHandler):
             if not rest and method == "DELETE":
                 # 앱에서 완전 삭제: Supabase 카탈로그 행 + R2 팩 파일 + 로컬 초안.
                 # (초안이 이미 없어도 code 로 배포본을 정리 — 고아 배포본 대응)
+                if JOBS.busy(code):
+                    raise ValueError("이 산의 배포/준비 작업이 진행 중입니다 — 완료 후 삭제하세요"
+                                     " (진행 중 삭제하면 고아 배포본이 생깁니다)")
                 import shutil
                 import publish_pack
                 result = {"code": code}
@@ -402,7 +447,8 @@ class AdminHandler(BaseHandler):
                 if not d:
                     raise FileNotFoundError(f"{code} 초안 없음")
                 jid = JOBS.submit(f"{d['mountain']['name']} 배포",
-                                  lambda job: publish_pack.publish(code, job, job_step))
+                                  lambda job: publish_pack.publish(code, job, job_step),
+                                  code=code)
                 return self._json({"job_id": jid})
 
 
