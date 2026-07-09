@@ -15,10 +15,17 @@ body {
 [hidden] { display: none !important; }
 
 #side {
-  width: 360px; min-width: 360px; height: 100%;
+  width: 360px; min-width: 280px; height: 100%;
+  position: relative; /* #side-resize(폭 조절 핸들) 기준 */
   display: flex; flex-direction: column;
   border-right: 1px solid #ddd; background: #fafafa;
 }
+/* 사이드 전체 폭 조절 핸들 — 지도와의 경계선 위 (상하/좌우 모드 공통) */
+#side-resize {
+  position: absolute; top: 0; right: -4px; width: 9px; height: 100%;
+  cursor: col-resize; z-index: 5; touch-action: none;
+}
+#side-resize:hover, #side-resize.dragging { background: rgba(0, 0, 0, .08); }
 /* 상하 2단 — 각각 독립 스크롤. 구분선을 드래그해 높이 조절(기본 상단 42%). */
 #side-top {
   flex: 0 0 auto; height: 42%; min-height: 80px; overflow-y: auto;

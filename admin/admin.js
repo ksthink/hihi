@@ -752,16 +752,18 @@ $("logout").onclick = () => {
 const SPLIT_KEY = "hiheight-admin-split";     // v 모드: 상단(목록) 높이 px
 const SPLITW_KEY = "hiheight-admin-splitw";   // h 모드: 좌측(목록) 폭 px
 const SIDEW_KEY = "hiheight-admin-sidew";     // h 모드: 사이드 전체 폭 px
+const SIDEVW_KEY = "hiheight-admin-sidevw";   // v 모드: 사이드 전체 폭 px
 const LAYOUT_KEY = "hiheight-admin-layout";   // "v"(상하) | "h"(좌우)
 {
   const side = $("side"), top = $("side-top"), divider = $("side-divider");
-  const bar = $("bottom-bar"), toggle = $("dock-toggle");
+  const bar = $("bottom-bar"), toggle = $("dock-toggle"), edge = $("side-resize");
   const ls = (k) => +localStorage.getItem(k) || 0;
   let layout = localStorage.getItem(LAYOUT_KEY) === "h" ? "h" : "v";
 
   const clampH = (h) => Math.max(80, Math.min(side.getBoundingClientRect().height - 160, h));
   const clampCol = (w) => Math.max(200, Math.min(side.getBoundingClientRect().width - 240, w));
   const clampSide = (w) => Math.max(560, Math.min(window.innerWidth - 260, w));
+  const clampVSide = (w) => Math.max(280, Math.min(window.innerWidth - 260, w));
   let raf = false;
   const resizeMap = () => { if (!raf) { raf = true; requestAnimationFrame(() => { raf = false; map.resize(); }); } };
 
@@ -772,8 +774,10 @@ const LAYOUT_KEY = "hiheight-admin-layout";   // "v"(상하) | "h"(좌우)
       top.style.height = "";
       side.style.width = clampSide(ls(SIDEW_KEY) || 700) + "px";
       top.style.width = clampCol(ls(SPLITW_KEY) || 320) + "px";
-    } else {                                // 상하 2단: 높이만, 폭은 CSS(360)
-      top.style.width = ""; side.style.width = "";
+    } else {                                // 상하 2단: 높이 + 사이드 폭(기본 CSS 360)
+      top.style.width = "";
+      const w = ls(SIDEVW_KEY);
+      side.style.width = w ? clampVSide(w) + "px" : "";
       const h = ls(SPLIT_KEY);
       top.style.height = h ? clampH(h) + "px" : ""; // 없으면 CSS 42%
     }
@@ -802,6 +806,34 @@ const LAYOUT_KEY = "hiheight-admin-layout";   // "v"(상하) | "h"(좌우)
     };
     divider.addEventListener("pointermove", onMove);
     divider.addEventListener("pointerup", onUp);
+  });
+
+  // 지도 경계 드래그 = 사이드 전체 폭 조절 (상하/좌우 모드 공통, 모드별로 따로 기억)
+  edge.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    edge.setPointerCapture(e.pointerId);
+    edge.classList.add("dragging");
+    const sx = e.clientX, sw = side.getBoundingClientRect().width;
+    const clamp = layout === "h" ? clampSide : clampVSide;
+    document.body.style.userSelect = "none";
+    const onMove = (ev) => {
+      side.style.width = clamp(sw + ev.clientX - sx) + "px";
+      // 좌우 모드: 패널이 좁아지면 목록 열도 한도(패널-240) 안으로 당김
+      if (layout === "h") top.style.width = clampCol(top.getBoundingClientRect().width) + "px";
+      resizeMap();
+    };
+    const onUp = () => {
+      edge.removeEventListener("pointermove", onMove);
+      edge.removeEventListener("pointerup", onUp);
+      edge.classList.remove("dragging");
+      document.body.style.userSelect = "";
+      localStorage.setItem(layout === "h" ? SIDEW_KEY : SIDEVW_KEY,
+        Math.round(side.getBoundingClientRect().width));
+      if (layout === "h")
+        localStorage.setItem(SPLITW_KEY, Math.round(top.getBoundingClientRect().width));
+    };
+    edge.addEventListener("pointermove", onMove);
+    edge.addEventListener("pointerup", onUp);
   });
 
   // 편집 패널 바 드래그 → 목록 오른쪽=좌우(h) / 목록 왼쪽·아래=상하(v)
