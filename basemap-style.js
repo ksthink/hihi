@@ -5,17 +5,18 @@
 export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null) {
   const dark = theme === "dark";
   // 흑백 가독성 원칙: 색이 없으므로 "명도 계단"이 유일한 분리 수단.
-  // 지표 클래스마다 6~8% 간격의 뚜렷한 밝기 단계를 배정한다 —
-  // 라이트: 시가지(밝음) > 풀 > 공원 > 숲 > 물(제일 어두움) / 다크는 역방향.
+  // 지표 클래스마다 뚜렷한 밝기 단계를 배정 — 라이트: 시가지(밝음) > 풀 > 공원 > 물(어두움).
+  // 산지·지형 표현은 hillshade(음영기복)가 전담한다. OSM 숲 폴리곤은 한국에서 경계가
+  // 조악하고 줌별 일반화로 형태가 널뛰어 지형과 무관한 얼룩으로 보임 → 표시하지 않음.
   const C = dark
     ? {
-        bg: "#000000", earth: "#0d0d0d", forest: "#1d1d1d", grass: "#131313",
+        bg: "#000000", earth: "#0d0d0d", grass: "#131313",
         park: "#232323", water: "#303030", roadCasing: "#000000", road: "#424242",
         hw: "#585858", path: "#a3a3a3", building: "#171717", boundary: "#4a4a4a",
         label: "#d9d9d9", halo: "#000000"
       }
     : {
-        bg: "#ffffff", earth: "#f4f4f4", forest: "#dcdcdc", grass: "#ececec",
+        bg: "#ffffff", earth: "#f4f4f4", grass: "#ececec",
         park: "#e3e3e3", water: "#c9c9c9", roadCasing: "#c2c2c2", road: "#ffffff",
         hw: "#e0e0e0", path: "#3f3f3f", building: "#e4e4e4", boundary: "#b5b5b5",
         label: "#2b2b2b", halo: "#ffffff"
@@ -45,29 +46,19 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null) {
       { id: "background", type: "background", paint: { "background-color": C.bg } },
       { id: "earth", type: "fill", source: "protomaps", "source-layer": "earth", paint: { "fill-color": C.earth } },
       {
-        id: "landcover-forest", type: "fill", source: "protomaps", "source-layer": "landcover",
-        filter: ["in", "kind", "forest", "wood", "scrub"],
-        paint: { "fill-color": C.forest }
-      },
-      {
         id: "landcover-grass", type: "fill", source: "protomaps", "source-layer": "landcover",
         filter: ["in", "kind", "grassland", "farmland", "barren"],
         paint: { "fill-color": C.grass }
       },
       {
-        // 공원/보호구역: 불투명 + 미세한 톤 차이만.
-        // 반투명(0.6)이면 국립공원 같은 거대 폴리곤이 산 전체를 음영으로 덮고,
-        // 겹치는 폴리곤(공원∩보호구역)끼리 알파가 누적돼 얼룩처럼 진해진다.
+        // 공원 채움은 z13+ 근거리 전용 (동네 공원 참고용).
+        // 이 타일셋은 국립공원 같은 대형 보호구역도 kind=park 라, 중·저줌에 켜면
+        // 산 전체를 덮는 연회색 폴리곤이 줌별 일반화로 형태가 널뛰며 얼룩처럼 보인다
+        // (지형 표현은 hillshade 전담). 불투명 유지 — 반투명이면 겹침 알파가 누적됨.
         id: "landuse-park", type: "fill", source: "protomaps", "source-layer": "landuse",
+        minzoom: 13,
         filter: ["in", "kind", "park", "national_park", "nature_reserve", "recreation_ground"],
         paint: { "fill-color": C.park }
-      },
-      {
-        // 숲(산지): z8+ 에선 landcover 레이어가 없고 landuse 의 wood/forest 로 들어옴 —
-        // 이 레이어가 없으면 실사용 줌에서 산 전체가 earth 색 백지가 된다.
-        id: "landuse-forest", type: "fill", source: "protomaps", "source-layer": "landuse",
-        filter: ["in", "kind", "forest", "wood", "scrub"],
-        paint: { "fill-color": C.forest }
       },
       {
         id: "landuse-farm", type: "fill", source: "protomaps", "source-layer": "landuse",
@@ -75,12 +66,16 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null) {
         paint: { "fill-color": C.grass }
       },
       // 음영기복 — 지표 채움 위, 물·선·라벨 아래. 흑백에서 능선·계곡을 입체로 읽게 하는 층.
+      // DEM 이 30m(타일 z12까지)라 고줌에선 오버줌으로 뭉개진 얼룩이 됨 →
+      // z13 부터 서서히 빼고 z16 에서 완전히 끔 (등산 줌 11~14 는 지형감 유지).
       ...(terrainUrl ? [{
-        id: "hillshade", type: "hillshade", source: "dem",
+        id: "hillshade", type: "hillshade", source: "dem", maxzoom: 16,
         paint: dark
-          ? { "hillshade-exaggeration": 0.4, "hillshade-shadow-color": "#000000",
+          ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.4, 15, 0.18, 16, 0],
+              "hillshade-shadow-color": "#000000",
               "hillshade-highlight-color": "#3d3d3d", "hillshade-accent-color": "#000000" }
-          : { "hillshade-exaggeration": 0.35, "hillshade-shadow-color": "#6e6e6e",
+          : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.35, 15, 0.15, 16, 0],
+              "hillshade-shadow-color": "#6e6e6e",
               "hillshade-highlight-color": "#ffffff", "hillshade-accent-color": "#909090" }
       }] : []),
       { id: "water", type: "fill", source: "protomaps", "source-layer": "water", paint: { "fill-color": C.water } },
