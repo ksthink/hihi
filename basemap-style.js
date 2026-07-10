@@ -1,19 +1,24 @@
 // Protomaps v4 벡터 스키마용 흑백(모노크롬) MapLibre 스타일.
 // 등산 앱: 색상 배제 · 배터리 절약 다크 모드(순수 검정 배경).
-export function buildStyle(pmtilesUrl, theme = "light") {
+// terrainUrl(선택): terrain-RGB PMTiles → 음영기복(hillshade). 흑백 지도의 지형 입체감 핵심.
+//   오프라인 로컬 팩 열람 시엔 넘기지 않음(원격 전용) — 레이어 자체가 빠져 콘솔 오류 없음.
+export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null) {
   const dark = theme === "dark";
+  // 흑백 가독성 원칙: 색이 없으므로 "명도 계단"이 유일한 분리 수단.
+  // 지표 클래스마다 6~8% 간격의 뚜렷한 밝기 단계를 배정한다 —
+  // 라이트: 시가지(밝음) > 풀 > 공원 > 숲 > 물(제일 어두움) / 다크는 역방향.
   const C = dark
     ? {
-        bg: "#000000", earth: "#0d0d0d", forest: "#191919", grass: "#131313",
-        park: "#1f1f1f", water: "#242424", roadCasing: "#000000", road: "#3a3a3a",
-        hw: "#4d4d4d", path: "#8f8f8f", building: "#171717", boundary: "#3a3a3a",
-        label: "#cfcfcf", halo: "#000000"
+        bg: "#000000", earth: "#0d0d0d", forest: "#1d1d1d", grass: "#131313",
+        park: "#232323", water: "#303030", roadCasing: "#000000", road: "#424242",
+        hw: "#585858", path: "#a3a3a3", building: "#171717", boundary: "#4a4a4a",
+        label: "#d9d9d9", halo: "#000000"
       }
     : {
-        bg: "#ffffff", earth: "#f2f2f2", forest: "#e2e2e2", grass: "#ececec",
-        park: "#e6e6e6", water: "#d8d8d8", roadCasing: "#cfcfcf", road: "#ffffff",
-        hw: "#eaeaea", path: "#555555", building: "#e4e4e4", boundary: "#c6c6c6",
-        label: "#333333", halo: "#ffffff"
+        bg: "#ffffff", earth: "#f4f4f4", forest: "#dcdcdc", grass: "#ececec",
+        park: "#e3e3e3", water: "#c9c9c9", roadCasing: "#c2c2c2", road: "#ffffff",
+        hw: "#e0e0e0", path: "#3f3f3f", building: "#e4e4e4", boundary: "#b5b5b5",
+        label: "#2b2b2b", halo: "#ffffff"
       };
 
   return {
@@ -27,7 +32,14 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         url: "pmtiles://" + pmtilesUrl,
         attribution:
           '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
-      }
+      },
+      ...(terrainUrl ? {
+        dem: {
+          type: "raster-dem", url: "pmtiles://" + terrainUrl,
+          encoding: "mapbox", tileSize: 256, maxzoom: 12,
+          attribution: '© <a href="https://spacedata.copernicus.eu">Copernicus DEM</a>'
+        }
+      } : {})
     },
     layers: [
       { id: "background", type: "background", paint: { "background-color": C.bg } },
@@ -47,14 +59,36 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         // 반투명(0.6)이면 국립공원 같은 거대 폴리곤이 산 전체를 음영으로 덮고,
         // 겹치는 폴리곤(공원∩보호구역)끼리 알파가 누적돼 얼룩처럼 진해진다.
         id: "landuse-park", type: "fill", source: "protomaps", "source-layer": "landuse",
-        filter: ["in", "kind", "park", "national_park", "nature_reserve", "forest", "recreation_ground"],
-        paint: { "fill-color": dark ? "#141414" : "#eeeeee" }
+        filter: ["in", "kind", "park", "national_park", "nature_reserve", "recreation_ground"],
+        paint: { "fill-color": C.park }
       },
+      {
+        // 숲(산지): z8+ 에선 landcover 레이어가 없고 landuse 의 wood/forest 로 들어옴 —
+        // 이 레이어가 없으면 실사용 줌에서 산 전체가 earth 색 백지가 된다.
+        id: "landuse-forest", type: "fill", source: "protomaps", "source-layer": "landuse",
+        filter: ["in", "kind", "forest", "wood", "scrub"],
+        paint: { "fill-color": C.forest }
+      },
+      {
+        id: "landuse-farm", type: "fill", source: "protomaps", "source-layer": "landuse",
+        filter: ["in", "kind", "farmland", "grass", "orchard"],
+        paint: { "fill-color": C.grass }
+      },
+      // 음영기복 — 지표 채움 위, 물·선·라벨 아래. 흑백에서 능선·계곡을 입체로 읽게 하는 층.
+      ...(terrainUrl ? [{
+        id: "hillshade", type: "hillshade", source: "dem",
+        paint: dark
+          ? { "hillshade-exaggeration": 0.4, "hillshade-shadow-color": "#000000",
+              "hillshade-highlight-color": "#3d3d3d", "hillshade-accent-color": "#000000" }
+          : { "hillshade-exaggeration": 0.35, "hillshade-shadow-color": "#6e6e6e",
+              "hillshade-highlight-color": "#ffffff", "hillshade-accent-color": "#909090" }
+      }] : []),
       { id: "water", type: "fill", source: "protomaps", "source-layer": "water", paint: { "fill-color": C.water } },
       {
         id: "rivers", type: "line", source: "protomaps", "source-layer": "physical_line",
         filter: ["in", "kind", "river", "stream"],
-        paint: { "line-color": C.water, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 16, 2.4] }
+        // 산행에서 계곡·하천은 주요 지형 단서 — 굵기를 한 단계 올려 존재감 부여
+        paint: { "line-color": C.water, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 16, 3.2] }
       },
       {
         id: "roads-casing", type: "line", source: "protomaps", "source-layer": "roads",
@@ -74,9 +108,10 @@ export function buildStyle(pmtilesUrl, theme = "light") {
       {
         id: "paths", type: "line", source: "protomaps", "source-layer": "roads",
         filter: ["in", "kind", "path", "footway", "track"],
+        // 등산로(OSM 소로)는 이 앱의 주인공 — 더 진하고 약간 굵게 (팩 코스 선 아래 배경 맥락)
         paint: {
           "line-color": C.path,
-          "line-width": ["interpolate", ["linear"], ["zoom"], 12, 0.6, 17, 2],
+          "line-width": ["interpolate", ["linear"], ["zoom"], 12, 0.9, 17, 2.6],
           "line-dasharray": [2, 2]
         }
       },
@@ -152,8 +187,17 @@ export function buildStyle(pmtilesUrl, theme = "light") {
       },
       {
         // 사찰·암자 — 卍 아이콘 + 이름 (한국 산행 랜드마크)
+        // OSM kind=place_of_worship 은 종교 통합 분류라 교회·성당까지 걸림 →
+        // 한국어 라벨 휴리스틱으로 비사찰 계열 이름을 제외 (사찰은 …사/…암 등이라 안 걸림)
         id: "temple-names", type: "symbol", source: "protomaps", "source-layer": "pois",
-        minzoom: 13.5, filter: ["all", ["==", ["get", "kind"], "place_of_worship"], ["has", "name"]],
+        minzoom: 13.5,
+        filter: ["all",
+          ["==", ["get", "kind"], "place_of_worship"], ["has", "name"],
+          ["!", ["any",
+            ...["교회", "성당", "채플", "예배", "기도원", "교당", "모스크", "회당", "선교"]
+              .map((k) => ["in", k, ["coalesce", ["get", "name:ko"], ["get", "name"], ""]])
+          ]]
+        ],
         layout: {
           "icon-image": "poi-place_of_worship",
           "icon-size": ["interpolate", ["linear"], ["zoom"], 13.5, 0.6, 17, 0.9],
@@ -201,21 +245,27 @@ export function buildStyle(pmtilesUrl, theme = "light") {
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
+      // ── 행정구역 라벨 — 줌에 따라 상위→하위 단계 노출 ──
+      // 타일의 지명별 min_zoom(중요도: 서울 3 · 광역시 5~6 · 시 7~8 · 읍·면 그 이후)으로
+      // 게이트: 최대 축소(z6.4)에선 특별·광역시급만, 확대할수록 하위 지명이 열린다.
+      // (이 타일셋엔 도(道)·군 단위 라벨(kind region/county)이 없음 — 전부 locality.)
+      // 국가명(country)·외국 성(region)은 표시하지 않음.
       {
         id: "places-labels", type: "symbol", source: "protomaps", "source-layer": "places",
-        filter: ["in", "kind", "locality", "region", "country"],
+        filter: ["all",
+          ["==", ["get", "kind"], "locality"],
+          [">=", ["zoom"], ["get", "min_zoom"]]],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
           "text-font": ["Nanum Gothic Coding Regular"],
-          // 봉우리(정상, 12px)보다 작게: locality(행궁지 등 잡지명) 8px 고정,
-          // region/country(도·국가명)만 줌에 따라 크게 — 등산 지도 위계상 정상이 최상위.
-          // ⚠️ zoom 은 최상위 interpolate 에만 허용 → match(kind)를 각 stop 출력으로 중첩
+          // 대도시(population_rank≥12)는 크게, 그 외 9.6px — 정상(주봉 14.4)이 여전히 최상위
           "text-size": ["interpolate", ["linear"], ["zoom"],
-            6, ["match", ["get", "kind"], "locality", 9.6, 10.8],
-            12, ["match", ["get", "kind"], "locality", 9.6, 15.6]],
+            6, ["case", [">=", ["get", "population_rank"], 12], 11, 9.6],
+            12, ["case", [">=", ["get", "population_rank"], 12], 13, 9.6]],
           "text-max-width": 6
         },
-        paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.5 }
+        // 헤일로를 넉넉히 — 흑백에서 라벨과 선형이 겹칠 때 분리력은 헤일로가 좌우
+        paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.8 }
       }
     ]
   };

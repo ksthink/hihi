@@ -112,15 +112,12 @@ def job_step(job, step, progress):
 
 # ── 초안 생성/자동 시드 ──
 def create_draft(code):
-    """초안 생성. legacy 3산은 기존 산출물 역임포트, 그 외는 산림청 원본 기반.
-    반환: (draft, job_id|None) — 신규 산은 자동 코스 시드 잡을 건다."""
+    """초안 생성 — 산림청 원본 기반 (정상 자동 시드 + DEM 프리페치).
+    레거시 역임포트는 폐기: KNPS 탐방로 유래 코스가 점 간격 ~104m 로 거칠어
+    (산림청 6.7m) 삭제한 산이 거친 선형으로 부활하는 통로였다.
+    반환: (draft, job_id|None)."""
     if draft_store.load(code):
         raise ValueError(f"{code} 초안이 이미 있음")
-    if code in draft_store.LEGACY:
-        draft = draft_store.import_legacy(code)
-        draft_store.save(code, draft)
-        return draft, None
-
     meta = next((m for m in _mnt_codes() if m["code"] == code), {})
     draft = draft_store.new_draft(code, meta)
     if meta.get("top100"):  # 100대 명산은 추천 노출(famous) 자동 체크
@@ -420,6 +417,23 @@ class AdminHandler(BaseHandler):
             if rest == ["network"] and method == "GET":
                 segs, _ = pl.load_forest_segments(code)
                 return self._json(pl.network_geojson(segs))
+            if rest == ["contours"] and method == "GET":
+                # 관리자 지도 등고선 — 배포 산출물(data/packs) 재사용, 없으면 DEM 즉석 생성 후 캐시.
+                # 전국 DEM 프리페치 완료 상태라 생성도 로컬에서 몇 초면 끝난다.
+                d = draft_store.load(code)
+                if not d:
+                    raise FileNotFoundError(f"{code} 초안 없음")
+                pack_f = os.path.join(ROOT, "data", "packs", code, "contours.geojson")
+                cache_f = os.path.join(ROOT, "cache", "contours", f"{code}.geojson")
+                src = pack_f if os.path.exists(pack_f) else cache_f
+                if not os.path.exists(src):
+                    import dem_cache
+                    import make_contours_copernicus as mc
+                    bbox = d["mountain"]["bbox"]
+                    os.makedirs(os.path.dirname(cache_f), exist_ok=True)
+                    mc.generate(cache_f, bbox, dem_cache.ensure(bbox), log=lambda s: None)
+                    src = cache_f
+                return self._json(json.load(open(src, encoding="utf-8")))
             if rest == ["gpx"] and method == "POST":
                 import gpx_match
                 d = draft_store.load(code)
@@ -427,8 +441,9 @@ class AdminHandler(BaseHandler):
                     raise FileNotFoundError(f"{code} 초안 없음")
                 tau = float((q.get("tau") or [25])[0])
                 detour = float((q.get("detour") or [1.6])[0])
+                upload_name = (q.get("name") or [""])[0]  # 원본 파일명 — 포맷 판별·보존용
                 raw = self._body()
-                return self._json(gpx_match.match_gpx_upload(code, d, raw, tau, detour))
+                return self._json(gpx_match.match_gpx_upload(code, d, raw, tau, detour, upload_name))
             if len(rest) == 3 and rest[0] == "courses" and rest[2] == "recompute" \
                     and method == "POST":
                 import gpx_match
@@ -490,9 +505,9 @@ class AdminHandler(BaseHandler):
 def main():
     load_env()
     tok = ensure_admin_token()
-    # (주의) 시작 시 레거시 3산 자동 역임포트는 하지 않는다 — 운영자가 삭제한 산이
-    # 서버 재시작(systemd 자동 재시작 포함)마다 되살아났음. 레거시 복원이 필요하면
-    # 검색 → 추가 (POST /api/mountains 의 LEGACY 분기)로 명시적으로만.
+    # (주의) 레거시 역임포트는 완전 폐기 — 시작 시 자동 임포트는 삭제한 산을 재시작마다
+    # 되살렸고, 등록 시 LEGACY 분기는 거친 KNPS 선형(점 간격 ~104m)을 다시 들여왔다.
+    # 모든 산은 산림청 원본 기반 신규 등록 경로만 사용한다.
     handler = partial(AdminHandler, directory=ROOT)
     httpd = ThreadingHTTPServer((BIND, PORT), handler)
     print(f"관리자 콘솔: http://{BIND}:{PORT}/admin/?token={tok}")

@@ -7,8 +7,11 @@ import { nationalPointNumber } from "./npn.js";
 
 // ── 설정 ──────────────────────────────────────────────
 const PMTILES_URL = `${location.origin}/pmtiles/kr-base.pmtiles`; // same-origin 프록시 → 자체 호스팅 R2 base (CORS 회피)
+const TERRAIN_URL = `${location.origin}/pmtiles/kr-terrain.pmtiles`; // 음영기복 terrain-RGB (온라인 전용)
 // 현재 기저 소스: 온라인(PMTILES_URL) 또는 로컬 팩("local-<산id>", IndexedDB Blob 등록 후)
 let baseUrl = PMTILES_URL;
+// 음영기복은 온라인 기저일 때만 — 로컬 팩(오프라인) 열람 시 원격 fetch 를 만들지 않는다
+const terrainFor = (base) => (base === PMTILES_URL ? TERRAIN_URL : null);
 
 // 산 식별자 = 산림청 산코드 9자리 (mountain/<산코드>/ 원본 폴더가 곧 목록).
 // 산 이름은 전국 중복(317건)이 있어 코드가 전 시스템 표준 키다:
@@ -75,15 +78,27 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 // ── 지도 초기화 ──────────────────────────────────────
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle(baseUrl, theme),
+  style: buildStyle(baseUrl, theme, terrainFor(baseUrl)),
   center: [126.990, 37.672], // 카탈로그 로드 전 기본 뷰 (첫 산 로드 시 flyTo)
   zoom: 11.3,
   hash: true,
-  // 대한민국으로 이동/축소 범위 제한 (제주·독도가 잘리지 않도록 여백 포함, 한 단계 더 축소 허용)
-  maxBounds: [[121.0, 31.0], [135.0, 40.5]], // [SW, NE] — 남한 전역 + 주변 여백
-  minZoom: 5,
+  // 남한에 최적화한 이동/축소 범위. 최대 축소에서 경계가 화면에 꽉 차면 팬이 잠기고
+  // 각 지점의 화면 위치는 경계 박스 안 상대 위치로 고정된다. 그래서:
+  //  · 북 39.2 — 북한 노출 최소화하되 파주·고성 등 접경은 넉넉히 (화면 상단 ~90%)
+  //  · 남 28.3 — 제주가 화면 높이 ~44% 지점(하단 시트 위)에 오도록 남쪽 여백 확보.
+  //    남는 바다는 시트가 덮는 영역이라 낭비 아님
+  maxBounds: [[121.5, 28.3], [134.0, 39.2]], // [SW, NE]
+  // 6 미만이면 지명 필터(min_zoom 6: 부산·인천·대구…)가 정수 줌 5에서 평가돼 광역시가 사라짐.
+  // 가로 경계가 폰 화면 폭에 맞는 z5.5까지 축소가 풀리는 것을 여기서 차단.
+  minZoom: 6,
   localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace"
 });
+window.__map = map; // 디버그·헤드리스 테스트 훅 (모듈 스코프라 밖에서 접근 불가)
+// 하단 시트(232px)+탭바(72px)가 지도 아래를 상시 덮음(style.css #sheet) — 카메라 기준을
+// 가시 영역으로 보정. 최대 축소 클램프·fitBounds·flyTo 가 시트 위 영역 중심으로 동작해
+// 최남단(제주)이 시트에 가려지지 않는다. 등반 모드는 시트가 사라지므로 0 으로 전환.
+const SHEET_PAD = 304;
+map.setPadding({ top: 0, right: 0, bottom: SHEET_PAD, left: 0 });
 // 확대/축소 버튼 없이 나침반만 + 현재위치 — 지도 하단 우측에 배치
 // (bottom 코너는 나중에 추가한 컨트롤이 위로 쌓임 → 나침반을 위, 현재위치를 아래로)
 const geolocate = new maplibregl.GeolocateControl({ trackUserLocation: true });
@@ -623,7 +638,7 @@ function useBaseFor(park) {
   const target = localRegistered[park] ? "local-" + park : PMTILES_URL;
   if (target !== baseUrl) {
     baseUrl = target;
-    map.setStyle(buildStyle(baseUrl, theme)); // styledata 가 오버레이 재부착
+    map.setStyle(buildStyle(baseUrl, theme, terrainFor(baseUrl))); // styledata 가 오버레이 재부착
   }
 }
 
@@ -1045,6 +1060,7 @@ function startClimb() {
   // 지도 화면으로 전환: 선택 코스만 표시(이미 필터됨) + 코스 범위로 이동
   showTab("tam");
   appEl.classList.add("climbing");
+  map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 }); // 등반 중엔 시트 없음 — 전체 화면 기준
   const hud = document.getElementById("climb-hud");
   hud.hidden = false;
   document.getElementById("ch-course").textContent = p.name;
@@ -1106,6 +1122,7 @@ async function stopClimb() {
   if (climbSession.watchId != null) navigator.geolocation.clearWatch(climbSession.watchId);
   if (climbSession.timer) clearInterval(climbSession.timer);
   appEl.classList.remove("climbing");
+  map.setPadding({ top: 0, right: 0, bottom: SHEET_PAD, left: 0 }); // 시트 복귀 — 카메라 보정 복원
   document.getElementById("climb-hud").hidden = true;
   const npnBox = document.getElementById("npn-box");
   if (npnBox) npnBox.hidden = true;
@@ -1504,7 +1521,7 @@ function applyTheme(t) {
   theme = t;
   localStorage.setItem(THEME_KEY, t);
   document.documentElement.dataset.theme = t;
-  map.setStyle(buildStyle(baseUrl, t)); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
+  map.setStyle(buildStyle(baseUrl, t, terrainFor(baseUrl))); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
 }
 
 // ── 바텀시트 드래그/탭 ───────────────────────────────

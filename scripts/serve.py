@@ -19,10 +19,10 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 # 과거 demo-bucket.protomaps.com/v4.pmtiles(고정 파일)가 2026-07 삭제된 이후 R2 로 이관.
 # 이 프록시는 웹 전용 same-origin 계층(브라우저 CORS 회피용) — iOS 네이티브는 로컬 번들
 # range 접근이라 불필요(폐기 대상). 앱은 /pmtiles/* 로 요청 → R2 고정 객체로 매핑.
-PMTILES_URL = os.environ.get(
-    "PMTILES_URL",
-    "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/kr-base.pmtiles",
-)
+R2_PUB = os.environ.get("R2_PUB", "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev")
+# /pmtiles/<파일명> → R2 객체. 허용 목록 밖 파일명(레거시 v4.pmtiles 등)은 base 로 폴백.
+PMTILES_FILES = {"kr-base.pmtiles", "kr-terrain.pmtiles"}
+PMTILES_URL = os.environ.get("PMTILES_URL", f"{R2_PUB}/kr-base.pmtiles")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
 
@@ -48,8 +48,10 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def _proxy(self):
-        # 요청 파일명은 무시하고 R2 고정 base 객체로 매핑(Range 그대로 전달)
-        req = urllib.request.Request(PMTILES_URL)
+        # /pmtiles/<파일명> → 허용 목록이면 해당 R2 객체, 아니면 base (Range 그대로 전달)
+        name = self.path.rsplit("/", 1)[-1].split("?")[0]
+        url = f"{R2_PUB}/{name}" if name in PMTILES_FILES else PMTILES_URL
+        req = urllib.request.Request(url)
         req.add_header("User-Agent", "hiheight/1.0")  # R2 pub.r2.dev 는 기본 urllib UA 를 403 차단
         for h in ("Range", "If-Match", "If-None-Match"):
             v = self.headers.get(h)

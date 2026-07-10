@@ -3,17 +3,21 @@
 //   R2 로 자체 호스팅(egress 무료). 이 함수는 웹 전용 same-origin 계층(CORS 회피)이며
 //   Cache-Control 로 Vercel CDN 이 타일 range 응답을 캐시 → 함수 호출/전송 최소화.
 //   iOS 네이티브는 로컬 번들 range 접근이라 이 계층 불필요(폐기 대상).
-// 앱은 /pmtiles/* 를 이 함수로 rewrite(vercel.json) → 요청 파일명 무시, R2 고정 객체.
-const PMTILES_URL = process.env.PMTILES_URL
-  || "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/kr-base.pmtiles";
+// 앱은 /pmtiles/<파일명> 을 이 함수로 rewrite(vercel.json, ?f=파일명) → 허용 목록 파일명만
+// 해당 R2 객체로, 그 외(레거시 v4.pmtiles 등)는 base 로 폴백.
+const R2_PUB = process.env.R2_PUB || "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev";
+const PMTILES_FILES = new Set(["kr-base.pmtiles", "kr-terrain.pmtiles"]);
+const PMTILES_URL = process.env.PMTILES_URL || `${R2_PUB}/kr-base.pmtiles`;
 
 module.exports = async function handler(req, res) {
   const headers = { "User-Agent": "hiheight/1.0" }; // R2 pub.r2.dev 는 기본 UA 를 403 차단
   if (req.headers.range) headers.Range = req.headers.range;
   if (req.headers["if-match"]) headers["If-Match"] = req.headers["if-match"];
   if (req.headers["if-none-match"]) headers["If-None-Match"] = req.headers["if-none-match"];
+  const name = String(req.query?.f || (req.url || "").split("?")[0].split("/").pop() || "");
+  const url = PMTILES_FILES.has(name) ? `${R2_PUB}/${name}` : PMTILES_URL;
   try {
-    const r = await fetch(PMTILES_URL, { headers });
+    const r = await fetch(url, { headers });
     res.status(r.status);
     for (const h of ["content-type", "content-length", "content-range", "accept-ranges", "etag", "last-modified"]) {
       const v = r.headers.get(h);

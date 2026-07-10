@@ -89,7 +89,7 @@ function regionGroup(region) {
 maplibregl.addProtocol("pmtiles", new Protocol().tile);
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle(`${location.origin}/pmtiles/v4.pmtiles`, "light"),
+  style: buildStyle(`${location.origin}/pmtiles/v4.pmtiles`, "light", `${location.origin}/pmtiles/kr-terrain.pmtiles`),
   center: [127.5, 36.5], zoom: 6.5,
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], minZoom: 5,
   localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
@@ -97,8 +97,23 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl({ showZoom: true }), "bottom-right");
 
 map.on("load", () => {
-  for (const id of ["network", "courses", "spots", "gpx-raw", "gpx-matched"])
+  for (const id of ["contours", "network", "courses", "spots", "gpx-raw", "gpx-matched"])
     map.addSource(id, { type: "geojson", data: EMPTY });
+
+  // 등고선 (앱과 동일 스키마: idx 0=50m 보조 / 1=100m 주곡선) — 편집 레이어 아래 배경
+  map.addLayer({ id: "contour-line", type: "line", source: "contours", minzoom: 12.5,
+    filter: ["==", ["get", "idx"], 0],
+    paint: { "line-color": "#c4bfb5", "line-width": 0.5, "line-opacity": 0.5 } });
+  map.addLayer({ id: "contour-index", type: "line", source: "contours", minzoom: 10.5,
+    filter: ["==", ["get", "idx"], 1],
+    paint: { "line-color": "#c4bfb5", "line-width": 1.1, "line-opacity": 0.7 } });
+  map.addLayer({ id: "contour-label", type: "symbol", source: "contours", minzoom: 13.5,
+    filter: ["==", ["get", "idx"], 1],
+    layout: {
+      "symbol-placement": "line", "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
+      "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.4, "symbol-spacing": 300,
+    },
+    paint: { "text-color": "#8a857c", "text-halo-color": "#ffffff", "text-halo-width": 1.4 } });
 
   // 산림청 구간망 원본 — 회색 참조선 (GPX 매칭 결과 검토용 배경)
   map.addLayer({ id: "network-line", type: "line", source: "network",
@@ -152,6 +167,7 @@ map.on("load", () => {
     renderCourses();
     renderPeaks();
     loadNetwork(S.code);
+    loadContours(S.code);
   }
 });
 
@@ -273,7 +289,7 @@ function renderDraftList() {
     li.className = m.code === S.code ? "sel" : "";
     const pub = m.publish?.pack_version ? `v${m.publish.pack_version}` : "미배포";
     li.innerHTML = `<div><div class="nm">${m.name}</div>
-      <div class="meta">코스 ${m.ready}/${m.courses} ready · ${pub}
+      <div class="meta">코스 공개 ${m.ready}/${m.courses} · ${pub}
       ${m.published ? "" : '<span class="unpub">비공개</span>'}</div></div>
       <span class="dim">${m.code}</span>`;
     li.onclick = () => selectMountain(m.code);
@@ -296,6 +312,7 @@ async function selectMountain(code) {
   const b = S.draft.mountain.bbox;
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 30, duration: 600 });
   loadNetwork(code);
+  loadContours(code); // 비동기 — 미배포 산은 첫 요청에 생성되어 늦게 뜰 수 있음
 }
 
 async function loadNetwork(code) {
@@ -304,6 +321,16 @@ async function loadNetwork(code) {
   try {
     src.setData(await api(`/mountains/${code}/network`));
   } catch (_) { src.setData(EMPTY); } // 원본 없는 legacy 산
+}
+
+async function loadContours(code) {
+  const src = map.getSource("contours");
+  if (!src) return;
+  src.setData(EMPTY); // 산 전환 시 이전 등고선 즉시 제거 (생성 대기 중 오표시 방지)
+  try {
+    const fc = await api(`/mountains/${code}/contours`); // 미배포 산은 첫 요청에 즉석 생성(수 초)
+    if (S.code === code) src.setData(fc); // 응답 사이 산이 바뀌었으면 버림
+  } catch (_) { /* 등고선은 배경 참조용 — 실패해도 무시 */ }
 }
 
 function renderMountain() {
@@ -345,11 +372,14 @@ $("m-name").addEventListener("change", (e) => {
 });
 
 // ── 코스 ──
-// 코스 번호 = 목록 순서 (위에서부터 1). 추가·삭제·드래그 정렬 때마다 재부여.
+// 코스 번호 = "공개 코스" 기준 목록 순서 (위에서부터 1). 비공개는 null(표시 '–') —
+// 배포 팩에는 공개만 실리므로 앱 번호가 1..N 연속이 되게 한다.
+// 추가·삭제·드래그 정렬·공개/비공개 전환 때마다 재부여.
 function renumberCourses() {
-  let changed = false;
-  (S.draft?.courses || []).forEach((c, i) => {
-    if (c.no !== i + 1) { c.no = i + 1; changed = true; }
+  let changed = false, n = 1;
+  (S.draft?.courses || []).forEach((c) => {
+    const want = c.status === "ready" ? n++ : null;
+    if (c.no !== want) { c.no = want; changed = true; }
   });
   return changed;
 }
@@ -365,7 +395,7 @@ function courseFC() {
 function renderCourses() {
   if (map.getSource("courses")) map.getSource("courses").setData(courseFC());
   const cs = S.draft.courses;
-  $("course-count").textContent = `(${cs.filter((c) => c.status === "ready").length}/${cs.length} 배포)`;
+  $("course-count").textContent = `(${cs.filter((c) => c.status === "ready").length}/${cs.length} 공개)`;
   const ul = $("course-list");
   ul.innerHTML = "";
   for (const c of cs) {
@@ -373,21 +403,21 @@ function renderCourses() {
     li.className = (c.id === S.selCourse ? "sel " : "") + (c.status === "ready" ? "" : "off");
     li.dataset.id = c.id;
     // 출처 배지는 GPX 일치율만 (품질 신호) — 기존/수작업/자동 표기는 정보 가치가 없어 생략
-    const src = c.source?.type === "gpx" ? `GPX ${Math.round((c.source.matched_ratio ?? 0) * 100)}%` : null;
+    const src = c.source?.type === "gpx" ? `매칭 ${Math.round((c.source.matched_ratio ?? 0) * 100)}%` : null;
     const k = c.computed || {};
     li.innerHTML = `
       <div class="c-head">
         <span class="c-grip" title="드래그해서 순서 변경 (번호가 순서를 따라감)">⠿</span>
-        ${c.no != null ? `<span class="c-no">${c.no}</span>` : ""}
+        <span class="c-no${c.no == null ? " off" : ""}" title="${c.no == null ? "비공개 — 배포에서 제외" : "앱 표시 번호"}">${c.no ?? "–"}</span>
         <input class="c-name" title="클릭해서 코스명 수정" value="${(c.name || "").replace(/"/g, "&quot;")}" />
         ${src ? `<span class="badge gpx">${src}</span>` : ""}
-        <span class="badge ${c.status === "ready" ? "ready" : ""}">${c.status === "ready" ? "배포" : "초안"}</span>
+        <span class="badge ${c.status === "ready" ? "ready" : ""}">${c.status === "ready" ? "공개" : "비공개"}</span>
       </div>
       <div class="c-meta">${c.difficulty} · ${k.distance_km ?? "?"}km · ↑${k.ascent ?? "?"}m · ${k.min_elev ?? "?"}~${k.max_elev ?? "?"}m</div>
       <div class="c-tools row">
         <select class="c-diff">${["초급", "중급", "고급"].map((d) =>
           `<option ${d === c.difficulty ? "selected" : ""}>${d}</option>`).join("")}</select>
-        <button class="c-status">${c.status === "ready" ? "초안으로" : "배포에 포함"}</button>
+        <button class="c-status" title="배포 시 앱 노출 여부 (데이터는 보존)">${c.status === "ready" ? "비공개로" : "공개로"}</button>
         <button class="c-flip" title="시점과 종점을 서로 바꿉니다 (통계 재계산)">시점↔종점</button>
         <button class="c-recompute" title="거리·프로파일·난이도 재계산">재계산</button>
         <button class="c-del danger">삭제</button>
@@ -400,6 +430,7 @@ function renderCourses() {
     li.querySelector(".c-desc").addEventListener("change", (e) => { c.desc = e.target.value.trim() || null; markDirty(); });
     li.querySelector(".c-status").onclick = () => {
       c.status = c.status === "ready" ? "draft" : "ready";
+      renumberCourses(); // 번호는 공개 코스 기준 연번 — 전환 즉시 재부여
       markDirty(); renderCourses(); refreshList();
     };
     li.querySelector(".c-flip").onclick = async () => {
@@ -485,18 +516,64 @@ function selectCourse(id, fit) {
 }
 
 // ── GPX 업로드/매칭 ──
+// 1개 = 기존 미리보기 흐름 / 여러 개·폴더 = 일괄 등록 (비공개로 추가, 파일별 결과 리포트)
+async function handleTrackFiles(fileList) {
+  const EXTS = [".gpx", ".geojson", ".json", ".zip", ".shp"];
+  const files = [...fileList]
+    .filter((f) => EXTS.some((e) => f.name.toLowerCase().endsWith(e)))
+    .filter((f) => !f.name.startsWith("PMNTN_SPOT_")) // 산림청 스팟 원본은 코스 아님 — 제외
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  if (!files.length) { alert("가져올 수 있는 파일(GPX·GeoJSON·SHP/ZIP)이 없습니다."); return; }
+
+  if (files.length === 1) {
+    // SHP/ZIP 은 바이너리 — 텍스트가 아닌 ArrayBuffer 로 전송 (GPX/GeoJSON 도 동일 경로)
+    S.gpx = { data: await files[0].arrayBuffer(), name: files[0].name };
+    await runMatch();
+    return;
+  }
+
+  const rep = $("gpx-report");
+  rep.hidden = false;
+  $("gpx-actions").hidden = true;
+  const tau = $("gpx-tau").value || 25, detour = $("gpx-detour").value || 1.6;
+  const results = [];
+  let ok = 0;
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    rep.textContent = `일괄 등록 중… ${i + 1}/${files.length} — ${f.name}`;
+    try {
+      const r = await api(`/mountains/${S.code}/gpx?tau=${tau}&detour=${detour}&name=${encodeURIComponent(f.name)}`, {
+        method: "POST", headers: { "Content-Type": "application/octet-stream" },
+        body: await f.arrayBuffer(),
+      });
+      S.draft.courses.push(r.course);
+      ok++;
+      results.push(`✓ ${f.name} → ${r.course.name} · 매칭 ${Math.round((r.report.matched_ratio ?? 0) * 100)}% · ${r.report.distance_km}km`);
+    } catch (err) {
+      results.push(`<span class="warn">✗ ${f.name} — ${err.message}</span>`);
+    }
+  }
+  renumberCourses();
+  markDirty(); renderCourses(); refreshList();
+  rep.innerHTML = `<b>일괄 등록 ${ok}/${files.length}</b> — 비공개로 추가됨. 목록에서 확인 후 공개하세요.<br>` +
+    results.join("<br>");
+}
+
 $("gpx-file").addEventListener("change", async (e) => {
-  const f = e.target.files[0];
-  if (!f) return;
-  S.gpx = { text: await f.text(), name: f.name };
-  await runMatch();
+  if (e.target.files.length) await handleTrackFiles(e.target.files);
+  e.target.value = ""; // 같은 파일/폴더 재선택 허용
+});
+$("gpx-dir-btn").onclick = () => $("gpx-dir").click();
+$("gpx-dir").addEventListener("change", async (e) => {
+  if (e.target.files.length) await handleTrackFiles(e.target.files);
+  e.target.value = "";
 });
 $("gpx-rematch").onclick = runMatch;
 $("gpx-cancel").onclick = () => { S.gpx = null; clearGpxPreview(); };
 $("gpx-accept").onclick = () => {
   if (!S.gpx?.candidate) return;
   S.draft.courses.push(S.gpx.candidate);
-  renumberCourses(); // 번호 = 목록 순서 (새 코스는 맨 아래 = 마지막 번호)
+  renumberCourses(); // 새 코스는 비공개 시작 → 번호 '–', 공개 전환 시 연번 부여
   S.selCourse = S.gpx.candidate.id;
   S.gpx = null;
   clearGpxPreview();
@@ -509,8 +586,8 @@ async function runMatch() {
   $("gpx-report").hidden = false;
   $("gpx-report").textContent = "매칭 중…";
   try {
-    const r = await api(`/mountains/${S.code}/gpx?tau=${tau}&detour=${detour}`, {
-      method: "POST", headers: { "Content-Type": "application/gpx+xml" }, body: S.gpx.text,
+    const r = await api(`/mountains/${S.code}/gpx?tau=${tau}&detour=${detour}&name=${encodeURIComponent(S.gpx.name || "")}`, {
+      method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: S.gpx.data,
     });
     S.gpx.candidate = r.course;
     map.getSource("gpx-raw").setData(r.preview.raw);
@@ -715,7 +792,7 @@ $("prod-del").onclick = async () => {
   S.code = null; S.draft = null;
   $("sec-mnt").hidden = true;
   $("sec-mnt-empty").hidden = false;
-  for (const s of ["network", "courses", "spots"]) map.getSource(s)?.setData(EMPTY);
+  for (const s of ["contours", "network", "courses", "spots"]) map.getSource(s)?.setData(EMPTY);
   refreshList();
   alert(`"${nm}" 삭제 완료 — 카탈로그 ${r.catalog_deleted ? "1행" : "없음"}, R2 파일 ${r.r2_deleted ?? 0}개, 초안 ${r.draft_removed ? "제거" : "없음"}`
     + (r.unpublish_error ? `\n⚠ 배포본 삭제 오류: ${r.unpublish_error}` : "")

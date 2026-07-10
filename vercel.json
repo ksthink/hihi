@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/pmtiles/:path*", "destination": "/api/tiles" }
+    { "source": "/pmtiles/:path*", "destination": "/api/tiles?f=:path*" }
   ]
 }

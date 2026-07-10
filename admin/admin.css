@@ -200,6 +200,7 @@ button.active { background: #111; color: #fff; }
 #course-list .c-grip:hover { color: #111; }
 #course-list li.dragging { opacity: .45; cursor: grabbing; }
 /* 코스 번호 배지 */
+#course-list .c-no.off { background: #e4e4e4; color: #888; } /* 비공개 — 번호 없음(–) */
 #course-list .c-no {
   flex: 0 0 auto; min-width: 18px; height: 18px; border-radius: 9px;
   background: #111; color: #fff; font-size: 11px; font-weight: 700;

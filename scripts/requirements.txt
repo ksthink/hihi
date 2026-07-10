@@ -4,3 +4,5 @@ rasterio
 contourpy
 shapely
 openpyxl
+pyshp
+pillow

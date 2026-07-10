@@ -12,10 +12,13 @@
  5. 스티칭 + 리포트(매칭률·최대이탈·fallback 목록)
  6. DEM 으로 profile48 / ascent / distance / naismith time / 난이도 초깃값
 """
+import io
+import json
 import math
 import os
 import uuid
 import xml.etree.ElementTree as ET
+import zipfile
 
 import dem_cache
 import pack_lib as pl
@@ -25,7 +28,7 @@ CELL = 0.001          # ≈ 90~110m
 MIN_RUN = 3           # 이보다 짧은 런은 이웃에 흡수
 
 
-# ── GPX 파싱 ──
+# ── 업로드 트랙 파싱 (GPX·GeoJSON·Shapefile) ──
 def parse_gpx(raw):
     """raw bytes → (pts [[lon,lat],...], name|None). 네임스페이스 무시."""
     root = ET.fromstring(raw)
@@ -39,6 +42,102 @@ def parse_gpx(raw):
     if len(pts) < 2:
         raise ValueError("GPX 에 트랙포인트가 2개 미만")
     return pts, name
+
+
+def _maybe_tm(pts):
+    """좌표 크기로 투영계 감지 — 경위도 범위를 벗어나면 EPSG:5186(미터)로 보고 변환.
+    (산림청 SHP/GeoJSON 내보내기가 5186 이라 이 폴백이 실제로 쓰인다.)"""
+    if pts and (abs(pts[0][0]) > 180 or abs(pts[0][1]) > 90):
+        return [tuple(pl.tm_to_wgs84(x, y)) for x, y in pts]
+    return pts
+
+
+def parse_geojson(raw):
+    """JSON 계열 업로드 → (pts, name).
+    지원: 표준 GeoJSON(LineString·MultiLineString·GeometryCollection, Point 시퀀스 폴백)
+    + ESRI JSON(산림청 PMNTN_*.json — features[].geometry.paths, EPSG:5186)."""
+    d = json.loads(raw)
+
+    # ESRI JSON (ArcGIS 내보내기): geometry 가 type 대신 paths 를 가짐
+    feats_e = d.get("features") if isinstance(d, dict) else None
+    if feats_e and any("paths" in (f.get("geometry") or {}) for f in feats_e[:5]):
+        pts, name = [], None
+        for f in feats_e:
+            for path in (f.get("geometry") or {}).get("paths", []):
+                pts.extend((float(p[0]), float(p[1])) for p in path)
+            if name is None:
+                a = f.get("attributes") or {}
+                name = (a.get("PMNTN_NM") or a.get("MNTN_NM") or "").strip() or None
+        if len(pts) < 2:
+            raise ValueError("ESRI JSON 에 폴리라인 좌표가 2개 미만")
+        return _maybe_tm(pts), name
+
+    feats = d["features"] if d.get("type") == "FeatureCollection" else [d]
+    pts, pt_seq, name, seen = [], [], None, set()
+
+    def eat(g):
+        t = g.get("type")
+        seen.add(t)
+        if t == "LineString":
+            pts.extend((float(p[0]), float(p[1])) for p in g["coordinates"])
+        elif t == "MultiLineString":
+            for part in g["coordinates"]:
+                pts.extend((float(p[0]), float(p[1])) for p in part)
+        elif t == "GeometryCollection":
+            for gg in g.get("geometries", []):
+                eat(gg)
+        elif t == "Point":  # 트랙을 점 목록으로 내보내는 도구 대응 (등장 순서 = 진행 순서)
+            c = g["coordinates"]
+            pt_seq.append((float(c[0]), float(c[1])))
+
+    for f in feats:
+        eat(f.get("geometry") or f)         # bare geometry 허용
+        if name is None:
+            name = (f.get("properties") or {}).get("name")
+    if len(pts) < 2 and len(pt_seq) >= 2:
+        pts = pt_seq                        # 라인이 없으면 Point 시퀀스를 트랙으로
+    if len(pts) < 2:
+        raise ValueError(f"GeoJSON 에서 라인 좌표를 찾지 못함 (발견된 기하: {sorted(t for t in seen if t) or '없음'})")
+    return _maybe_tm(pts), name
+
+
+def parse_shp(raw):
+    """Shapefile(.shp 단독 또는 .zip 묶음) → (pts, name=None).
+    폴리라인 계열만 사용. 좌표계는 _maybe_tm 휴리스틱 (산림청 5186 대응)."""
+    import shapefile  # pyshp — 업로드 시에만 로드
+    if raw[:4] == b"PK\x03\x04":
+        z = zipfile.ZipFile(io.BytesIO(raw))
+        shp_names = [n for n in z.namelist() if n.lower().endswith(".shp")]
+        if not shp_names:
+            raise ValueError("zip 안에 .shp 파일이 없음")
+        base = shp_names[0][:-4]
+        def member(sfx):
+            for n in z.namelist():
+                if n.lower() == (base + sfx).lower():
+                    return io.BytesIO(z.read(n))
+            return None
+        r = shapefile.Reader(shp=io.BytesIO(z.read(shp_names[0])),
+                             shx=member(".shx"), dbf=member(".dbf"))
+    else:
+        r = shapefile.Reader(shp=io.BytesIO(raw))
+    pts = []
+    for sh in r.shapes():
+        if sh.shapeType in (3, 13, 23):     # POLYLINE / Z / M
+            pts.extend((float(x), float(y)) for x, y in sh.points)
+    if len(pts) < 2:
+        raise ValueError("Shapefile 에 폴리라인 좌표가 2개 미만")
+    return _maybe_tm(pts), None
+
+
+def parse_track(raw, fname=""):
+    """확장자·매직바이트로 포맷 판별 → (pts, name|None)."""
+    ext = os.path.splitext((fname or "").lower())[1]
+    head = raw.lstrip()[:1]
+    if ext in (".geojson", ".json") or (not ext and head in (b"{", b"[")):
+        return parse_geojson(raw)
+    if ext in (".shp", ".zip") or raw[:4] in (b"PK\x03\x04", b"\x00\x00\x27\x0a"):
+        return parse_shp(raw)
+    return parse_gpx(raw)
 
 
 def resample(pts, step=RESAMPLE_M):
@@ -149,9 +248,9 @@ def _dedupe(coords):
 
 
 # ── 매칭 본체 ──
-def match(code, raw, tau=25.0, detour=1.6):
+def match(code, raw, tau=25.0, detour=1.6, fname=""):
     """→ dict(lines, segments, report, gpx_name)"""
-    gpx_pts, gpx_name = parse_gpx(raw)
+    gpx_pts, gpx_name = parse_track(raw, fname)
     pts = smooth(resample(gpx_pts))
     segments, _ = pl.load_forest_segments(code)
     net = Network(segments)
@@ -300,20 +399,21 @@ def compute_stats(lines, dem):
 
 
 # ── admin_server 진입점 ──
-def match_gpx_upload(code, draft, raw, tau, detour):
-    m = match(code, raw, tau, detour)
+def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
+    m = match(code, raw, tau, detour, upload_name)
     dem = _dem_for([draft["mountain"]["bbox"], _course_bbox(m["lines"])])
     computed = compute_stats(m["lines"], dem)
 
-    # GPX 원본 보존
+    # 업로드 원본 보존 (확장자는 원본 파일명 기준 — gpx/geojson/json/zip/shp)
     gdir = os.path.join(pl.ROOT, "admin_data", code, "gpx")
     os.makedirs(gdir, exist_ok=True)
-    fname = f"{uuid.uuid4().hex[:12]}.gpx"
+    ext = os.path.splitext((upload_name or "").lower())[1] or ".gpx"
+    fname = f"{uuid.uuid4().hex[:12]}{ext}"
     open(os.path.join(gdir, fname), "wb").write(raw)
 
     course = {
         "id": f"c-{uuid.uuid4().hex[:12]}",
-        "name": m["gpx_name"] or "GPX 코스",
+        "name": m["gpx_name"] or os.path.splitext(os.path.basename(upload_name))[0] or "업로드 코스",
         "difficulty": pl.DIFF_BY_ASCENT(computed["ascent"]),
         "desc": None, "kind": "운영자 큐레이션",
         "status": "draft",
