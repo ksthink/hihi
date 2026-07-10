@@ -4,10 +4,53 @@
 
 ---
 
+## 2026-07-10
+
+### 생성 / 추가
+- **100대 명산 분류(API 연동)**: `scripts/fetch_top100.py`(신규) — 산림청 100대 명산 API(`top100FamtListBasiInfoService`, 키는 `.env` `PEAK_POI_KEY`) → `cache/top100.json`. API `mtnCd` 가 부정확(중복 3쌍)해 **이름 + 봉우리-경계상자 포함 검사**로 로컬 산코드 매칭(86/100, 오매칭 5건 교정, 14건은 산림청 등산로 원천이 없는 국립공원 산). `scripts/admin_server.py` 검색 결과에 100대 명산 표시·정상 위경도·해발 보강(기존 해발 있으면 유지)
+- **정상 스팟 자동 시드**: `scripts/draft_store.py`(`_summit_spot`) — 산 등록 시 100대 명산 API 정상 좌표로 `정상` 스팟 1개 자동 생성(주봉). 기존 산림청 공시 봉우리 벌크 시드(관악산 '정상' 5개 등 노이즈) 폐기
+- **관리자 스팟 편집기**: `admin/admin.js`·`index.html`·`admin.css` — `정상`·`장소` 스팟의 추가(지도 클릭 또는 **위도·경도 직접 입력**, 한국 범위 검증)·이름 변경·분류 변경·주봉(▲) 지정·드래그 이동·삭제(주봉 삭제 시 승계)
+- **코스 업로드 다중 포맷 + 폴더**: `scripts/gpx_match.py`(`parse_track` — 확장자·매직바이트 판별: GPX / SHP(pyshp, .shp 단독·.zip 번들) / GeoJSON(표준 + 산림청 ESRI JSON `paths` + GeometryCollection), EPSG:5186 자동 감지 변환), `admin/admin.js`(`handleTrackFiles` — 복수 파일·폴더 선택: 단일=미리보기 검토, 다중=비공개로 자동 추가 + 파일별 성공/실패 리포트, `PMNTN_SPOT_*` 부속파일 제외), `scripts/requirements.txt`(pyshp 추가)
+- **전국 지형 타일(음영기복)**: `scripts/build_terrain.py`(신규) — Copernicus GLO-30 DEM → terrain-RGB PMTiles z5–12(`data/tiles/kr-terrain.pmtiles`, 273MB, 7,342타일) 빌드, R2 업로드. `basemap-style.js` hillshade 레이어(라이트/다크), `scripts/serve.py`·`api/tiles.js` 프록시 허용 목록에 지형 파일 추가, `app.js`·`admin/admin.js` 지형 소스 연결
+- **전국 DEM 프리페치**: SRTM 캐시 35타일(733MB) 선다운로드 — 산 등록 시 DEM 단계가 즉시 캐시 히트(사실상 무시간)
+- **관리자 지도 등고선**: `scripts/admin_server.py`(`/contours` — 배포 팩 재사용, 없으면 `cache/contours/` 생성), `admin/admin.js`(`loadContours`)
+- **행정구역 라벨 단계 노출**: `basemap-style.js`(places-labels — 이 타일셋의 한국 행정지명은 전부 `locality` kind 라 피처별 `min_zoom` 으로 시·도→시·군·구→읍·면·동 순 노출, 국가명 제외), `app.js`(`minZoom: 6` — z5.5 클램프에서 정수 줌 5 평가로 시·도 라벨이 전멸하던 문제 해결)
+
+### 수정 / 변경
+- **모바일에서 코스 선을 탭해도 선택 안 되던 문제**: `app.js`(trail-hit — 투명(불투명도 0.001) 넓은 히트 라인 레이어, 줌별 16→28px) — PC 커서로는 되고 손가락으로는 빗나가던 히트 영역 확대
+- **레거시 봉우리 경로 제거**: `data/peaks.geojson` 삭제, `app.js` peak-symbols 레이어·로더 제거(백운대·대청봉 하드코딩 표시 제거) — 봉우리는 팩 스팟(`정상`)으로 일원화
+- **코스 상태 명칭 초안 → 비공개/공개**: `admin/` — 비공개 코스는 번호 '–' 표시, 코스 번호는 공개만 순서대로 부여
+- **북한산 삭제 + 레거시 재이식 경로 제거**: `scripts/admin_server.py` — 구 KNPS 이식 코스가 점 간격 104m(산림청 6.7m)로 조악했음(사용자가 GeoJSON 품질 이상으로 정확히 감지 — 실검증: SHP=JSON 바이트 동일, 문제는 원천). 다른 산 전수 점검, 레거시 import 분기 삭제로 재발 차단
+- 지도에서 교회 라벨 제외: `basemap-style.js`(temple-names — 이름에 교회·성당·채플·예배·기도원·교당·모스크·회당·선교 포함 시 제외)
+- **최대 축소 시 제주도가 하단 시트에 가려지던 문제**: `app.js` — `maxBounds` 남한 최적화([[121.5,28.3],[134.0,39.2]], 북부 접경 여유·북한 제외) + 카메라 하단 패딩 304px(`setPadding`, 등반 모드에서는 0으로 토글). 헤드리스 실측으로 제주 노출 검증
+- **흑백 가독성 개편**: `basemap-style.js` — 명도 위계 재배치(물을 최암 채움으로, 도로 위계 3단, 등산로 진하게 #3f3f3f, 하천 굵게), 음영기복(hillshade) 도입
+- **줌 전환 시 얼룩 폴리곤 수정 3종**(`46fae42`): OSM 숲 채움 완전 폐기, 국립공원(landuse-park, kind=park 포함) `minzoom:13` 한정, 고줌 hillshade 페이드(exaggeration z13→16→0 + 레이어 maxzoom 16)
+
+### ⚠ 미해결 리포트 — 줌 전환 시 얼룩 폴리곤(축척 10km→5km 구간)
+**증상**: 지도를 축척 10km→5km(줌 10→11) 구간으로 확대할 때 지형과 무관해 보이는 회색 폴리곤이 갑자기 나타나고, 이후 줌 단계마다 형태가 달라짐. `46fae42` 배포 후에도 사용자 화면에서 지속 보고됨.
+
+**배포 상태(검증됨)**: 프로덕션 `hihi.metaphr.dev/basemap-style.js` 를 직접 조회해 수정 3종이 모두 반영돼 있음을 확인(landuse-park `minzoom:13`, hillshade `maxzoom:16`+페이드, 숲 레이어 부재). 즉 "수정이 배포 안 됨" 가설은 소거.
+
+**소거된 원인들**:
+1. OSM 숲 채움(`88970a1` 에서 도입된 것이 최초 얼룩의 주범) — 완전 제거됨
+2. 북한산 등 국립공원 폴리곤(kind=park, z10→11 에서 커버리지 8→27칸 급증 실측 — 증상 시점과 정확히 일치했던 후보) — z13 미만 렌더 금지됨
+3. 도심 residential 채움(외부 AI 진단) — 본 앱은 urban 계열을 칠하지 않음(earth 단색), 실측으로 반증
+4. 고줌 hillshade 오버줌 blob — 페이드 처리(단, 이는 z13+ 증상용이라 z10~11 증상과는 별개)
+
+**로컬 실측**: 고양~북한산 z9.5~12 grid `queryRenderedFeatures` 스캔에서 남은 fill 히트는 `landuse-farm`(농지) 미량뿐.
+
+**남은 원인 후보(우선순위)**:
+1. **landuse-farm**(farmland·grass·orchard, `#ececec` vs 대지 `#f4f4f4`) — 김포·고양 평야 등에서 줌마다 타일 상세도가 달라져 폴리곤 형태가 변함. z10→11 에서 타일 데이터가 세밀해지는 시점과 증상 발생 시점이 일치. **다음 조치 1순위: 농지 채움 제거(또는 z13+ 한정)**
+2. **hillshade 자체의 지각 문제** — z10~11 은 exaggeration 0.35 고정 구간인데, 줌이 오를 때마다 DEM 타일 해상도(z≤12)가 바뀌며 음영 덩어리 형태가 변함 → "폴리곤이 변한다"로 인지될 수 있음. 확인법: hillshade 만 끈 빌드와 비교
+3. **클라이언트 캐시** — 모바일 브라우저가 구버전 `basemap-style.js` 를 캐시했을 가능성. 시크릿 창 또는 강력 새로고침으로 교차 확인 필요
+
+**다음 진단에 필요한 정보**: 증상 화면 스크린샷 + 위치(지명/좌표) + 발생 축척. 해당 지점을 헤드리스 브라우저로 재현해 픽셀 단위로 레이어를 특정할 수 있음.
+
 ## 2026-07-09
 
 ### 생성 / 추가
 - **코스 선택 시각 피드백(색 반전)**: `app.js`(`makeBadge(no, sel)` — 선택 배지 `badge-N-sel` 변형: 검정 원+흰 숫자, 다크만 흰 테두리; `applyTrailFilter`에서 선택 코스만 반전 아이콘으로 교체하는 icon-image 표현식 주입, `styleimagemissing` 정규식 `-sel` 확장), `style.css`(선택된 목록 항목 `.t-no` 색 반전: 흰 원+검정 숫자+링) — 지도 배지·목록 번호가 선택 상태를 함께 표시
+- **관리자 사이드 패널 폭 조절**: `admin/`(#side-resize) — 편집 패널과 지도 경계를 드래그해 폭(상하 모드는 높이) 조절, localStorage 기억(상하/좌우 배치 공통)
 - **코스 자동 번호 + 드래그 정렬**: `admin/admin.js`(`renumberCourses` — 번호=목록 순서, 위에서부터 1; GPX 수락·삭제·드래그 정렬·초안 열 때마다 재부여, 레거시 초안 번호 구멍도 정규화), 코스 항목 그립(⠿) 드래그로 순서 변경 → DOM 순서를 draft 에 반영 후 번호 재부여·자동저장(그립을 잡을 때만 draggable — 코스명 입력과 충돌 없음, Firefox `setData` 대응), `admin/admin.css`(.c-grip·li.dragging 스타일)
 
 ### 수정 / 변경
