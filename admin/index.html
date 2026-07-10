@@ -96,34 +96,6 @@
       </div>
     </div>
 
-    <h3>스팟 <span id="spot-count"></span></h3>
-    <div class="row">
-      <button id="spot-add">＋ 스팟 추가 (지도 클릭)</button>
-      <label class="chk"><input id="spot-show-del" type="checkbox" /> 삭제된 것 표시</label>
-    </div>
-    <!-- 공식 봉우리 POI(100대명산) — 클릭하면 '정상' 스팟으로 추가 -->
-    <div id="poic">
-      <div id="poic-head" class="dim"></div>
-      <ul id="poic-list" hidden></ul>
-    </div>
-    <div id="spot-editor" hidden>
-      <div class="row"><b id="sp-cat-label"></b><span id="sp-id" class="dim"></span></div>
-      <label>이름(앱 지도 라벨 — 비우면 미노출) <input id="sp-name" placeholder="예: 매봉 갈림길" /></label>
-      <label>분류
-        <select id="sp-cat">
-          <option>분기점</option><option>시종점</option><option>정상</option>
-          <option>조망점</option><option>음수대</option><option>화장실</option>
-          <option>정자</option><option>주차장</option><option>헬기장</option>
-        </select>
-      </label>
-      <div class="dim" id="sp-detail"></div>
-      <div class="row">
-        <button id="sp-del" class="danger">삭제</button>
-        <button id="sp-close">닫기</button>
-      </div>
-      <p class="dim">위치 이동: 지도에서 스팟을 드래그</p>
-    </div>
-
     <div class="publish-box">
       <button id="publish" class="primary big">배포 (Supabase 반영)</button>
       <div id="pub-info" class="dim"></div>

@@ -123,6 +123,8 @@ def create_draft(code):
 
     meta = next((m for m in _mnt_codes() if m["code"] == code), {})
     draft = draft_store.new_draft(code, meta)
+    if meta.get("top100"):  # 100대 명산은 추천 노출(famous) 자동 체크
+        draft["mountain"]["famous"] = True
     draft_store.save(code, draft)
 
     # 자동 코스 시드는 폐기 (파편화된 국립공원 구간망에서 괴물 코스 생성 — 부록 D).
@@ -139,6 +141,18 @@ def create_draft(code):
 
 
 _MNT_CACHE = None
+_TOP100_CACHE = None
+
+
+def _top100():
+    """cache/top100.json (fetch_top100.py 산출) → {로컬 산코드: 항목}.
+    100대 명산 분류(top100)와 정상 좌표·해발고도 소스. 파일 없으면 빈 dict."""
+    global _TOP100_CACHE
+    if _TOP100_CACHE is None:
+        p = os.path.join(ROOT, "cache", "top100.json")
+        rows = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else []
+        _TOP100_CACHE = {t["local_code"]: t for t in rows if t.get("local_code")}
+    return _TOP100_CACHE
 
 
 def _xlsx_meta():
@@ -194,8 +208,13 @@ def _mnt_codes():
                     name = m.group(1).replace("_", " ")
                     break
             m = xm.get(code) or {}
+            t = _top100().get(code)  # 100대 명산 분류 + 정상 좌표·고도 보강
             rows.append({"code": code, "name": name,
-                         "region": m.get("region"), "elev": m.get("elev")})
+                         "region": m.get("region") or (t and t["addr"]) or None,
+                         # 해발고도: 기존 xlsx 값 우선, 없으면 100대 API 값으로 보충
+                         "elev": m.get("elev") or (t and t["elev"] and round(t["elev"])) or None,
+                         "top100": bool(t),
+                         "peak": t and {"lat": t["lat"], "lon": t["lon"], "elev": t["elev"]}})
         _MNT_CACHE = rows
     return _MNT_CACHE
 
@@ -401,26 +420,6 @@ class AdminHandler(BaseHandler):
             if rest == ["network"] and method == "GET":
                 segs, _ = pl.load_forest_segments(code)
                 return self._json(pl.network_geojson(segs))
-            if rest == ["peak-poi"] and method == "GET":
-                # 산 bbox 안의 공식 봉우리 POI (100대명산, cache/peak-poi.json — fetch_peak_poi.py)
-                d = draft_store.load(code)
-                if not d:
-                    raise FileNotFoundError(f"{code} 초안 없음")
-                poi_f = os.path.join(ROOT, "cache", "peak-poi.json")
-                if not os.path.exists(poi_f):
-                    return self._json([])
-                w, s2, e, n = d["mountain"]["bbox"]
-                seen, out = set(), []
-                for r in json.load(open(poi_f, encoding="utf-8")):
-                    if not (w <= (r.get("lon") or 0) <= e and s2 <= (r.get("lat") or 0) <= n):
-                        continue
-                    k = (r.get("name"), round(r["lon"], 4), round(r["lat"], 4))
-                    if k in seen:  # 원본 중복(동일 지점 재등록) 제거
-                        continue
-                    seen.add(k)
-                    out.append(r)
-                out.sort(key=lambda r: -(r.get("alt") or 0))  # 높은 봉우리 우선
-                return self._json(out[:40])
             if rest == ["gpx"] and method == "POST":
                 import gpx_match
                 d = draft_store.load(code)

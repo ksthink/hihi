@@ -60,9 +60,7 @@ const S = {
   code: null,         // 선택 산코드
   draft: null,        // 선택 산 draft
   selCourse: null,    // 선택 코스 id
-  selSpot: null,      // 선택 스팟 id
   gpx: null,          // { text, candidate, raw } 업로드/매칭 미리보기
-  addingSpot: false,
   dirty: false,
   region: "전체",     // 선택된 지역 필터
 };
@@ -125,26 +123,21 @@ map.on("load", () => {
     filter: ["==", ["get", "src"], "gpx"],
     paint: { "line-color": "#111", "line-width": 4, "line-dasharray": [1.2, 1.2] } });
 
-  map.addLayer({ id: "spots-dots", type: "circle", source: "spots",
-    paint: {
-      "circle-radius": ["case", ["get", "sel"], 7, 5],
-      "circle-color": ["match", ["get", "category"],
-        "분기점", "#111111", "시종점", "#555555", "정상", "#000000", "#8a8a8a"],
-      "circle-opacity": ["case", ["get", "deleted"], 0.25, 1],
-      "circle-stroke-width": 1.5, "circle-stroke-color": "#ffffff",
-    } });
-  map.addLayer({ id: "spots-names", type: "symbol", source: "spots",
+  // 자동 시드된 정상(▲) — 읽기 전용 표시 (스팟 편집 UI 는 폐기, 부록 참고)
+  map.addLayer({ id: "spot-peak", type: "symbol", source: "spots",
+    filter: ["==", ["get", "category"], "정상"],
     layout: {
-      "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
-      "text-size": 11, "text-offset": [0, 0.9], "text-anchor": "top",
+      "text-field": ["concat", "▲", ["coalesce", ["get", "name"], ""]],
+      "text-font": ["Nanum Gothic Coding Regular"],
+      "text-size": 13, "text-offset": [0, -0.5], "text-anchor": "bottom",
       "text-allow-overlap": true,
     },
-    paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.5 } });
+    paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.6 } });
 
   wireMapEvents();
   if (S.draft) { // 지도 로드 전에 산을 선택했다면 데이터 재주입
     renderCourses();
-    renderSpots();
+    renderSummit();
     loadNetwork(S.code);
   }
 });
@@ -185,7 +178,7 @@ $("mnt-q").addEventListener("input", () => {
     box.innerHTML = "";
     for (const m of rows) {
       const li = document.createElement("li");
-      li.innerHTML = `<span class="nm ${m.has_src ? "" : "no-src"}">${m.name}</span>
+      li.innerHTML = `<span class="nm ${m.has_src ? "" : "no-src"}">${m.name}${m.top100 ? ' <span class="badge b100">100대</span>' : ""}</span>
         <span class="dim">${m.region || ""} ${m.elev ? m.elev + "m" : ""} · ${m.code}</span>`;
       const btn = document.createElement("button");
       if (m.has_draft) { btn.textContent = "관리 중"; btn.disabled = true; }
@@ -267,7 +260,7 @@ function renderDraftList() {
     li.className = m.code === S.code ? "sel" : "";
     const pub = m.publish?.pack_version ? `v${m.publish.pack_version}` : "미배포";
     li.innerHTML = `<div><div class="nm">${m.name}</div>
-      <div class="meta">코스 ${m.ready}/${m.courses} ready · 스팟 ${m.spots} · ${pub}
+      <div class="meta">코스 ${m.ready}/${m.courses} ready · ${pub}
       ${m.published ? "" : '<span class="unpub">비공개</span>'}</div></div>
       <span class="dim">${m.code}</span>`;
     li.onclick = () => selectMountain(m.code);
@@ -279,19 +272,17 @@ function renderDraftList() {
 async function selectMountain(code) {
   await saveDraft();
   S.code = code;
-  S.selCourse = null; S.selSpot = null; S.gpx = null; S.addingSpot = false;
+  S.selCourse = null; S.gpx = null;
   S.draft = await api(`/mountains/${code}/draft`);
   if (renumberCourses()) markDirty(); // 레거시 초안(번호 없음·구멍)도 순서 기준으로 정규화
   $("sec-mnt").hidden = false;
   $("sec-mnt-empty").hidden = true;
   clearGpxPreview();
-  closeSpotEditor();
   renderMountain();
   refreshList();
   const b = S.draft.mountain.bbox;
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 30, duration: 600 });
   loadNetwork(code);
-  loadPeakPoi(code); // 공식 봉우리 POI 후보 (비동기 — 실패해도 무시)
 }
 
 async function loadNetwork(code) {
@@ -316,7 +307,7 @@ function renderMountain() {
     ? `현재 v${p.pack_version}${p.published_at ? " · " + p.published_at.slice(0, 16) : ""}${p.pack_size_kb ? " · " + Math.round(p.pack_size_kb / 1024) + "MB" : ""}`
     : "아직 배포되지 않음";
   renderCourses();
-  renderSpots();
+  renderSummit();
 }
 
 for (const [id, key, cast] of [["m-region", "region", String], ["m-elev", "elev", Number],
@@ -480,43 +471,6 @@ function selectCourse(id, fit) {
   document.querySelector(`#course-list li[data-id="${id}"]`)?.scrollIntoView({ block: "nearest" });
 }
 
-// ── 공식 봉우리 POI 후보 (100대명산 — 클릭하면 '정상' 스팟 추가) ──
-async function loadPeakPoi(code) {
-  const head = $("poic-head"), ul = $("poic-list");
-  head.textContent = ""; ul.hidden = true; ul.innerHTML = "";
-  let rows = [];
-  try { rows = await api(`/mountains/${code}/peak-poi`); } catch (_) { return; }
-  if (S.code !== code || !rows.length) return; // 산 전환/후보 없음 — 숨김
-  head.textContent = `공식 봉우리 POI ${rows.length}개 — 클릭하면 '정상' 스팟으로 추가`;
-  const near = (a, b) => Math.abs(a[0] - b[0]) < 2e-4 && Math.abs(a[1] - b[1]) < 2e-4; // ≈20m
-  for (const r of rows) {
-    const li = document.createElement("li");
-    const added = () => S.draft.spots.some((s) => s.category === "정상" && !s.deleted && near(s.coord, [r.lon, r.lat]));
-    const render = () => {
-      li.innerHTML = `<span class="nm">${r.name || r.mountain}</span>
-        <span class="dim">${r.alt ? Math.round(r.alt) + "m" : ""}${r.desc && r.desc !== r.name ? " · " + r.desc : ""}</span>
-        <span class="badge">${added() ? "추가됨 ✓" : "정상 추가"}</span>`;
-    };
-    render();
-    li.onclick = () => {
-      if (added()) { map.flyTo({ center: [r.lon, r.lat], zoom: 14 }); return; }
-      const hasMain = S.draft.spots.some((s) => s.category === "정상" && s.main && !s.deleted);
-      const id = "sp-poi-" + r.poiId;
-      S.draft.spots.push({
-        id, category: "정상", name: r.name || r.mountain,
-        coord: [+(+r.lon).toFixed(6), +(+r.lat).toFixed(6)],
-        detail: r.alt ? `${Math.round(r.alt)}m · ${r.mountain}` : r.mountain,
-        etc: null, origin: "manual", moved: false, deleted: false,
-        main: !hasMain, // 첫 정상만 주봉(앱에서 크게) — 이후는 부봉
-      });
-      markDirty(); renderSpots(); refreshList(); openSpotEditor(id);
-      render();
-    };
-    ul.appendChild(li);
-  }
-  ul.hidden = false;
-}
-
 // ── GPX 업로드/매칭 ──
 $("gpx-file").addEventListener("change", async (e) => {
   const f = e.target.files[0];
@@ -572,119 +526,25 @@ function clearGpxPreview() {
   $("gpx-file").value = "";
 }
 
-// ── 스팟 ──
-function spotFC() {
-  const showDel = $("spot-show-del").checked;
-  return { type: "FeatureCollection", features: (S.draft?.spots || [])
-    .filter((s) => showDel || !s.deleted)
-    .map((s) => ({ type: "Feature",
-      geometry: { type: "Point", coordinates: s.coord },
-      properties: { id: s.id, category: s.category, name: s.name || "",
-        deleted: !!s.deleted, sel: s.id === S.selSpot } })) };
+// ── 정상(▲) 표시 — 자동 시드(top100) 읽기 전용 ──
+function renderSummit() {
+  if (!map.getSource("spots")) return;
+  map.getSource("spots").setData({ type: "FeatureCollection",
+    features: (S.draft?.spots || [])
+      .filter((s) => s.category === "정상" && !s.deleted)
+      .map((s) => ({ type: "Feature",
+        geometry: { type: "Point", coordinates: s.coord },
+        properties: { category: s.category, name: s.name || "" } })) });
 }
 
-function renderSpots() {
-  if (map.getSource("spots")) map.getSource("spots").setData(spotFC());
-  const sp = S.draft.spots;
-  $("spot-count").textContent =
-    `(${sp.filter((s) => !s.deleted).length}개 · 이름 ${sp.filter((s) => s.name && !s.deleted).length})`;
-}
-$("spot-show-del").addEventListener("change", renderSpots);
-
-function openSpotEditor(id) {
-  S.selSpot = id;
-  const s = S.draft.spots.find((x) => x.id === id);
-  if (!s) return;
-  $("spot-editor").hidden = false;
-  $("sp-cat-label").textContent = s.category + (s.origin === "manual" ? " (수동)" : "");
-  $("sp-id").textContent = " " + s.id;
-  $("sp-name").value = s.name || "";
-  $("sp-cat").value = s.category;
-  $("sp-detail").textContent = [s.detail, s.etc].filter(Boolean).join(" · ");
-  $("sp-del").textContent = s.deleted ? "복원" : "삭제";
-  renderSpots();
-}
-function closeSpotEditor() {
-  S.selSpot = null;
-  $("spot-editor").hidden = true;
-  if (map.getSource("spots")) renderSpots();
-}
-$("sp-name").addEventListener("change", (e) => {
-  const s = S.draft.spots.find((x) => x.id === S.selSpot);
-  if (s) { s.name = e.target.value.trim() || null; markDirty(); renderSpots(); }
-});
-$("sp-cat").addEventListener("change", (e) => {
-  const s = S.draft.spots.find((x) => x.id === S.selSpot);
-  if (s) { s.category = e.target.value; markDirty(); renderSpots(); openSpotEditor(s.id); }
-});
-$("sp-del").onclick = () => {
-  const s = S.draft.spots.find((x) => x.id === S.selSpot);
-  if (!s) return;
-  if (s.origin === "manual" && !s.deleted) {
-    S.draft.spots = S.draft.spots.filter((x) => x.id !== s.id); // 수동 추가는 완전 삭제
-    closeSpotEditor();
-  } else {
-    s.deleted = !s.deleted;
-    openSpotEditor(s.id);
-  }
-  markDirty(); renderSpots(); refreshList();
-};
-$("sp-close").onclick = closeSpotEditor;
-
-$("spot-add").onclick = () => {
-  S.addingSpot = !S.addingSpot;
-  $("spot-add").classList.toggle("active", S.addingSpot);
-  map.getCanvas().style.cursor = S.addingSpot ? "crosshair" : "";
-};
-
-// ── 지도 이벤트 (코스 클릭·스팟 클릭/드래그·스팟 추가) ──
+// ── 지도 이벤트 (코스 클릭) ──
 function wireMapEvents() {
   map.on("click", "courses-hit", (e) => {
-    if (S.addingSpot) return;
-    const id = e.features[0].properties.id;
-    selectCourse(id, false);
+    selectCourse(e.features[0].properties.id, false);
     e.preventDefault?.();
   });
-  map.on("click", "spots-dots", (e) => {
-    if (S.addingSpot) return;
-    openSpotEditor(e.features[0].properties.id);
-  });
-  map.on("click", (e) => {
-    if (!S.addingSpot || !S.draft) return;
-    const id = "sp-new-" + Math.random().toString(36).slice(2, 8);
-    S.draft.spots.push({ id, category: "분기점", name: null,
-      coord: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)],
-      detail: null, etc: null, origin: "manual", moved: false, deleted: false });
-    S.addingSpot = false;
-    $("spot-add").classList.remove("active");
-    map.getCanvas().style.cursor = "";
-    markDirty(); renderSpots(); openSpotEditor(id);
-  });
-  for (const layer of ["courses-hit", "spots-dots"]) {
-    map.on("mouseenter", layer, () => { if (!S.addingSpot) map.getCanvas().style.cursor = "pointer"; });
-    map.on("mouseleave", layer, () => { if (!S.addingSpot) map.getCanvas().style.cursor = ""; });
-  }
-  // 스팟 드래그 이동
-  map.on("mousedown", "spots-dots", (e) => {
-    if (S.addingSpot) return;
-    e.preventDefault();
-    const id = e.features[0].properties.id;
-    const s = S.draft.spots.find((x) => x.id === id);
-    if (!s) return;
-    openSpotEditor(id);
-    map.getCanvas().style.cursor = "grabbing";
-    const onMove = (ev) => {
-      s.coord = [+ev.lngLat.lng.toFixed(6), +ev.lngLat.lat.toFixed(6)];
-      renderSpots();
-    };
-    map.on("mousemove", onMove);
-    map.once("mouseup", () => {
-      map.off("mousemove", onMove);
-      map.getCanvas().style.cursor = "";
-      s.moved = true;
-      markDirty();
-    });
-  });
+  map.on("mouseenter", "courses-hit", () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "courses-hit", () => { map.getCanvas().style.cursor = ""; });
 }
 
 // ── 배포 ──

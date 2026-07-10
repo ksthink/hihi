@@ -79,19 +79,23 @@ def list_drafts():
     return out
 
 
-def _forest_spots_to_draft(code):
-    sp = []
-    for f in pl.load_forest_spots(code, keep=pl.SPOT_KEEP):
-        p = f["properties"]
-        sp.append({"id": f"sp-{p['id']}", "category": p["category"], "name": None,
-                   "coord": f["geometry"]["coordinates"],
-                   "detail": p["detail"], "etc": p["etc"],
-                   "origin": "forest", "moved": False, "deleted": False})
-    return sp
+def _summit_spot(code, meta):
+    """100대명산 API 정상 좌표(meta.peak) → '정상' 스팟 1점 자동 시드 (주봉 main=true).
+    산림청 SPOT 대량 시드는 폐기 — 운영자 큐레이션 없이 앱 봉우리(▲)만 표시.
+    peak 없는 산(100대 외)은 빈 목록."""
+    pk = (meta or {}).get("peak")
+    if not pk:
+        return []
+    return [{"id": f"sp-peak-{code}", "category": "정상",
+             "name": meta.get("name"),
+             "coord": [round(pk["lon"], 6), round(pk["lat"], 6)],
+             "detail": f"{round(pk['elev'])}m" if pk.get("elev") else None,
+             "etc": None, "origin": "top100", "moved": False, "deleted": False,
+             "main": True}]
 
 
 def new_draft(code, mnt_meta=None):
-    """신규 산 초안: mountain/ 스캔 메타 + 산림청 스팟 + 구간망 bbox."""
+    """신규 산 초안: mountain/ 스캔 메타 + 정상 스팟 자동 시드 + 구간망 bbox."""
     meta = dict(mnt_meta or {})
     segs, mntn_nm = pl.load_forest_segments(code)
     xs = [p[0] for s in segs for p in s["pts"]]
@@ -110,7 +114,7 @@ def new_draft(code, mnt_meta=None):
             "sort_order": 100, "famous": False, "published": True,
         },
         "courses": [],
-        "spots": _forest_spots_to_draft(code),
+        "spots": _summit_spot(code, meta),
         "publish": None,
     }
     return draft

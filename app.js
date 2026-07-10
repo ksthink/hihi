@@ -26,9 +26,10 @@ async function loadCatalog() {
     let q = await supabase.from("mountains").select("*")
       .eq("published", true).order("sort_order").order("name");
     if (q.error) q = await supabase.from("mountains").select("*").order("name"); // 마이그레이션 전 호환
-    if (q.error || !q.data || !q.data.length) throw q.error || new Error("empty");
+    if (q.error) throw q.error;
+    // 빈 카탈로그도 정상 상태 — 캐시 폴백하면 삭제된 산(옛 캐시)이 되살아난다
     PARKS = {};
-    for (const m of q.data) {
+    for (const m of q.data || []) {
       PARKS[m.id] = {
         label: m.name, center: m.center, zoom: m.zoom, bbox: m.bbox,
         elev: m.elev, region: m.region, famous: m.famous !== false
@@ -36,7 +37,7 @@ async function loadCatalog() {
     }
     localStorage.setItem(CATALOG_KEY, JSON.stringify(PARKS));
   } catch (_) {
-    // 오프라인 등 조회 실패 → 마지막 카탈로그 캐시로 (저장 팩 열람 유지)
+    // 조회 실패(오프라인 등)에만 마지막 카탈로그 캐시로 폴백 (저장 팩 열람 유지)
     try { PARKS = JSON.parse(localStorage.getItem(CATALOG_KEY)) || {}; } catch (_e) { PARKS = {}; }
   }
   return Object.keys(PARKS);
@@ -206,7 +207,6 @@ map.on("styleimagemissing", (e) => {
 
 // ── 상태 ─────────────────────────────────────────────
 let currentPark = null; // 카탈로그 로드 후 첫 산으로 설정
-let peaksData = null;
 let selectedTrail = null;
 let selectedName = null;
 let interactionsBound = false;
@@ -408,6 +408,12 @@ function ensureOverlays() {
       filter: ["==", ["get", "name"], "__none__"],
       paint: { "line-color": c.line, "line-width": widthExpr }
     });
+    // 클릭 히트 확장 — 실제 선(2~7px)은 모바일 탭이 못 맞춤. 넓은 투명 선이 탭을 받는다.
+    map.addLayer({
+      id: "trail-hit", type: "line", source: "trails",
+      paint: { "line-color": "#000", "line-opacity": 0.001,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 16, 16, 28] }
+    });
 
     // 코스 번호 배지 — 코스 중앙에 항상 표시 (부록 D. 데이터 주도 → iOS 이식 안전)
     // makeBadge 캔버스 아이콘(styleimagemissing 생성): 숫자가 원 정중앙에 실측 배치됨.
@@ -475,7 +481,7 @@ function ensureOverlays() {
       }
     });
     // 정상(peak) 스팟 → 봉우리 표식 (팩 주도 — 관리자에서 '정상'으로 찍은 지점).
-    // 전역 peaks.geojson(북한산·설악산 레거시)과 별개로, 각 산 팩의 정상을 렌더.
+    // 봉우리 표식: 라이트 ▲(채움) / 다크 △(외곽) + 지명. 테마 토글 시 재부착으로 갱신.
     map.addLayer({
       id: "spot-peaks", type: "symbol", source: "spots",
       filter: ["all", ["==", ["get", "category"], "정상"],
@@ -491,26 +497,11 @@ function ensureOverlays() {
     });
   }
 
-  if (!map.getSource("peaks") && peaksData) {
-    map.addSource("peaks", { type: "geojson", data: peaksData });
-    map.addLayer({
-      id: "peak-symbols", type: "symbol", source: "peaks",
-      layout: {
-        // 봉우리 표식: 라이트 ▲(채움) / 다크 △(외곽) + 지명. 테마 토글 시 재부착으로 갱신
-        "text-field": ["concat", theme === "dark" ? "△" : "▲", ["get", "name"]],
-        "text-font": ["Nanum Gothic Coding Bold"],
-        // 정상(main=true, 대청봉·백운대)만 최상위 14.4px, 능선·바위 등 나머지는 11px
-        "text-size": ["case", ["==", ["get", "main"], true], 14.4, 11],
-        "text-offset": [0, -0.6], "text-anchor": "bottom"
-      },
-      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.8 }
-    });
-  }
-
   // 상호작용은 한 번만 바인딩 (레이어 id 기준이라 테마 재부착 후에도 유효)
   if (!interactionsBound && map.getLayer("trail-line")) {
     // 번호 배지 클릭도 코스 선택 — focusTrail 이 목록 하이라이트·스크롤까지 처리
-    ["trail-line", "trail-hl", "course-no-badges"].forEach((id) => {
+    // trail-hit(넓은 투명 선)이 코스 라인 탭을 받음. 배지를 나중에 등록해 겹칠 땐 배지가 우선.
+    ["trail-hit", "course-no-badges"].forEach((id) => {
       map.on("click", id, (e) => selectByName(e.features[0].properties.name));
       map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
       map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
@@ -624,7 +615,7 @@ function fitPark(duration = 800) {
 
 // setStyle(테마/기저 변경) 후 오버레이 재부착
 map.on("styledata", () => {
-  if (!map.getSource("trails") || (peaksData && !map.getSource("peaks")) || !map.getSource("spots") || !map.getSource("contours")) ensureOverlays();
+  if (!map.getSource("trails") || !map.getSource("spots") || !map.getSource("contours")) ensureOverlays();
 });
 
 // ── 기저 소스 선택: 로컬 팩이 등록된 산이면 로컬, 아니면 온라인 ──
@@ -1578,10 +1569,7 @@ document.getElementById("show-all").addEventListener("click", (e) => {
 setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
 
 map.on("load", async () => {
-  [peaksData] = await Promise.all([
-    fetch("data/peaks.geojson").then((r) => r.json()).catch(() => null),
-    loadSpotDisplay(), // 스팟 노출 정책 — 레이어(필터) 생성 전에 확보
-  ]);
+  await loadSpotDisplay(); // 스팟 노출 정책 — 레이어(필터) 생성 전에 확보
   ensureOverlays();
   const codes = await loadCatalog(); // mountains 카탈로그 (오프라인 시 캐시)
   if (codes.length) await loadPark(codes[0]); // 첫 산(sort_order 1위) — 오버레이는 산별 지연 로드
