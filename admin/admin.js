@@ -61,6 +61,7 @@ const S = {
   draft: null,        // 선택 산 draft
   selCourse: null,    // 선택 코스 id
   gpx: null,          // { text, candidate, raw } 업로드/매칭 미리보기
+  addingPeak: false,  // ＋정상 추가 모드 (지도 클릭 대기)
   dirty: false,
   region: "전체",     // 선택된 지역 필터
 };
@@ -123,7 +124,7 @@ map.on("load", () => {
     filter: ["==", ["get", "src"], "gpx"],
     paint: { "line-color": "#111", "line-width": 4, "line-dasharray": [1.2, 1.2] } });
 
-  // 자동 시드된 정상(▲) — 읽기 전용 표시 (스팟 편집 UI 는 폐기, 부록 참고)
+  // 정상(▲) — 자동 시드(100대 API) + 수동 보정 (이름·이동·추가·삭제는 정상 섹션에서)
   map.addLayer({ id: "spot-peak", type: "symbol", source: "spots",
     filter: ["==", ["get", "category"], "정상"],
     layout: {
@@ -137,7 +138,7 @@ map.on("load", () => {
   wireMapEvents();
   if (S.draft) { // 지도 로드 전에 산을 선택했다면 데이터 재주입
     renderCourses();
-    renderSummit();
+    renderPeaks();
     loadNetwork(S.code);
   }
 });
@@ -307,7 +308,7 @@ function renderMountain() {
     ? `현재 v${p.pack_version}${p.published_at ? " · " + p.published_at.slice(0, 16) : ""}${p.pack_size_kb ? " · " + Math.round(p.pack_size_kb / 1024) + "MB" : ""}`
     : "아직 배포되지 않음";
   renderCourses();
-  renderSummit();
+  renderPeaks();
 }
 
 for (const [id, key, cast] of [["m-region", "region", String], ["m-elev", "elev", Number],
@@ -526,25 +527,101 @@ function clearGpxPreview() {
   $("gpx-file").value = "";
 }
 
-// ── 정상(▲) 표시 — 자동 시드(top100) 읽기 전용 ──
-function renderSummit() {
+// ── 정상 스팟 (자동 시드 + 수동 보정: 추가·이름·주봉·이동·삭제) ──
+const peakSpots = () => (S.draft?.spots || []).filter((s) => s.category === "정상" && !s.deleted);
+
+function renderPeakMap() {
   if (!map.getSource("spots")) return;
   map.getSource("spots").setData({ type: "FeatureCollection",
-    features: (S.draft?.spots || [])
-      .filter((s) => s.category === "정상" && !s.deleted)
-      .map((s) => ({ type: "Feature",
-        geometry: { type: "Point", coordinates: s.coord },
-        properties: { category: s.category, name: s.name || "" } })) });
+    features: peakSpots().map((s) => ({ type: "Feature",
+      geometry: { type: "Point", coordinates: s.coord },
+      properties: { id: s.id, category: s.category, name: s.name || "" } })) });
 }
 
-// ── 지도 이벤트 (코스 클릭) ──
+function renderPeaks() {
+  renderPeakMap();
+  const ul = $("peak-list");
+  ul.innerHTML = "";
+  $("peak-count").textContent = `(${peakSpots().length})`;
+  for (const s of peakSpots()) {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="p-main ${s.main ? "on" : ""}" title="주봉 지정 — 앱에서 크게 표시">▲</span>
+      <input class="p-name" placeholder="이름 (비우면 ▲만 표시)" value="${(s.name || "").replace(/"/g, "&quot;")}" />
+      <span class="dim">${s.detail || ""}</span>
+      <button class="p-del danger">삭제</button>`;
+    li.querySelector(".p-name").addEventListener("change", (e) => {
+      s.name = e.target.value.trim() || null;
+      markDirty(); renderPeakMap();
+    });
+    li.querySelector(".p-main").onclick = () => {
+      peakSpots().forEach((x) => { x.main = x === s; }); // 주봉은 1점만
+      markDirty(); renderPeaks();
+    };
+    li.querySelector(".p-del").onclick = () => {
+      if (!confirm(`정상 "${s.name || "(이름 없음)"}" 삭제?`)) return;
+      S.draft.spots = S.draft.spots.filter((x) => x !== s);
+      if (s.main && peakSpots().length) peakSpots()[0].main = true; // 주봉 승계
+      markDirty(); renderPeaks();
+    };
+    ul.appendChild(li);
+  }
+}
+
+$("peak-add").onclick = () => {
+  S.addingPeak = !S.addingPeak;
+  $("peak-add").classList.toggle("active", S.addingPeak);
+  map.getCanvas().style.cursor = S.addingPeak ? "crosshair" : "";
+};
+
+// ── 지도 이벤트 (코스 클릭·정상 추가/드래그) ──
 function wireMapEvents() {
+  // 코스 선택 — 정상 추가 모드 중엔 무시 (등록 순서상 이 가드가 먼저 실행됨)
   map.on("click", "courses-hit", (e) => {
+    if (S.addingPeak) return;
     selectCourse(e.features[0].properties.id, false);
     e.preventDefault?.();
   });
-  map.on("mouseenter", "courses-hit", () => { map.getCanvas().style.cursor = "pointer"; });
-  map.on("mouseleave", "courses-hit", () => { map.getCanvas().style.cursor = ""; });
+  map.on("mouseenter", "courses-hit", () => { if (!S.addingPeak) map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "courses-hit", () => { if (!S.addingPeak) map.getCanvas().style.cursor = ""; });
+
+  // ＋정상 추가: 지도 클릭 위치에 생성 (주봉 없으면 주봉으로)
+  map.on("click", (e) => {
+    if (!S.addingPeak || !S.draft) return;
+    S.draft.spots.push({
+      id: "sp-peak-" + Math.random().toString(36).slice(2, 8), category: "정상",
+      name: null, coord: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)],
+      detail: null, etc: null, origin: "manual", moved: false, deleted: false,
+      main: !peakSpots().some((x) => x.main),
+    });
+    S.addingPeak = false;
+    $("peak-add").classList.remove("active");
+    map.getCanvas().style.cursor = "";
+    markDirty(); renderPeaks();
+    $("peak-list").querySelector("li:last-child .p-name")?.focus();
+  });
+
+  // 정상 드래그 이동
+  map.on("mousedown", "spot-peak", (e) => {
+    if (S.addingPeak) return;
+    e.preventDefault();
+    const s = S.draft.spots.find((x) => x.id === e.features[0].properties.id);
+    if (!s) return;
+    map.getCanvas().style.cursor = "grabbing";
+    const onMove = (ev) => {
+      s.coord = [+ev.lngLat.lng.toFixed(6), +ev.lngLat.lat.toFixed(6)];
+      renderPeakMap(); // 드래그 중엔 지도만 갱신 (목록 재생성 없음)
+    };
+    map.on("mousemove", onMove);
+    map.once("mouseup", () => {
+      map.off("mousemove", onMove);
+      map.getCanvas().style.cursor = "";
+      s.moved = true;
+      markDirty();
+    });
+  });
+  map.on("mouseenter", "spot-peak", () => { if (!S.addingPeak) map.getCanvas().style.cursor = "grab"; });
+  map.on("mouseleave", "spot-peak", () => { if (!S.addingPeak) map.getCanvas().style.cursor = ""; });
 }
 
 // ── 배포 ──

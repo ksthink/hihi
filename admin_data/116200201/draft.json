@@ -38,5 +38,15 @@
    "main": true
   }
  ],
- "publish": null
+ "publish": {
+  "pack_version": 1,
+  "published_at": "2026-07-10T06:08:51.147809+00:00",
+  "pack_size_kb": 2394,
+  "tiles_bbox": [
+   126.95,
+   37.41,
+   127.0,
+   37.48
+  ]
+ }
 }

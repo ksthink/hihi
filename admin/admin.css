@@ -216,6 +216,17 @@ button.active { background: #111; color: #fff; }
 #gpx-report { font-size: 12px; margin-top: 6px; }
 #gpx-report .warn { color: #b00020; }
 
+/* 정상 스팟 목록 */
+#peak-list { list-style: none; margin: 6px 0 0; padding: 0; }
+#peak-list li { display: flex; align-items: center; gap: 7px; padding: 4px 2px; border-bottom: 1px solid #eee; font-size: 12.5px; }
+#peak-list li:last-child { border-bottom: 0; }
+#peak-list .p-main { cursor: pointer; color: #ccc; font-size: 14px; flex: 0 0 auto; }
+#peak-list .p-main.on { color: #111; }
+#peak-list .p-name { flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed #ccc; padding: 1px 2px; background: transparent; font-family: inherit; font-size: 12.5px; }
+#peak-list .p-name:hover { border-bottom-color: #111; }
+#peak-list .p-name:focus { outline: 1px solid #111; border-radius: 3px; border-bottom-color: transparent; }
+#peak-list .p-del { flex: 0 0 auto; font-size: 11px; padding: 2px 7px; }
+
 /* 잡 진행 */
 .pbar { height: 8px; border-radius: 4px; background: #e5e5e5; margin: 6px 0; overflow: hidden; }
 #job-fill { height: 100%; width: 0; background: #111; transition: width .3s; }
