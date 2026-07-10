@@ -220,7 +220,7 @@ const localRegistered = {};
 // 값 = 표시 시작 줌(0=항상), null = 끔. 부팅 시 R2 설정을 읽고 실패하면 캐시→기본값.
 // iOS 도 동일 JSON 을 소비 (데이터 주도 정책).
 const SPOT_DISPLAY_DEFAULT = {
-  정상: 0, 조망점: 18, 화장실: 18, 정자: 18, 헬기장: 18, 음수대: 18,
+  정상: 0, 장소: 14, 조망점: 18, 화장실: 18, 정자: 18, 헬기장: 18, 음수대: 18,
   주차장: null, 분기점: null, 시종점: null,
 };
 let spotDisplay = { ...SPOT_DISPLAY_DEFAULT };
@@ -239,7 +239,7 @@ async function loadSpotDisplay() {
   }
 }
 // 점·라벨로 그리는 분류 / 아이콘으로 그리는 분류 (정상은 spot-peaks 별도)
-const DOT_CATS = ["분기점", "시종점"];
+const DOT_CATS = ["분기점", "시종점", "장소"];
 const FACILITY_ICON = {
   조망점: "poi-viewpoint", 화장실: "poi-toilets", 정자: "poi-shelter",
   헬기장: "poi-helipad", 음수대: "poi-drinking_water", 주차장: "poi-parking",

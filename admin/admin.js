@@ -124,7 +124,7 @@ map.on("load", () => {
     filter: ["==", ["get", "src"], "gpx"],
     paint: { "line-color": "#111", "line-width": 4, "line-dasharray": [1.2, 1.2] } });
 
-  // 정상(▲) — 자동 시드(100대 API) + 수동 보정 (이름·이동·추가·삭제는 정상 섹션에서)
+  // 정상(▲)·장소(점+라벨) — 자동 시드(100대 API) + 수동 큐레이션 (스팟 섹션에서 편집)
   map.addLayer({ id: "spot-peak", type: "symbol", source: "spots",
     filter: ["==", ["get", "category"], "정상"],
     layout: {
@@ -134,6 +134,18 @@ map.on("load", () => {
       "text-allow-overlap": true,
     },
     paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.6 } });
+  map.addLayer({ id: "spot-place-dot", type: "circle", source: "spots",
+    filter: ["==", ["get", "category"], "장소"],
+    paint: { "circle-radius": 5, "circle-color": "#111",
+             "circle-stroke-color": "#fff", "circle-stroke-width": 1.5 } });
+  map.addLayer({ id: "spot-place-label", type: "symbol", source: "spots",
+    filter: ["==", ["get", "category"], "장소"],
+    layout: {
+      "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
+      "text-size": 11, "text-offset": [0, 0.8], "text-anchor": "top",
+      "text-allow-overlap": true,
+    },
+    paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.5 } });
 
   wireMapEvents();
   if (S.draft) { // 지도 로드 전에 산을 선택했다면 데이터 재주입
@@ -527,51 +539,107 @@ function clearGpxPreview() {
   $("gpx-file").value = "";
 }
 
-// ── 정상 스팟 (자동 시드 + 수동 보정: 추가·이름·주봉·이동·삭제) ──
-const peakSpots = () => (S.draft?.spots || []).filter((s) => s.category === "정상" && !s.deleted);
+// ── 스팟 (정상·장소 — 자동 시드 + 수동 큐레이션: 추가·이름·분류·주봉·좌표·이동·삭제) ──
+const EDIT_CATS = ["정상", "장소"];
+const editSpots = () => (S.draft?.spots || []).filter((s) => EDIT_CATS.includes(s.category) && !s.deleted);
+const peakSpots = () => editSpots().filter((s) => s.category === "정상");
 
 function renderPeakMap() {
   if (!map.getSource("spots")) return;
   map.getSource("spots").setData({ type: "FeatureCollection",
-    features: peakSpots().map((s) => ({ type: "Feature",
+    features: editSpots().map((s) => ({ type: "Feature",
       geometry: { type: "Point", coordinates: s.coord },
       properties: { id: s.id, category: s.category, name: s.name || "" } })) });
+}
+
+// 정상→장소 전환·주봉 삭제 후에도 정상이 남아 있으면 주봉 1점을 보장
+function ensureMain() {
+  const pk = peakSpots();
+  if (pk.length && !pk.some((x) => x.main)) pk[0].main = true;
 }
 
 function renderPeaks() {
   renderPeakMap();
   const ul = $("peak-list");
   ul.innerHTML = "";
-  $("peak-count").textContent = `(${peakSpots().length})`;
-  for (const s of peakSpots()) {
+  $("peak-count").textContent = `(정상 ${peakSpots().length} · 장소 ${editSpots().length - peakSpots().length})`;
+  for (const s of editSpots()) {
+    const isPeak = s.category === "정상";
     const li = document.createElement("li");
     li.innerHTML = `
-      <span class="p-main ${s.main ? "on" : ""}" title="주봉 지정 — 앱에서 크게 표시">▲</span>
-      <input class="p-name" placeholder="이름 (비우면 ▲만 표시)" value="${(s.name || "").replace(/"/g, "&quot;")}" />
-      <span class="dim">${s.detail || ""}</span>
+      <span class="p-main ${isPeak ? (s.main ? "on" : "") : "na"}"
+        title="${isPeak ? "주봉 지정 — 앱에서 크게 표시" : ""}">${isPeak ? "▲" : "•"}</span>
+      <select class="p-cat" title="분류">${EDIT_CATS.map((c) =>
+        `<option ${c === s.category ? "selected" : ""}>${c}</option>`).join("")}</select>
+      <input class="p-name" placeholder="이름${isPeak ? " (비우면 ▲만 표시)" : ""}" value="${(s.name || "").replace(/"/g, "&quot;")}" />
+      <input class="p-lat" type="number" step="any" title="위도" value="${s.coord[1]}" />
+      <input class="p-lon" type="number" step="any" title="경도" value="${s.coord[0]}" />
       <button class="p-del danger">삭제</button>`;
     li.querySelector(".p-name").addEventListener("change", (e) => {
       s.name = e.target.value.trim() || null;
       markDirty(); renderPeakMap();
     });
+    li.querySelector(".p-cat").addEventListener("change", (e) => {
+      s.category = e.target.value;
+      if (s.category !== "정상") s.main = false;
+      ensureMain();
+      markDirty(); renderPeaks();
+    });
+    // 좌표 직접 입력 — 정확한 위치 특정 (지도 드래그의 대안)
+    for (const [cls, idx, lo, hi] of [["p-lat", 1, 32, 44], ["p-lon", 0, 123, 133]]) {
+      li.querySelector("." + cls).addEventListener("change", (e) => {
+        const v = parseFloat(e.target.value);
+        if (!Number.isFinite(v) || v < lo || v > hi) { e.target.value = s.coord[idx]; return; } // 한국 범위 밖 무시
+        s.coord[idx] = +v.toFixed(6);
+        s.moved = true;
+        markDirty(); renderPeakMap();
+        map.flyTo({ center: s.coord, zoom: Math.max(map.getZoom(), 13) });
+      });
+    }
     li.querySelector(".p-main").onclick = () => {
+      if (!isPeak) return;
       peakSpots().forEach((x) => { x.main = x === s; }); // 주봉은 1점만
       markDirty(); renderPeaks();
     };
     li.querySelector(".p-del").onclick = () => {
-      if (!confirm(`정상 "${s.name || "(이름 없음)"}" 삭제?`)) return;
+      if (!confirm(`${s.category} "${s.name || "(이름 없음)"}" 삭제?`)) return;
       S.draft.spots = S.draft.spots.filter((x) => x !== s);
-      if (s.main && peakSpots().length) peakSpots()[0].main = true; // 주봉 승계
+      ensureMain(); // 주봉 승계
       markDirty(); renderPeaks();
     };
     ul.appendChild(li);
   }
 }
 
+// 새 스팟 (지도 클릭·좌표 입력 공용) — 분류는 상단 select, 정상이면 주봉 자동 배정
+function addSpotAt(lon, lat) {
+  const cat = $("pk-cat").value;
+  S.draft.spots.push({
+    id: "sp-man-" + Math.random().toString(36).slice(2, 8), category: cat,
+    name: null, coord: [+lon.toFixed(6), +lat.toFixed(6)],
+    detail: null, etc: null, origin: "manual", moved: false, deleted: false,
+    main: cat === "정상" && !peakSpots().some((x) => x.main),
+  });
+  markDirty(); renderPeaks();
+  $("peak-list").querySelector("li:last-child .p-name")?.focus();
+}
+
 $("peak-add").onclick = () => {
   S.addingPeak = !S.addingPeak;
   $("peak-add").classList.toggle("active", S.addingPeak);
   map.getCanvas().style.cursor = S.addingPeak ? "crosshair" : "";
+};
+
+$("pk-add-coord").onclick = () => {
+  if (!S.draft) return;
+  const lat = parseFloat($("pk-lat").value), lon = parseFloat($("pk-lon").value);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < 32 || lat > 44 || lon < 123 || lon > 133) {
+    alert("위도 32~44, 경도 123~133 범위의 숫자를 입력하세요. (예: 37.445044 / 126.964223)");
+    return;
+  }
+  addSpotAt(lon, lat);
+  $("pk-lat").value = ""; $("pk-lon").value = "";
+  map.flyTo({ center: [lon, lat], zoom: Math.max(map.getZoom(), 13) });
 };
 
 // ── 지도 이벤트 (코스 클릭·정상 추가/드래그) ──
@@ -585,43 +653,38 @@ function wireMapEvents() {
   map.on("mouseenter", "courses-hit", () => { if (!S.addingPeak) map.getCanvas().style.cursor = "pointer"; });
   map.on("mouseleave", "courses-hit", () => { if (!S.addingPeak) map.getCanvas().style.cursor = ""; });
 
-  // ＋정상 추가: 지도 클릭 위치에 생성 (주봉 없으면 주봉으로)
+  // ＋지도 클릭 추가: 클릭 위치에 생성 (분류는 상단 select)
   map.on("click", (e) => {
     if (!S.addingPeak || !S.draft) return;
-    S.draft.spots.push({
-      id: "sp-peak-" + Math.random().toString(36).slice(2, 8), category: "정상",
-      name: null, coord: [+e.lngLat.lng.toFixed(6), +e.lngLat.lat.toFixed(6)],
-      detail: null, etc: null, origin: "manual", moved: false, deleted: false,
-      main: !peakSpots().some((x) => x.main),
-    });
     S.addingPeak = false;
     $("peak-add").classList.remove("active");
     map.getCanvas().style.cursor = "";
-    markDirty(); renderPeaks();
-    $("peak-list").querySelector("li:last-child .p-name")?.focus();
+    addSpotAt(e.lngLat.lng, e.lngLat.lat);
   });
 
-  // 정상 드래그 이동
-  map.on("mousedown", "spot-peak", (e) => {
-    if (S.addingPeak) return;
-    e.preventDefault();
-    const s = S.draft.spots.find((x) => x.id === e.features[0].properties.id);
-    if (!s) return;
-    map.getCanvas().style.cursor = "grabbing";
-    const onMove = (ev) => {
-      s.coord = [+ev.lngLat.lng.toFixed(6), +ev.lngLat.lat.toFixed(6)];
-      renderPeakMap(); // 드래그 중엔 지도만 갱신 (목록 재생성 없음)
-    };
-    map.on("mousemove", onMove);
-    map.once("mouseup", () => {
-      map.off("mousemove", onMove);
-      map.getCanvas().style.cursor = "";
-      s.moved = true;
-      markDirty();
+  // 스팟 드래그 이동 (정상 ▲ · 장소 점)
+  for (const layer of ["spot-peak", "spot-place-dot"]) {
+    map.on("mousedown", layer, (e) => {
+      if (S.addingPeak) return;
+      e.preventDefault();
+      const s = S.draft.spots.find((x) => x.id === e.features[0].properties.id);
+      if (!s) return;
+      map.getCanvas().style.cursor = "grabbing";
+      const onMove = (ev) => {
+        s.coord = [+ev.lngLat.lng.toFixed(6), +ev.lngLat.lat.toFixed(6)];
+        renderPeakMap(); // 드래그 중엔 지도만 갱신 (목록 재생성 없음)
+      };
+      map.on("mousemove", onMove);
+      map.once("mouseup", () => {
+        map.off("mousemove", onMove);
+        map.getCanvas().style.cursor = "";
+        s.moved = true;
+        markDirty(); renderPeaks(); // 목록 좌표 칸 갱신
+      });
     });
-  });
-  map.on("mouseenter", "spot-peak", () => { if (!S.addingPeak) map.getCanvas().style.cursor = "grab"; });
-  map.on("mouseleave", "spot-peak", () => { if (!S.addingPeak) map.getCanvas().style.cursor = ""; });
+    map.on("mouseenter", layer, () => { if (!S.addingPeak) map.getCanvas().style.cursor = "grab"; });
+    map.on("mouseleave", layer, () => { if (!S.addingPeak) map.getCanvas().style.cursor = ""; });
+  }
 }
 
 // ── 배포 ──

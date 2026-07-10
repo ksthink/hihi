@@ -216,15 +216,20 @@ button.active { background: #111; color: #fff; }
 #gpx-report { font-size: 12px; margin-top: 6px; }
 #gpx-report .warn { color: #b00020; }
 
-/* 정상 스팟 목록 */
+/* 스팟(정상·장소) 목록 */
+#pk-lat, #pk-lon { width: 118px; font-size: 12px; padding: 3px 6px; }
+#pk-cat { font-size: 12px; padding: 3px 4px; }
 #peak-list { list-style: none; margin: 6px 0 0; padding: 0; }
-#peak-list li { display: flex; align-items: center; gap: 7px; padding: 4px 2px; border-bottom: 1px solid #eee; font-size: 12.5px; }
+#peak-list li { display: flex; align-items: center; gap: 6px; padding: 4px 2px; border-bottom: 1px solid #eee; font-size: 12.5px; }
 #peak-list li:last-child { border-bottom: 0; }
-#peak-list .p-main { cursor: pointer; color: #ccc; font-size: 14px; flex: 0 0 auto; }
+#peak-list .p-main { cursor: pointer; color: #ccc; font-size: 14px; flex: 0 0 auto; width: 15px; text-align: center; }
 #peak-list .p-main.on { color: #111; }
-#peak-list .p-name { flex: 1; min-width: 0; border: 0; border-bottom: 1px dashed #ccc; padding: 1px 2px; background: transparent; font-family: inherit; font-size: 12.5px; }
+#peak-list .p-main.na { cursor: default; color: #111; font-size: 12px; }
+#peak-list .p-cat { flex: 0 0 auto; font-size: 11.5px; padding: 1px 2px; }
+#peak-list .p-name { flex: 1; min-width: 60px; border: 0; border-bottom: 1px dashed #ccc; padding: 1px 2px; background: transparent; font-family: inherit; font-size: 12.5px; }
 #peak-list .p-name:hover { border-bottom-color: #111; }
 #peak-list .p-name:focus { outline: 1px solid #111; border-radius: 3px; border-bottom-color: transparent; }
+#peak-list .p-lat, #peak-list .p-lon { flex: 0 0 auto; width: 84px; font-size: 11.5px; padding: 1px 3px; border: 1px solid #ddd; border-radius: 4px; }
 #peak-list .p-del { flex: 0 0 auto; font-size: 11px; padding: 2px 7px; }
 
 /* 잡 진행 */

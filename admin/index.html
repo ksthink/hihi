@@ -96,11 +96,17 @@
       </div>
     </div>
 
-    <!-- 정상 스팟 — 자동 시드(100대 API) 검증·보정: 이름 수정, 주봉(▲) 지정, 지도 클릭 추가, 드래그 이동 -->
-    <h3>정상 <span id="peak-count"></span></h3>
+    <!-- 스팟(정상·장소) — 자동 시드(100대 API) 검증·보정 + 수동 큐레이션.
+         입력: 지도 클릭 / 위도·경도 직접 입력. 이동: 지도 드래그 또는 목록 좌표 수정 -->
+    <h3>스팟 <span id="peak-count"></span></h3>
     <div class="row">
-      <button id="peak-add">＋ 정상 추가 (지도 클릭)</button>
-      <span class="dim">위치 이동: 지도에서 ▲ 드래그</span>
+      <select id="pk-cat" title="추가할 스팟 분류">
+        <option>정상</option><option>장소</option>
+      </select>
+      <button id="peak-add">＋ 지도 클릭 추가</button>
+      <input id="pk-lat" type="number" step="any" placeholder="위도 37.445044" />
+      <input id="pk-lon" type="number" step="any" placeholder="경도 126.964223" />
+      <button id="pk-add-coord">좌표로 추가</button>
     </div>
     <ul id="peak-list"></ul>
 
