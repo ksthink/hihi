@@ -24,6 +24,9 @@ R2_PUB = os.environ.get("R2_PUB", "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.
 PMTILES_FILES = {"kr-base.pmtiles", "kr-terrain.pmtiles"}
 PMTILES_URL = os.environ.get("PMTILES_URL", f"{R2_PUB}/kr-base.pmtiles")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 로컬 원본(데이터 제작 산출물)이 디스크에 있으면 R2 왕복 없이 그 파일을 Range 서빙 —
+# 타일 요청당 ~50-70ms(신규 TLS 연결 포함)를 절약. 없으면 기존대로 R2 프록시.
+TILES_DIR = os.path.join(ROOT, "data", "tiles")
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
 
 
@@ -50,6 +53,10 @@ class Handler(SimpleHTTPRequestHandler):
     def _proxy(self):
         # /pmtiles/<파일명> → 허용 목록이면 해당 R2 객체, 아니면 base (Range 그대로 전달)
         name = self.path.rsplit("/", 1)[-1].split("?")[0]
+        if name in PMTILES_FILES:
+            local = os.path.join(TILES_DIR, name)
+            if os.path.isfile(local):
+                return self._serve_local(local)
         url = f"{R2_PUB}/{name}" if name in PMTILES_FILES else PMTILES_URL
         req = urllib.request.Request(url)
         req.add_header("User-Agent", "hiheight/1.0")  # R2 pub.r2.dev 는 기본 urllib UA 를 403 차단
@@ -82,6 +89,61 @@ class Handler(SimpleHTTPRequestHandler):
                 resp.close()
             except Exception:
                 pass
+
+    def _serve_local(self, path):
+        # 로컬 pmtiles 를 Range 지원으로 서빙 (SimpleHTTPRequestHandler 는 Range 미지원이라 직접 구현)
+        size = os.path.getsize(path)
+        etag = f'"{int(os.path.getmtime(path))}-{size}"'
+        if self.headers.get("If-None-Match") == etag:
+            self.send_response(304)
+            self.send_header("ETag", etag)
+            self._cors()
+            self.end_headers()
+            return
+        start, end, status = 0, size - 1, 200
+        rng = self.headers.get("Range")
+        if rng and rng.startswith("bytes="):
+            try:
+                s, _, e = rng[6:].partition("-")
+                if s:
+                    start = int(s)
+                    if e:
+                        end = min(int(e), size - 1)
+                else:  # 접미 범위 bytes=-N (마지막 N 바이트)
+                    start = max(0, size - int(e))
+                if start >= size or start > end:
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{size}")
+                    self._cors()
+                    self.end_headers()
+                    return
+                status = 206
+            except ValueError:
+                start, end, status = 0, size - 1, 200
+        length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Length", str(length))
+        if status == 206:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("ETag", etag)
+        self._cors()
+        self.end_headers()
+        if self.command == "HEAD":
+            return
+        try:
+            with open(path, "rb") as f:
+                f.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk = f.read(min(1 << 20, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_HEAD(self):
         if self.path.startswith("/pmtiles/"):

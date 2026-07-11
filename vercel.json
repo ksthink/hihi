@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["icn1"],
   "rewrites": [
     { "source": "/pmtiles/:path*", "destination": "/api/tiles?f=:path*" }
   ]

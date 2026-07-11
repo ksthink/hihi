@@ -642,14 +642,27 @@ function useBaseFor(park) {
   }
 }
 
+// 산별 팩 파일 fetch — 프라미스를 공유해 부팅 프리페치와 loadPark 의 중복 요청을 막는다.
+const packFetches = {}; // "<park>/<file>" → Promise<json|null>
+function fetchPack(park, file) {
+  const key = `${park}/${file}`;
+  packFetches[key] ||= fetch(packUrl(park, file))
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  return packFetches[key];
+}
+// 첫 산 팩 프리페치 — 카탈로그가 도착하면 지도 타일 로드와 병렬로 미리 받아둔다
+function prefetchPark(park) {
+  fetchPack(park, "routes.geojson");
+  fetchPack(park, "spots.geojson");
+  fetchPack(park, "contours.geojson");
+}
+
 // 산별 오버레이(스팟/등고선) 지연 로드 — Storage packs/<산코드>/ 에서.
 // 저장 팩(openSavedMap)이 이미 채웠으면 그대로 둔다.
 async function ensureParkOverlays(park) {
   if (parkOverlays[park]) return;
-  const fetchPack = (file) =>
-    fetch(packUrl(park, file)).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const [spots, contours] = await Promise.all([
-    fetchPack("spots.geojson"), fetchPack("contours.geojson")
+    fetchPack(park, "spots.geojson"), fetchPack(park, "contours.geojson")
   ]);
   parkOverlays[park] = { spots, contours };
 }
@@ -665,8 +678,7 @@ async function loadPark(park) {
   let geojson = trailCache[park];
   if (!geojson) {
     // 팩 유실/미배포(404 등)여도 부팅을 죽이지 않는다 — 등산로만 비우고 지도는 띄움
-    geojson = (await fetch(packUrl(park, "routes.geojson"))
-      .then((r) => (r.ok ? r.json() : null)).catch(() => null)) || EMPTY_FC;
+    geojson = (await fetchPack(park, "routes.geojson")) || EMPTY_FC;
     trailCache[park] = geojson;
   }
   await ensureParkOverlays(park);
@@ -1585,11 +1597,19 @@ document.getElementById("show-all").addEventListener("click", (e) => {
 // ── 시작 ─────────────────────────────────────────────
 setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/저장 UI 구동)
 
+// 부팅 병렬화 — 카탈로그·스팟 설정·첫 산 팩 fetch 를 지도 타일 로드와 동시에 시작.
+// (map "load" 뒤에서 직렬로 기다리면 부팅 꼬리가 ~2초 늘어난다)
+const spotDisplayReady = loadSpotDisplay();
+const catalogReady = loadCatalog().then((codes) => {
+  if (codes.length) prefetchPark(codes[0]);
+  return codes;
+});
+
 map.on("load", async () => {
-  await loadSpotDisplay(); // 스팟 노출 정책 — 레이어(필터) 생성 전에 확보
+  await spotDisplayReady; // 스팟 노출 정책 — 레이어(필터) 생성 전에 확보
   ensureOverlays();
-  const codes = await loadCatalog(); // mountains 카탈로그 (오프라인 시 캐시)
-  if (codes.length) await loadPark(codes[0]); // 첫 산(sort_order 1위) — 오버레이는 산별 지연 로드
+  const codes = await catalogReady; // mountains 카탈로그 (오프라인 시 캐시)
+  if (codes.length) await loadPark(codes[0]); // 첫 산(sort_order 1위) — 팩은 프리페치와 공유
   renderFamous();
   renderReco();
   renderRecords();
