@@ -20,6 +20,7 @@ draft.json 스키마:
 """
 import json
 import os
+import tempfile
 import uuid
 
 import pack_lib as pl
@@ -52,12 +53,25 @@ def load(code):
 
 
 def save(code, draft):
-    """원자적 저장 (tmp → rename)."""
+    """원자적 저장 (호출별 고유 tmp → rename).
+
+    tmp 경로를 고정하면 admin_server(스레드 병렬)에서 저장 두 건이 겹칠 때
+    한쪽이 rename 해 간 tmp 를 다른 쪽이 또 rename 하려다 ENOENT 로 실패한다
+    (자동저장 + 명시 저장 동시 발생 사례). mkstemp 로 저장마다 다른 tmp 를 쓰면
+    각 저장이 독립적으로 원자 교체되고 마지막 저장본이 남는다."""
     d = os.path.join(ADMIN_DATA, code)
     os.makedirs(d, exist_ok=True)
-    tmp = draft_path(code) + ".tmp"
-    json.dump(draft, open(tmp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    os.replace(tmp, draft_path(code))
+    fd, tmp = tempfile.mkstemp(dir=d, prefix="draft.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(draft, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, draft_path(code))
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def list_drafts():

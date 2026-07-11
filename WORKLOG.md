@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-11
+
+### 수정 / 변경
+- **지도 로드 속도 개선(부팅 4.34s → 3.46s 로컬 실측)**: `app.js` — 카탈로그·스팟 표시 설정·첫 산 팩 fetch 를 지도 타일 로드와 **병렬**로 시작(기존엔 map load 후 직렬 대기로 부팅 꼬리 ~2초). `fetchPack` 프라미스 공유 헬퍼로 첫 산 프리페치와 `loadPark`/`ensureParkOverlays` 의 중복 요청 방지(모킹 E2E 로 파일당 1회 fetch 검증)
+- **타일 프록시 로컬 서빙**: `scripts/serve.py` — `/pmtiles/kr-base·kr-terrain` 을 로컬 원본(`data/tiles/`)이 있으면 R2 왕복 없이 디스크에서 Range 서빙(요청당 ~50ms → ~1ms, 접미 범위·416·ETag/304 지원). 파일 없으면 기존 R2 프록시 폴백
+- **Vercel 타일 함수 서울 고정**: `vercel.json` — `regions: ["icn1"]` (기본 미국 동부(iad1) 왕복 제거, 다음 배포부터 적용)
+- **초안 동시 저장 레이스 수정**: `scripts/draft_store.py`(`save`) — 모든 저장이 같은 `draft.json.tmp` 경로를 공유해 자동저장·명시 저장이 겹치면(스레드 병렬 서버) rename ENOENT("저장 실패" 에러, 원미산 GPX 등록 중 발생)가 나던 것을 `mkstemp` 호출별 고유 tmp + 원자 교체로 수정. 병렬 PUT 8~20건 × 다회 스트레스로 전건 200·무결성 검증
+
 ## 2026-07-10
 
 ### 생성 / 추가

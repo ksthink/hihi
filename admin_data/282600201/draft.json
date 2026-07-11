@@ -1,0 +1,26 @@
+{
+ "version": 1,
+ "mountain": {
+  "code": "282600201",
+  "name": "계양산",
+  "region": "인천광역시 계양구 목상동",
+  "elev": 395,
+  "center": [
+   126.715,
+   37.56
+  ],
+  "zoom": 12,
+  "bbox": [
+   126.68,
+   37.54,
+   126.75,
+   37.58
+  ],
+  "sort_order": 100,
+  "famous": false,
+  "published": true
+ },
+ "courses": [],
+ "spots": [],
+ "publish": null
+}
