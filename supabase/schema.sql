@@ -35,7 +35,11 @@ drop policy if exists own_profile on profiles;
 create policy own_profile on profiles for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- climb_records: 등반 기록 (track 은 GPS 좌표열, 웹 단계엔 null)
+-- climb_records: 등반 기록.
+-- track jsonb 포맷(웹·iOS 공용): { points: [[lng,lat,고도m|null,unix초]...](최대 2000점, 균등 솎음),
+--   elev: {min,max,ascent,descent}(고도 샘플 충분할 때만) }
+-- 구형 기록은 points 가 [lng,lat,unix초] 3원소 — 소비 측에서 길이로 구분.
+-- 원본 고해상 트랙은 클라우드에 올리지 않는다(iOS: 기기 로컬 GPX 보관, 여기엔 단순화본).
 create table if not exists climb_records (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade,

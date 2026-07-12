@@ -546,6 +546,19 @@ function ensureOverlays() {
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.6 }
     });
+
+    // 저장된 산행 기록 트랙 (기록 탭에서 선택 시 setData) — 점선 라운드로 코스 선과 구분
+    map.addSource("rec-track", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "rec-track-casing", type: "line", source: "rec-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": c.casing, "line-width": 6 }
+    });
+    map.addLayer({
+      id: "rec-track", type: "line", source: "rec-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": c.line, "line-width": 2.6, "line-dasharray": [0.1, 1.8] }
+    });
   }
 
   if (!map.getSource("spots")) {
@@ -802,6 +815,7 @@ async function loadPark(park) {
   const ov = parkOverlays[park] || {};
   if (map.getSource("spots")) map.getSource("spots").setData(ov.spots || EMPTY_FC);
   if (map.getSource("contours")) map.getSource("contours").setData(ov.contours || EMPTY_FC);
+  if (map.getSource("rec-track")) map.getSource("rec-track").setData(EMPTY_FC); // 산 전환 시 기록 트랙 지움
   applySpotsVisibility();
   applyContourVisibility();
   applyTrailFilter();
@@ -1365,7 +1379,9 @@ function startClimb() {
           if (d < 5) return;                    // 잡음 제거
           climbSession.dist += d;
         }
-        climbSession.track.push([+pt[0].toFixed(6), +pt[1].toFixed(6), Math.floor(Date.now() / 1000)]);
+        // 트랙 점 = [lng, lat, 고도(m·없으면 null), unix초] — iOS(CoreLocation)도 동일 포맷 기록
+        const ele = pos.coords.altitude != null ? Math.round(pos.coords.altitude) : null;
+        climbSession.track.push([+pt[0].toFixed(6), +pt[1].toFixed(6), ele, Math.floor(Date.now() / 1000)]);
         document.getElementById("ch-dist").textContent = (climbSession.dist / 1000).toFixed(2);
         document.getElementById("ch-pts").textContent = climbSession.track.length;
       },
@@ -1415,6 +1431,26 @@ document.getElementById("start-btn").addEventListener("click", () => {
 });
 document.getElementById("ch-stop").addEventListener("click", () => stopClimb());
 
+// 트랙 고도 통계 — 이동평균(창 5)으로 GPS 고도 잡음을 누른 뒤 누적 상승/하강 계산.
+// 고도 샘플이 10개 미만이거나 전체 점의 절반 미만이면 신뢰 불가 → null(코스 계획값 사용).
+// iOS(CoreLocation·기압계 보정)에서도 동일 계산을 쓰면 된다.
+function elevStats(track) {
+  const seq = track.map((pt) => pt[2]).filter((e) => e != null);
+  if (seq.length < 10 || seq.length < track.length / 2) return null;
+  const W = 5;
+  const smooth = seq.map((_, i) => {
+    const s = seq.slice(Math.max(0, i - W + 1), i + 1);
+    return s.reduce((a, b) => a + b, 0) / s.length;
+  });
+  let up = 0, down = 0;
+  for (let i = 1; i < smooth.length; i++) {
+    const d = smooth[i] - smooth[i - 1];
+    if (d > 0) up += d; else down -= d;
+  }
+  return { min: Math.round(Math.min(...seq)), max: Math.round(Math.max(...seq)),
+           ascent: Math.round(up), descent: Math.round(down) };
+}
+
 async function saveClimb() {
   if (!climbSession || !currentUser) { climbSession = null; return; }
   const s = climbSession;
@@ -1428,6 +1464,9 @@ async function saveClimb() {
     const step = track.length / 2000;
     track = Array.from({ length: 2000 }, (_, i) => s.track[Math.floor(i * step)]);
   }
+  // track jsonb 포맷(네이티브 공용): { points: [[lng,lat,고도|null,unix초]…], elev?: {min,max,ascent,descent} }
+  // (구형 기록은 points 가 [lng,lat,unix초] 3원소 — 소비 측에서 길이로 구분)
+  const elev = track.length >= 2 ? elevStats(track) : null;
   const rec = {
     user_id: currentUser.id,
     mountain_id: s.park,
@@ -1436,9 +1475,10 @@ async function saveClimb() {
     ended_at: ended.toISOString(),
     // 실측 이동거리가 유의미하면(50m+) 실측, 아니면 코스 거리로 기록
     distance_km: measuredKm >= 0.05 ? +measuredKm.toFixed(2) : (p.distance_km ?? null),
-    ascent_m: p.ascent ?? null,
+    // 상승고도도 같은 원칙 — 실측(고도 샘플 충분)이면 실측, 아니면 코스 계획값
+    ascent_m: elev ? elev.ascent : (p.ascent ?? null),
     duration_s: Math.max(1, Math.round((ended - s.startedAt) / 1000)),
-    track: track.length >= 2 ? { points: track } : null
+    track: track.length >= 2 ? { points: track, ...(elev ? { elev } : {}) } : null
   };
   const { error } = await supabase.from("climb_records").insert(rec);
   const hint = document.getElementById("climb-hint");
@@ -1571,13 +1611,40 @@ async function renderRecords() {
           // "산 이름 | 코스명" — 산은 카탈로그(PARKS)에서, 없으면 코스명만
           [PARKS[r.mountain_id]?.label, r.course_name].filter(Boolean).join(" | ") || r.mountain_id || "산행"
         }</span><span class="ri-date">${fmtDate(r.started_at)}</span></div>
-        <div class="ri-meta"><span>${(r.distance_km ?? 0)} km</span><span>${fmtDur(r.duration_s)}</span></div>
+        <div class="ri-meta"><span>${(r.distance_km ?? 0)} km</span><span>${fmtDur(r.duration_s)}</span>${
+          r.track?.elev ? `<span>↑${r.track.elev.ascent}m</span>` : ""
+        }${hasTrack(r) ? '<span class="ri-route">루트 ›</span>' : ""}</div>
       </div>
       <button class="ri-del">삭제</button>`;
     wireRecordSwipe(li, r);
+    // 트랙 있는 기록 탭 → 지도에 루트 표시 (스와이프 직후·삭제 열림 상태는 무시)
+    if (hasTrack(r)) {
+      li.querySelector(".ri-body").addEventListener("click", () => {
+        if ((li._x || 0) < -1) { li._close(); return; }
+        if (li._sup) return;
+        openRecordTrack(r);
+      });
+    }
     ul.appendChild(li);
   });
   setSummary(recs.length, totDist.toFixed(1), totGain);
+}
+
+// 기록 트랙 지도 표시 — 저장된 points 를 LineString 으로 그리고 트랙 범위로 이동.
+// 점 포맷: 신형 [lng,lat,고도,t] / 구형 [lng,lat,t] — 앞 2개만 좌표로 사용.
+const hasTrack = (r) => (r.track?.points?.length || 0) >= 2 && !!PARKS[r.mountain_id];
+async function openRecordTrack(r) {
+  showTab("tam");
+  await loadPark(r.mountain_id); // 산 전환 시 rec-track 이 비워진 뒤 아래서 주입
+  const coords = r.track.points.map((pt) => [pt[0], pt[1]]);
+  map.getSource("rec-track")?.setData({ type: "Feature", properties: {},
+    geometry: { type: "LineString", coordinates: coords } });
+  let minX = 180, minY = 90, maxX = -180, maxY = -90;
+  for (const [x, y] of coords) {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  }
+  map.fitBounds([[minX, minY], [maxX, maxY]], { padding: fitPadding(), maxZoom: 15.5, duration: 700 });
 }
 
 // ── 기록 스와이프 삭제 ──────────────────────────────
@@ -1617,6 +1684,8 @@ function wireRecordSwipe(li, rec) {
     const open = (li._x || 0) < OPEN / 2; // 절반 이상 밀면 열림 유지
     setX(open ? OPEN : 0, true);
     openRecRow = open ? li : (openRecRow === li ? null : openRecRow);
+    li._sup = true; // 드래그 직후 click 억제 (루트 열기 오작동 방지)
+    setTimeout(() => { li._sup = false; }, 80);
   };
   body.addEventListener("pointerup", end);
   body.addEventListener("pointercancel", end);
