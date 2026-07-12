@@ -13,11 +13,17 @@
 - **스팟별 표시 오버라이드**: 관리자 스팟 행마다 표시 줌·기호·크기·볼드 지정(`disp_zoom/disp_icon/disp_size/disp_bold`, 비우면 분류 설정 따름) — draft 저장(`admin/admin.js`) → 발행 `spots.geojson` properties(`scripts/draft_store.py`) → 앱 레이어 coalesce 소비(`app.js`)
 - **큐레이션 시스템(추천 모음)**: 관리자 "큐레이션" 메뉴 — 목록·새 등록·산/코스 통합 검색 추가·수정·삭제, `admin_data/curations.json` + R2 `config/curations.json`. API `GET/PUT /api/config/curations`·`GET /api/course-search`·`POST /api/mountain-image`(산 커버 이미지 → R2 `images/mountains/`) (`scripts/admin_server.py`)
 - **앱 추천 탭 "하이하잇 PICK" 캐러셀**: `app.js`·`style.css` — 첫 큐레이션을 정사각 이미지 캐러셀로(수동 스와이프 스냅 + 점 인디케이터, 100대 명산 위 배치). 슬라이드 4요소(전부 선택 입력, 비면 미표시): 좌상단 반투명 배지(부가설명) → 큰 제목 → 중앙 하단 가운데 정렬 설명 → 좌하단 © 로고. 배경 = 업로드한 산 사진(없으면 무채색 그래디언트 폴백). 2번째+ 큐레이션은 카드 리스트, 미배포 시 내장 RECO 폴백
-- **공식 추천 카테고리 확장(BAC 명산100·국립공원공단 공식탐방로)**: 산별 분류 체계 — 관리자 산 편집에 체크박스 2개(`admin/index.html`·`admin.js`, `mountain.lists` 배열 — 100대 명산은 기존 `famous` 컬럼 유지), 배포 upsert 에 `lists` 포함(`scripts/publish_pack.py`, 컬럼 부재 시 기존 폴백), `supabase/migrations-002-lists.sql`(신규, **SQL Editor 1회 실행 필요**) + `schema.sql`. 앱 추천 탭은 공식 추천 아코디언 3종을 카테고리별 생성(`app.js` `OFFICIAL_LISTS`·`renderFamous`, 빈 분류는 "등록된 산 준비 중")
+- **공식 추천 카테고리 확장(BAC 명산100·국립공원공단 공식탐방로)**: 산별 분류 체계 — 관리자 산 편집에 체크박스 2개(`admin/index.html`·`admin.js`, `mountain.lists` 배열 — 100대 명산은 기존 `famous` 컬럼 유지), 배포 upsert 에 `lists` 포함(`scripts/publish_pack.py`, 컬럼 부재 시 기존 폴백), `supabase/migrations-002-lists.sql`(신규) + `schema.sql`. 앱 추천 탭은 공식 추천 아코디언 3종을 카테고리별 생성(`app.js` `OFFICIAL_LISTS`·`renderFamous`, 빈 분류는 "등록된 산 준비 중"). 마이그레이션 실행(SQL Editor) 후 계양산 v11 재발행으로 BAC 분류 앱 반영 확인
+- **PICK 슬라이드 출처 요소**: 사진 저작자 표기용 `credit` — 관리자 항목 입력란 추가, 앱 우하단(로고와 같은 라인·10px 포맷, 길면 말줄임) 렌더 (`admin/admin.js`·`app.js`·`style.css`·`scripts/admin_server.py`)
+- **매거진 아카이브**: 앱 추천 탭은 노출 매거진(`curations[0]`) 1세트만 캐러셀, 아래 "지난 매거진 보기" 목록(제목·대표산) — 누르면 그 매거진이 캐러셀로 전환(`app.js`). 관리자는 노출 큐레이션만 펼침("노출 중" 배지), 지난 큐레이션은 목록 행 → 클릭 시 편집 블록(수정·삭제·접기·**"노출로 지정"** 승격) (`admin/admin.js`·`admin.css`)
+- **기록 스와이프 삭제**: 등산기록 행 왼쪽 스와이프(포인터 이벤트, 터치·마우스 공용, 세로는 스크롤 양보, 한 번에 한 행) → 삭제 버튼 노출 → confirm 후 Supabase `climb_records` 영구 삭제 + 목록·합계 갱신 (`app.js`·`style.css`). 임시 계정 E2E(로그인→스와이프→confirm→DB 삭제)로 검증
 
 ### 수정 / 변경
 - **스팟 앵커 점 가시화**: `app.js` `spots-dots` — 반지름 1.2~1.8px(사실상 비가시) → 2.4~3.8px + 헤일로 링 1.4, 라벨 오프셋 0.9 (라벨이 가리키는 실제 위치 특정)
 - **추천 탭 다듬기**: `index.html`·`style.css` — 부제("대한민국 명산과 추천 코스") 제거, PICK 슬라이드 폰트 크기 조정(배지 10 · 제목 23 · 설명 13 · 로고 10px)
+- **탭 본문 스크롤바 숨김**: `style.css` `.view-body` — 아코디언 펼침 시 데스크톱 클래식 스크롤바가 생기며 콘텐츠 폭이 순간 줄던 레이아웃 점프 해소(iOS 오버레이 스크롤 관례, 펼침 전후 폭 동일 실측)
+- **기록 삭제 버튼 라운드 개선**: `style.css`·`app.js` — 삭제 버튼을 전 모서리 라운드로 카드 뒤까지 확장해 곡면 틈을 채움(맞물린 토글 형태), 닫힘 상태 버튼 숨김으로 모서리 1px 비침 방지(픽셀 실측 0)
+- **iOS 네이티브 원칙 점검**: CLAUDE.md 6개 원칙 대비 전수 스캔 — 이번 세션 작업은 이식성 개선 방향(글리프 자체 호스팅·데이터 주도·R2 직결) 확인, 이탈 1건 발견: **산림청·국립공원공단 출처 표기 누락**(정보 패널 footer 추가 필요 — 미조치), 큐레이션 업로드 사진 저작권은 운영 책임(credit 요소로 표기 수단 마련)
 - **개발 서버 캐시 정책**: `scripts/serve.py` — 정적 파일 `Cache-Control: no-cache`(글리프만 1일). 헤더 부재 시 브라우저 휴리스틱 캐시가 구 `basemap-style.js` + 신 `app.js` 를 섞어 모듈 임포트 에러 → **인트로에서 앱이 멈추던 문제** 수리
 - **부팅 레이스 2건 수정**: `app.js` — ① 조기 `styledata` 가 스팟 설정 로드 전에 오버레이 레이어를 만들어 설정이 기본값으로 굳던 잠복 버그(설정 확보 후 부착 게이트) ② `isStyleLoaded()` 는 타일 스트리밍 중 false 라 `once("load")` 콜백이 유실되는 함정 — load 발생 플래그로 대체
 - **관리자 편집 지도 개편**: `admin/admin.js` — 스팟(정상·장소) 편집 레이어가 표시 설정·스팟별 오버라이드를 앱과 동일 규칙으로 미리보기, 기저지도 POI 설정 변경 시 스타일 재생성 + 편집 소스/레이어 자동 재부착(styledata 기반 — 전국 뷰에서 map load 미발화 대응, 이벤트 바인딩도 load 비의존화)
