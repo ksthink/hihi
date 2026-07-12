@@ -143,15 +143,16 @@ def publish(code, job=None, step=None):
            "elev": m.get("elev"), "center": m["center"], "zoom": m["zoom"],
            "bbox": bbox, "pack_version": version, "pack_size_kb": total // 1024,
            "sort_order": m.get("sort_order", 100), "published": m.get("published", True),
-           "famous": m.get("famous", False), "updated_at": now}
+           "famous": m.get("famous", False), "lists": m.get("lists") or [],
+           "updated_at": now}
     st, out = _req("POST", "/rest/v1/mountains", [row],
                    {"Content-Type": "application/json",
                     "Prefer": "resolution=merge-duplicates,return=minimal"})
     if st == 400 and b"PGRST204" in out:
         # 마이그레이션 전(신규 컬럼 부재) 호환 — 기본 컬럼만으로 재시도.
-        # supabase/migrations-001-admin.sql 실행 후에는 sort_order/published/famous 반영됨.
-        log("신규 컬럼 없음 → 기본 컬럼으로 upsert (migrations-001-admin.sql 실행 요망)", 0.92)
-        for k in ("sort_order", "published", "famous", "updated_at"):
+        # supabase/migrations-001-admin.sql·002-lists.sql 실행 후 전 컬럼 반영됨.
+        log("신규 컬럼 없음 → 기본 컬럼으로 upsert (migrations-001·002 실행 요망)", 0.92)
+        for k in ("sort_order", "published", "famous", "lists", "updated_at"):
             row.pop(k, None)
         st, out = _req("POST", "/rest/v1/mountains", [row],
                        {"Content-Type": "application/json",

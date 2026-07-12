@@ -256,7 +256,9 @@ footer .warn { margin-top: 6px; }
 .view-body { flex: 1; overflow-y: auto; padding: 16px 18px 24px; -webkit-overflow-scrolling: touch; }
 
 /* 대한민국 100대 명산 */
-.famous { margin: 10px 0 18px; } /* 추천 코스 아래 배치 — 마지막 카드와 간격 */
+.famous { margin: 10px 0; } /* 공식 추천 아코디언 — 여러 개 세로 나열 */
+#official-lists { margin-bottom: 18px; }
+.fm-empty { cursor: default; opacity: .6; }
 .famous-btn {
   width: 100%; padding: 15px 16px; border: none; border-radius: 14px; cursor: pointer;
   background: var(--card-bg); color: var(--card-text); font-family: inherit;

@@ -393,6 +393,8 @@ function renderMountain() {
   $("m-elev").value = m.elev ?? "";
   $("m-sort").value = m.sort_order ?? 100;
   $("m-famous").checked = !!m.famous;
+  $("m-bac100").checked = (m.lists || []).includes("bac100");
+  $("m-knps").checked = (m.lists || []).includes("knps");
   $("m-published").checked = !!m.published;
   const p = S.draft.publish;
   $("pub-info").textContent = p?.pack_version
@@ -408,6 +410,16 @@ for (const [id, key, cast] of [["m-region", "region", String], ["m-elev", "elev"
     const v = cast === Boolean ? e.target.checked : cast(e.target.value);
     S.draft.mountain[key] = (cast === Number && Number.isNaN(v)) ? null : v;
     markDirty(); refreshList();
+  });
+}
+
+// 공식 추천 카테고리 체크박스 → mountain.lists 배열 (famous=100대 명산은 별도 컬럼 유지)
+for (const [id, key] of [["m-bac100", "bac100"], ["m-knps", "knps"]]) {
+  $(id).addEventListener("change", (e) => {
+    const l = new Set(S.draft.mountain.lists || []);
+    if (e.target.checked) l.add(key); else l.delete(key);
+    S.draft.mountain.lists = [...l];
+    markDirty();
   });
 }
 

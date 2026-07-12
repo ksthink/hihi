@@ -16,6 +16,7 @@ create table if not exists mountains (
   sort_order int default 100,
   published boolean default true,
   famous boolean default false,
+  lists jsonb default '[]'::jsonb, -- 공식 추천 카테고리 (bac100·knps)
   updated_at timestamptz default now(),
   created_at timestamptz default now()
 );

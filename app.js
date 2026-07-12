@@ -44,7 +44,8 @@ async function loadCatalog() {
     for (const m of q.data || []) {
       PARKS[m.id] = {
         label: m.name, center: m.center, zoom: m.zoom, bbox: m.bbox,
-        elev: m.elev, region: m.region, famous: m.famous !== false
+        elev: m.elev, region: m.region, famous: m.famous !== false,
+        lists: m.lists || [] // 공식 추천 카테고리 (bac100·knps — migrations-002)
       };
     }
     localStorage.setItem(CATALOG_KEY, JSON.stringify(PARKS));
@@ -964,30 +965,54 @@ function focusTrail(feature) {
 
 // ── 명산 선택 (추천 탭의 "대한민국 100대 명산") ──────
 // 카탈로그(PARKS)에서 파생 — famous 플래그는 관리자 콘솔에서 지정
-function catalogList(famousOnly = false) {
+function catalogList(pred = null) {
   return Object.entries(PARKS)
-    .filter(([, p]) => !famousOnly || p.famous)
+    .filter(([, p]) => !pred || pred(p))
     .map(([code, p]) => ({
       park: code, name: p.label,
       elev: p.elev ? p.elev + "m" : "", region: p.region || ""
     }));
 }
+// 공식 추천 카테고리 — 산마다 admin 에서 분류(famous 컬럼 + lists 배열)
+const OFFICIAL_LISTS = [
+  { label: "대한민국 100대 명산", member: (p) => p.famous },
+  { label: "블랙야크(BAC) 명산 100", member: (p) => (p.lists || []).includes("bac100") },
+  { label: "국립공원공단 공식탐방로", member: (p) => (p.lists || []).includes("knps") },
+];
 function renderFamous() {
-  const ul = document.getElementById("famous-list");
-  ul.innerHTML = "";
-  catalogList(true).forEach((m) => {
-    const li = document.createElement("li");
-    li.className = "famous-item";
-    li.innerHTML = `<span class="fm-name">${m.name}</span><span class="fm-meta">${m.elev} · ${m.region}</span>`;
-    li.addEventListener("click", () => selectMountain(m.park));
-    ul.appendChild(li);
-  });
+  const box = document.getElementById("official-lists");
+  box.innerHTML = "";
+  for (const list of OFFICIAL_LISTS) {
+    const wrap = document.createElement("div");
+    wrap.className = "famous";
+    const btn = Object.assign(document.createElement("button"), {
+      className: "famous-btn", textContent: list.label,
+    });
+    const ul = document.createElement("ul");
+    ul.className = "famous-list";
+    ul.hidden = true;
+    const items = catalogList(list.member);
+    for (const m of items) {
+      const li = document.createElement("li");
+      li.className = "famous-item";
+      li.innerHTML = `<span class="fm-name">${m.name}</span><span class="fm-meta">${m.elev} · ${m.region}</span>`;
+      li.addEventListener("click", () => selectMountain(m.park));
+      ul.appendChild(li);
+    }
+    if (!items.length) {
+      const li = document.createElement("li");
+      li.className = "famous-item fm-empty";
+      li.innerHTML = '<span class="fm-meta">등록된 산 준비 중</span>';
+      ul.appendChild(li);
+    }
+    btn.addEventListener("click", () => {
+      ul.hidden = !ul.hidden;
+      btn.classList.toggle("open", !ul.hidden);
+    });
+    wrap.append(btn, ul);
+    box.appendChild(wrap);
+  }
 }
-document.getElementById("famous-btn").addEventListener("click", () => {
-  const ul = document.getElementById("famous-list");
-  ul.hidden = !ul.hidden;
-  document.getElementById("famous-btn").classList.toggle("open", !ul.hidden);
-});
 function selectMountain(park) {
   showTab("tam");
   loadPark(park);

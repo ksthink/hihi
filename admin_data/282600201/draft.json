@@ -18,7 +18,8 @@
   ],
   "sort_order": 100,
   "famous": true,
-  "published": true
+  "published": true,
+  "lists": []
  },
  "courses": [
   {
