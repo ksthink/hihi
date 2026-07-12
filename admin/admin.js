@@ -1177,6 +1177,13 @@ async function loadCurations() {
   renderCurations();
 }
 
+// 항목의 대표산 이름 (지난 큐레이션 목록 메타)
+const cuMountainName = (cu) => {
+  const it = (cu.items || [])[0];
+  return it ? (it.type === "mountain" ? it.name : (it.mountain || "")) : "(항목 없음)";
+};
+
+const cuExpanded = new Set(); // 펼쳐서 편집 중인 지난 큐레이션 id
 function renderCurations() {
   const box = $("cu-list");
   box.innerHTML = "";
@@ -1184,27 +1191,60 @@ function renderCurations() {
     box.innerHTML = '<p class="dim" style="margin:6px 0">등록된 큐레이션이 없습니다. ＋ 새 큐레이션으로 시작하세요.</p>';
     return;
   }
-  for (const cu of curDoc.curations) box.appendChild(curationBlock(cu));
+  // 첫 번째 = 앱에 노출 중인 매거진(항상 펼침), 나머지 = 지난 큐레이션(목록 → 클릭 시 편집)
+  curDoc.curations.forEach((cu, i) => {
+    if (i === 0 || cuExpanded.has(cu.id)) box.appendChild(curationBlock(cu));
+    else box.appendChild(pastCurationRow(cu));
+  });
+}
+
+function pastCurationRow(cu) {
+  const row = document.createElement("div");
+  row.className = "cu-past";
+  row.title = "클릭해서 편집";
+  row.innerHTML = `<span class="cu-past-title">${cu.title || "(이름 없음)"}</span>
+    <span class="cu-past-meta">${cuMountainName(cu)}</span>`;
+  row.onclick = () => { cuExpanded.add(cu.id); renderCurations(); };
+  return row;
 }
 
 function curationBlock(cu) {
+  const isLive = curDoc.curations[0] === cu; // 앱 노출 중 여부
   const div = document.createElement("div");
   div.className = "cu-block";
 
-  // 제목 + 큐레이션 삭제
+  // 제목 + (노출 배지 | 노출로 지정·접기) + 삭제
   const head = document.createElement("div");
   head.className = "cu-head";
   const title = Object.assign(document.createElement("input"), {
     className: "cu-title", placeholder: "큐레이션 이름 (예: 가을 단풍 추천)", value: cu.title || "",
   });
   title.onchange = () => { cu.title = title.value.trim(); cuDirty(); };
+  head.append(title);
+  if (isLive) {
+    head.append(Object.assign(document.createElement("span"), {
+      className: "cu-live", textContent: "노출 중", title: "앱 추천 탭 캐러셀에 노출되는 매거진",
+    }));
+  } else {
+    const promote = Object.assign(document.createElement("button"), {
+      textContent: "노출로 지정", title: "이 큐레이션을 앱 캐러셀 매거진으로",
+    });
+    promote.onclick = () => {
+      curDoc.curations = [cu, ...curDoc.curations.filter((x) => x !== cu)];
+      cuExpanded.delete(cu.id);
+      renderCurations(); cuDirty();
+    };
+    const fold = Object.assign(document.createElement("button"), { textContent: "접기" });
+    fold.onclick = () => { cuExpanded.delete(cu.id); renderCurations(); };
+    head.append(promote, fold);
+  }
   const del = Object.assign(document.createElement("button"), { className: "danger", textContent: "삭제" });
   del.onclick = () => {
     if (!confirm(`큐레이션 "${cu.title || "(이름 없음)"}" 삭제?`)) return;
     curDoc.curations = curDoc.curations.filter((x) => x !== cu);
     renderCurations(); cuDirty();
   };
-  head.append(title, del);
+  head.append(del);
 
   // 항목 목록 (산·코스) — 2행: [분류·이름·제거] + [추천 설명·커버 이미지]
   const ul = document.createElement("ul");
@@ -1328,7 +1368,9 @@ function curationBlock(cu) {
 
 $("cu-new").onclick = () => {
   if (!curDoc) curDoc = { version: 1, curations: [] };
-  curDoc.curations.push({ id: "cu-" + Math.random().toString(36).slice(2, 10), title: "", items: [] });
+  const cu = { id: "cu-" + Math.random().toString(36).slice(2, 10), title: "", items: [] };
+  curDoc.curations.push(cu);
+  cuExpanded.add(cu.id); // 새 큐레이션은 바로 펼쳐 편집 (노출 전환은 "노출로 지정")
   renderCurations(); cuDirty();
 };
 $("cu-save").onclick = async () => {

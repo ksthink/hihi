@@ -1176,45 +1176,55 @@ function pickCarousel(cu, items) {
   return frag;
 }
 
+// 항목의 대표산 이름 (지난 매거진 목록 메타)
+const itemMountainName = (it) =>
+  it.type === "mountain" ? it.name : (it.mountain || PARKS[it.code]?.label || "");
+
+let recoView = 0; // 추천 탭에서 보고 있는 매거진 인덱스 (0 = 노출 중)
 function renderReco() {
   const box = document.getElementById("reco-list");
   box.innerHTML = "";
   // 큐레이션(admin 등록) 우선 — 카탈로그에 없는 산/코스는 열 수 없으므로 제외.
-  // 첫 큐레이션은 캐러셀, 나머지는 카드 리스트.
+  // 노출 매거진 1세트만 캐러셀, 나머지는 "지난 매거진 보기" 목록(제목·대표산) —
+  // 목록을 누르면 그 매거진이 캐러셀로 전환돼 자세히 볼 수 있다.
   if (curations?.length) {
-    let carouselDone = false;
-    for (const cu of curations) {
-      const items = (cu.items || []).filter((it) => PARKS[it.code]);
-      if (!items.length) continue;
-      if (!carouselDone) {
-        carouselDone = true;
-        box.appendChild(pickCarousel(cu, items));
-        continue;
-      }
-      const h = document.createElement("div");
-      h.className = "reco-group-title";
-      h.textContent = cu.title;
-      box.appendChild(h);
-      for (const it of items) {
-        const el = document.createElement("div");
-        el.className = "reco-card";
-        if (it.type === "mountain") {
-          const m = PARKS[it.code];
-          el.innerHTML = `
-            <div class="rc-park">${it.sub || "산"}</div>
-            <div class="rc-name">${it.title || it.name}</div>
-            <div class="rc-why">${it.desc || [m.region, m.elev ? m.elev + "m" : null].filter(Boolean).join(" · ")}</div>`;
-        } else {
-          el.innerHTML = `
-            <div class="rc-park">${it.sub || it.mountain || PARKS[it.code].label}</div>
-            <div class="rc-name">${it.title || it.name}</div>
-            ${it.desc ? `<div class="rc-why">${it.desc}</div>` : ""}`;
+    const valid = curations
+      .map((cu, i) => ({ cu, i, items: (cu.items || []).filter((it) => PARKS[it.code]) }))
+      .filter((v) => v.items.length);
+    if (valid.length) {
+      if (recoView >= valid.length) recoView = 0;
+      const cur = valid[recoView];
+      box.appendChild(pickCarousel(cur.cu, cur.items));
+      const others = valid.filter((v) => v !== cur);
+      if (others.length) {
+        const wrap = document.createElement("div");
+        wrap.className = "famous";
+        const btn = Object.assign(document.createElement("button"), {
+          className: "famous-btn", textContent: "지난 매거진 보기",
+        });
+        const ul = document.createElement("ul");
+        ul.className = "famous-list";
+        ul.hidden = true;
+        for (const v of others) {
+          const li = document.createElement("li");
+          li.className = "famous-item";
+          li.innerHTML = `<span class="fm-name">${v.cu.title}</span>
+            <span class="fm-meta">${itemMountainName(v.items[0])}</span>`;
+          li.addEventListener("click", () => {
+            recoView = valid.indexOf(v);
+            renderReco();
+          });
+          ul.appendChild(li);
         }
-        el.addEventListener("click", () => openCurationItem(it));
-        box.appendChild(el);
+        btn.addEventListener("click", () => {
+          ul.hidden = !ul.hidden;
+          btn.classList.toggle("open", !ul.hidden);
+        });
+        wrap.append(btn, ul);
+        box.appendChild(wrap);
       }
+      return;
     }
-    if (box.children.length) return;
   }
   // 폴백: 내장 추천 (큐레이션 미배포·오프라인 첫 방문)
   RECO.forEach((r) => {
