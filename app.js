@@ -80,6 +80,9 @@ function trailColors() {
     ? { line: "#ffffff", casing: "#000000", faded: "#5c5c5c" }
     : { line: "#111111", casing: "#ffffff", faded: "#b8b8b8" };
 }
+// 등반 중 '지나갈 곳'(선택 코스) 색 — 지나온 실측 트랙(본선색: 라이트 검정/다크 흰색)보다
+// 한 단계 낮춘 짙은 회색 (다크 모드에선 검정 배경 위 중간 회색)
+const climbAheadColor = () => (theme === "dark" ? "#969696" : "#666666");
 
 // ── PMTiles 프로토콜 등록 ────────────────────────────
 const protocol = new Protocol();
@@ -559,6 +562,21 @@ function ensureOverlays() {
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": c.line, "line-width": 2.6, "line-dasharray": [0.1, 1.8] }
     });
+
+    // 등반 중 라이브 트랙(지나온 곳) — GPS 갱신마다 setData. 선택 코스(trail-hl,
+    // 지나갈 곳)는 등반 중 짙은 회색으로 낮춰 실측 선이 그 위에 본선색으로 쌓인다.
+    map.addSource("climb-track", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "climb-track-casing", type: "line", source: "climb-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": c.casing, "line-width": 6.5 }
+    });
+    map.addLayer({
+      id: "climb-track", type: "line", source: "climb-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": c.line, "line-width": 3.4 }
+    });
+    applyClimbRoute(); // 테마 전환 등 재부착 시 진행 중 등반 상태 복원
   }
 
   if (!map.getSource("spots")) {
@@ -1326,6 +1344,21 @@ function setStartBtn(on) {
   btn.classList.toggle("recording", on);
 }
 
+// 등반 라이브 상태를 지도에 반영 — 지나온 트랙 라인 + 선택 코스를 '지나갈 곳' 회색으로.
+// 등반 종료(climbSession=null) 시 트랙을 비우고 코스 색을 복원한다.
+function applyClimbRoute() {
+  const src = map.getSource("climb-track");
+  if (!src) return;
+  const pts = climbSession?.track || [];
+  src.setData(pts.length >= 2
+    ? { type: "Feature", properties: {},
+        geometry: { type: "LineString", coordinates: pts.map((pt) => [pt[0], pt[1]]) } }
+    : EMPTY_FC);
+  if (map.getLayer("trail-hl"))
+    map.setPaintProperty("trail-hl", "line-color",
+      climbSession ? climbAheadColor() : trailColors().line);
+}
+
 function startClimb() {
   const p = selectedTrail.properties;
   climbSession = {
@@ -1333,6 +1366,7 @@ function startClimb() {
     watchId: null, timer: null, track: [], dist: 0
   };
   setStartBtn(true);
+  applyClimbRoute(); // 선택 코스를 '지나갈 곳' 회색으로 전환
 
   // 지도 화면으로 전환: 선택 코스만 표시(이미 필터됨) + 코스 범위로 이동
   showTab("tam");
@@ -1382,6 +1416,7 @@ function startClimb() {
         // 트랙 점 = [lng, lat, 고도(m·없으면 null), unix초] — iOS(CoreLocation)도 동일 포맷 기록
         const ele = pos.coords.altitude != null ? Math.round(pos.coords.altitude) : null;
         climbSession.track.push([+pt[0].toFixed(6), +pt[1].toFixed(6), ele, Math.floor(Date.now() / 1000)]);
+        applyClimbRoute(); // 지나온 루트 라이브 갱신
         document.getElementById("ch-dist").textContent = (climbSession.dist / 1000).toFixed(2);
         document.getElementById("ch-pts").textContent = climbSession.track.length;
       },
@@ -1407,6 +1442,7 @@ async function stopClimb() {
   if (npnBox) npnBox.hidden = true;
   setStartBtn(false);
   await saveClimb();
+  applyClimbRoute(); // 라이브 트랙 지우고 코스 색 복원
 }
 
 // 현재 위치 → 국가지점번호 (지도 우측 상단 박스 갱신)
