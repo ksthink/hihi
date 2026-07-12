@@ -534,14 +534,15 @@ function ensureOverlays() {
     // 분류별 노출 줌은 admin 설정(spotDisplay) 주도 — zoomGate 가 필터에서 게이팅
     map.addLayer({
       id: "spots-dots", type: "circle", source: "spots",
-      // 기호(점)는 분류 설정+스팟별 오버라이드의 불리언 게이트 — 꺼진 스팟은 라벨만
+      // 기호(점)는 분류 설정+스팟별 오버라이드의 불리언 게이트 — 꺼진 스팟은 라벨만.
+      // 라벨의 실제 위치를 특정하는 앵커 점 — 흑백에서 헤일로 링(casing)으로 분리.
       filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]],
         iconGate(DOT_CATS), zoomGate(DOT_CATS)],
       paint: {
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 1.8],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.4, 16, 3.8],
         "circle-color": c.line,
         "circle-stroke-color": c.casing,
-        "circle-stroke-width": 0.6
+        "circle-stroke-width": 1.4
       }
     });
     // 운영자가 이름 붙인 분기점/시종점만 지도 라벨 (관리자 콘솔 큐레이션)
@@ -551,7 +552,8 @@ function ensureOverlays() {
       layout: {
         "text-field": ["get", "name"], "text-font": fontMatch(DOT_CATS),
         "text-size": sizeMatch(DOT_CATS),
-        "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
+        // 점(앵커)이 커진 만큼 라벨을 아래로 — 점과 글자가 겹치지 않게
+        "text-offset": [0, 0.9], "text-anchor": "top", "text-max-width": 8
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
     });
