@@ -451,8 +451,11 @@ class AdminHandler(BaseHandler):
                 cfg = {"version": 1, "curations": [
                     {"id": cu.get("id") or f"cu-{uuid.uuid4().hex[:8]}",
                      "title": str(cu["title"]).strip(),
-                     # desc: 캐러셀 중앙 오버레이 추천 문구 / img: 산 커버 이미지 URL
-                     "items": [{k: it[k] for k in ("type", "code", "name", "mountain", "desc", "img")
+                     # 슬라이드 요소(전부 선택 — 비면 미표시): sub 부가설명(반투명 배지),
+                     # title 큰 제목, desc 중앙 하단 설명, logo 좌하단 마크, img 배경 이미지
+                     "items": [{k: it[k] for k in
+                                ("type", "code", "name", "mountain",
+                                 "sub", "title", "desc", "logo", "img")
                                 if it.get(k) not in (None, "")} for it in cu["items"]]}
                     for cu in cus]}
                 body = json.dumps(cfg, ensure_ascii=False, indent=1).encode()

@@ -301,14 +301,18 @@ footer .warn { margin-top: 6px; }
 .ps-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .ps-shade { position: absolute; inset: 0;
   background: linear-gradient(to top, rgba(0,0,0,.68) 0%, rgba(0,0,0,.12) 42%, rgba(0,0,0,.30) 100%); }
-.ps-desc { position: absolute; top: 50%; left: 11%; right: 11%; transform: translateY(-50%);
-  color: #fff; text-align: center; font-size: 13px; font-weight: 600; line-height: 1.65;
-  background: rgba(0,0,0,.36); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-  border-radius: 12px; padding: 10px 14px; }
-.ps-title { position: absolute; left: 18px; right: 18px; bottom: 15px; color: #fff; }
-.ps-name { font-size: 23px; font-weight: 800; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
-.ps-sub { font-size: 12.5px; opacity: .85; margin-top: 2px; text-shadow: 0 1px 4px rgba(0,0,0,.5);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 슬라이드 요소 — 입력 없으면 렌더 자체가 생략됨 (app.js) */
+.ps-head { position: absolute; top: 30px; left: 18px; right: 18px; }
+.ps-kicker { display: inline-block; background: rgba(0,0,0,.42); color: #fff;
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 7px; }
+.ps-title { margin-top: 9px; color: #fff; font-size: 27px; font-weight: 800; line-height: 1.25;
+  text-shadow: 0 1px 8px rgba(0,0,0,.55); }
+.ps-desc { position: absolute; bottom: 17%; left: 10%; right: 10%;
+  color: #fff; text-align: center; font-size: 13px; font-weight: 600; line-height: 1.6;
+  text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+.ps-logo { position: absolute; left: 18px; bottom: 13px; color: rgba(255,255,255,.72);
+  font-size: 10.5px; letter-spacing: .02em; }
 .pick-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 4px; }
 .pick-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .35; transition: opacity .2s; }
 .pick-dots i.on { opacity: 1; }

@@ -1210,13 +1210,25 @@ function curationBlock(cu) {
     };
     row1.appendChild(rm);
 
+    // 슬라이드 요소 입력 — 전부 선택(비면 앱에서 미표시)
+    const field = (key, ph, cls = "cu-desc") => {
+      const el = Object.assign(document.createElement("input"), {
+        className: cls, placeholder: ph, value: it[key] || "",
+      });
+      el.onchange = () => { it[key] = el.value.trim(); cuDirty(); };
+      return el;
+    };
     const row2 = document.createElement("div");
     row2.className = "cu-row2";
-    // 추천 문구 — 캐러셀 중앙 오버레이
-    const desc = Object.assign(document.createElement("input"), {
-      className: "cu-desc", placeholder: "추천 설명 (캐러셀 중앙 오버레이)", value: it.desc || "",
-    });
-    desc.onchange = () => { it.desc = desc.value.trim(); cuDirty(); };
+    row2.append(
+      field("sub", "부가설명 (좌상단 반투명 배지)"),
+      field("title", "제목 (큰 글자)"));
+    const row3 = document.createElement("div");
+    row3.className = "cu-row2";
+    row3.append(field("desc", "설명 (중앙 하단 · 가운데 정렬)"));
+    const row4 = document.createElement("div");
+    row4.className = "cu-row2";
+    row4.append(field("logo", "로고 (좌하단 · 예: © 하이하잇)", "cu-desc cu-logo"));
     // 산 커버 이미지 업로드 → R2 images/mountains/<산코드> (같은 산 항목끼리 재사용)
     const file = Object.assign(document.createElement("input"), { type: "file", accept: "image/jpeg,image/png,image/webp", hidden: true });
     const imgBtn = Object.assign(document.createElement("button"), {
@@ -1242,8 +1254,8 @@ function curationBlock(cu) {
         imgBtn.textContent = "실패: " + e.message; imgBtn.disabled = false;
       }
     };
-    row2.append(desc, imgBtn, file);
-    li.append(row1, row2);
+    row4.append(imgBtn, file);
+    li.append(row1, row2, row3, row4);
     ul.appendChild(li);
   }
 
@@ -1275,7 +1287,13 @@ function curationBlock(cu) {
       if (already.has(`${item.type}|${item.code}|${item.name || ""}`)) {
         li.classList.add("dup"); li.title = "이미 추가됨";
       } else {
-        li.onclick = () => { cu.items.push(item); div.replaceWith(curationBlock(cu)); cuDirty(); };
+        li.onclick = () => {
+          // 로고 기본값 프리필 (비우면 미표시), 같은 산의 기존 커버 이미지 재사용
+          const img = curDoc.curations.flatMap((c2) => c2.items)
+            .find((x) => x.code === item.code && x.img)?.img;
+          cu.items.push({ ...item, logo: "© 하이하잇", ...(img ? { img } : {}) });
+          div.replaceWith(curationBlock(cu)); cuDirty();
+        };
       }
       res.appendChild(li);
     };

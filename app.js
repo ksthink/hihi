@@ -1090,8 +1090,10 @@ function openCurationItem(it) {
   else openTrailByName(it.code, it.name);
 }
 
-// 첫 큐레이션 = 정사각 캐러셀 (수동 스와이프 스냅 + 점 인디케이터).
-// 슬라이드: 배경 = 산 커버 이미지(없으면 무채색 그래디언트), 산 이름 + 중앙 추천 문구 오버레이.
+// 첫 큐레이션 = 정사각 캐러셀 (수동 스와이프 스냅 + 점 인디케이터). 항목 순서 = 슬라이드 순서.
+// 슬라이드 요소(전부 선택 — 입력 없으면 미표시):
+//   sub 부가설명(좌상단 반투명 배지) → title 큰 제목 → desc 중앙 하단(가운데 정렬)
+//   → logo 좌하단 마크(© 하이하잇). 배경 = 산 커버 이미지(없으면 무채색 그래디언트).
 function pickCarousel(cu, items) {
   const frag = document.createDocumentFragment();
   const h = document.createElement("div");
@@ -1111,14 +1113,14 @@ function pickCarousel(cu, items) {
       img.onerror = () => img.remove(); // 이미지 유실 → 그래디언트 배경 노출
       slide.appendChild(img);
     }
-    const mtn = it.type === "mountain" ? it.name : (it.mountain || PARKS[it.code].label);
     slide.insertAdjacentHTML("beforeend", `
       <div class="ps-shade"></div>
+      ${it.sub || it.title ? `<div class="ps-head">
+        ${it.sub ? `<span class="ps-kicker">${it.sub}</span>` : ""}
+        ${it.title ? `<div class="ps-title">${it.title}</div>` : ""}
+      </div>` : ""}
       ${it.desc ? `<div class="ps-desc">${it.desc}</div>` : ""}
-      <div class="ps-title">
-        <div class="ps-name">${mtn}</div>
-        ${it.type === "course" ? `<div class="ps-sub">${it.name}</div>` : ""}
-      </div>`);
+      ${it.logo ? `<div class="ps-logo">${it.logo}</div>` : ""}`);
     slide.addEventListener("click", () => openCurationItem(it));
     car.appendChild(slide);
   }
@@ -1173,13 +1175,13 @@ function renderReco() {
         if (it.type === "mountain") {
           const m = PARKS[it.code];
           el.innerHTML = `
-            <div class="rc-park">산</div>
-            <div class="rc-name">${it.name}</div>
+            <div class="rc-park">${it.sub || "산"}</div>
+            <div class="rc-name">${it.title || it.name}</div>
             <div class="rc-why">${it.desc || [m.region, m.elev ? m.elev + "m" : null].filter(Boolean).join(" · ")}</div>`;
         } else {
           el.innerHTML = `
-            <div class="rc-park">${it.mountain || PARKS[it.code].label}</div>
-            <div class="rc-name">${it.name}</div>
+            <div class="rc-park">${it.sub || it.mountain || PARKS[it.code].label}</div>
+            <div class="rc-name">${it.title || it.name}</div>
             ${it.desc ? `<div class="rc-why">${it.desc}</div>` : ""}`;
         }
         el.addEventListener("click", () => openCurationItem(it));

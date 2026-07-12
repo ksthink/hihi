@@ -3,7 +3,7 @@
  "curations": [
   {
    "id": "cu-e5bvt54x",
-   "title": "하이하잇 PICK 코스",
+   "title": "이달의 하이하잇 PICK",
    "items": [
     {
      "type": "mountain",
@@ -13,12 +13,11 @@
      "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/282600201.jpg"
     },
     {
-     "type": "course",
-     "code": "282600201",
-     "name": "2018-04-19 10:01 계양산",
-     "mountain": "계양산",
-     "desc": "계양산을 크게 도는 17.6km 순환 코스",
-     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/282600201.jpg"
+     "type": "mountain",
+     "code": "411900201",
+     "name": "원미산",
+     "title": "원미산",
+     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/411900201.png"
     }
    ]
   }
