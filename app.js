@@ -1,6 +1,6 @@
 import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm";
 import { Protocol, PMTiles, FileSource } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
-import { buildStyle } from "./basemap-style.js";
+import { buildStyle, POI_DISPLAY_DEFAULT, normPoiDisplay } from "./basemap-style.js";
 import { supabase, signUp, signIn, signOut } from "./supabase-client.js";
 import { fetchWeather, renderStrip } from "./weather.js";
 import { nationalPointNumber } from "./npn.js";
@@ -12,6 +12,15 @@ const TERRAIN_URL = `${location.origin}/pmtiles/kr-terrain.pmtiles`; // 음영�
 let baseUrl = PMTILES_URL;
 // 음영기복은 온라인 기저일 때만 — 로컬 팩(오프라인) 열람 시 원격 fetch 를 만들지 않는다
 const terrainFor = (base) => (base === PMTILES_URL ? TERRAIN_URL : null);
+
+// ── 기저지도 POI 표시 정책 (admin 편집 · R2 config/poi-display.json) ──
+// 지도 생성 전에 필요하므로 localStorage 캐시를 동기로 읽어 초기 스타일에 반영하고,
+// R2 최신본은 비동기로 받아 달라졌을 때만 레이어에 재적용한다 (부팅 비차단).
+const POICFG_KEY = "hiheight-poi-display";
+let poiDisplay = normPoiDisplay(null);
+try {
+  poiDisplay = normPoiDisplay(JSON.parse(localStorage.getItem(POICFG_KEY)));
+} catch (_) { /* 기본값 유지 */ }
 
 // 산 식별자 = 산림청 산코드 9자리 (mountain/<산코드>/ 원본 폴더가 곧 목록).
 // 산 이름은 전국 중복(317건)이 있어 코드가 전 시스템 표준 키다:
@@ -78,7 +87,7 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 // ── 지도 초기화 ──────────────────────────────────────
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle(baseUrl, theme, terrainFor(baseUrl)),
+  style: buildStyle(baseUrl, theme, terrainFor(baseUrl), poiDisplay),
   center: [126.990, 37.672], // 카탈로그 로드 전 기본 뷰 (첫 산 로드 시 flyTo)
   zoom: 11.3,
   hash: true,
@@ -94,6 +103,9 @@ const map = new maplibregl.Map({
   localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace"
 });
 window.__map = map; // 디버그·헤드리스 테스트 훅 (모듈 스코프라 밖에서 접근 불가)
+// 초기 load 발생 여부 — isStyleLoaded() 는 타일 로딩 중 false 라 이 플래그로 판별
+let mapLoadFired = false;
+map.once("load", () => { mapLoadFired = true; });
 // 하단 시트(232px)+탭바(72px)가 지도 아래를 상시 덮음(style.css #sheet) — 카메라 기준을
 // 가시 영역으로 보정. 최대 축소 클램프·fitBounds·flyTo 가 시트 위 영역 중심으로 동작해
 // 최남단(제주)이 시트에 가려지지 않는다. 등반 모드는 시트가 사라지므로 0 으로 전환.
@@ -232,36 +244,91 @@ const parkOverlays = {};
 const localRegistered = {};
 
 // ── 스팟 표시 정책 (admin 에서 편집 · R2 config/spot-display.json) ──
-// 값 = 표시 시작 줌(0=항상), null = 끔. 부팅 시 R2 설정을 읽고 실패하면 캐시→기본값.
-// iOS 도 동일 JSON 을 소비 (데이터 주도 정책).
+// 값 = { zoom: 표시 시작 줌(0=항상, null=끔), icon: 기호(점·시설 아이콘·▲), size: 글자 px,
+//        bold: 볼드 }. 레거시 형식(값이 숫자|null)은 normSpotDisplay 가 zoom 으로 승격.
+// 부팅 시 R2 설정을 읽고 실패하면 캐시→기본값. iOS 도 동일 JSON 을 소비 (데이터 주도 정책).
+// admin_server.py 기본값과 일치 유지. 정상의 size 는 주봉 크기(부봉은 비율 축소).
 const SPOT_DISPLAY_DEFAULT = {
-  정상: 0, 장소: 14, 조망점: 18, 화장실: 18, 정자: 18, 헬기장: 18, 음수대: 18,
-  주차장: null, 분기점: null, 시종점: null,
+  정상: { zoom: 0, icon: true, size: 14.4, bold: true },
+  장소: { zoom: 14, icon: true, size: 8.9, bold: false },
+  조망점: { zoom: 18, icon: true, size: 8.4, bold: false },
+  화장실: { zoom: 18, icon: true, size: 8.4, bold: false },
+  정자: { zoom: 18, icon: true, size: 8.4, bold: false },
+  헬기장: { zoom: 18, icon: true, size: 8.4, bold: false },
+  음수대: { zoom: 18, icon: true, size: 8.4, bold: false },
+  주차장: { zoom: null, icon: true, size: 8.4, bold: false },
+  분기점: { zoom: null, icon: true, size: 8.9, bold: false },
+  시종점: { zoom: null, icon: true, size: 8.9, bold: false },
 };
-let spotDisplay = { ...SPOT_DISPLAY_DEFAULT };
+function normSpotDisplay(raw) {
+  const out = {};
+  for (const [k, def] of Object.entries(SPOT_DISPLAY_DEFAULT)) {
+    const v = raw?.[k];
+    out[k] = v === undefined ? { ...def }
+      : (v === null || typeof v === "number") ? { ...def, zoom: v }
+      : { ...def, ...v };
+  }
+  return out;
+}
+const SPOT_FONT = (b) => [b ? "Nanum Gothic Coding Bold" : "Nanum Gothic Coding Regular"];
+let spotDisplay = normSpotDisplay(null);
 const SPOTCFG_KEY = "hiheight-spot-display";
 async function loadSpotDisplay() {
   try {
     const url = R2_PACKS_BASE.replace(/\/packs$/, "") + "/config/spot-display.json";
     const cfg = await fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null));
     if (!cfg?.categories) throw new Error("no cfg");
-    spotDisplay = { ...SPOT_DISPLAY_DEFAULT, ...cfg.categories };
+    spotDisplay = normSpotDisplay(cfg.categories);
     localStorage.setItem(SPOTCFG_KEY, JSON.stringify(spotDisplay));
   } catch (_) { // 미배포/오프라인 → 마지막 캐시, 없으면 기본값
     try {
-      spotDisplay = { ...SPOT_DISPLAY_DEFAULT, ...(JSON.parse(localStorage.getItem(SPOTCFG_KEY)) || {}) };
+      spotDisplay = normSpotDisplay(JSON.parse(localStorage.getItem(SPOTCFG_KEY)) || {});
     } catch (_e) { /* 기본값 유지 */ }
   }
 }
+// ── 기저지도 POI 설정 로드/적용 (상태 선언은 상단 — 지도 생성 전 캐시 반영) ──
+async function loadPoiDisplay() {
+  try {
+    const url = R2_PACKS_BASE.replace(/\/packs$/, "") + "/config/poi-display.json";
+    const cfg = await fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null));
+    if (!cfg?.categories) return; // 미배포/오프라인 → 캐시(또는 기본값)로 이미 동작 중
+    const next = normPoiDisplay(cfg.categories);
+    localStorage.setItem(POICFG_KEY, JSON.stringify(next));
+    if (JSON.stringify(next) === JSON.stringify(poiDisplay)) return; // 변화 없음
+    poiDisplay = next;
+    // 스타일 재생성으로 반영 — 크기·볼드·아이콘까지 한 경로로 일관 적용.
+    // (테마 토글과 동일 경로: styledata 핸들러가 오버레이 재부착)
+    // 초기 로드 전이면 load 이후로 미룸. isStyleLoaded() 는 타일 스트리밍 중에도
+    // false 라 판별 근거가 못 됨 — load 발생 플래그(mapLoadFired)를 쓴다.
+    const restyle = () => map.setStyle(buildStyle(baseUrl, theme, terrainFor(baseUrl), poiDisplay));
+    if (mapLoadFired) restyle();
+    else map.once("load", restyle);
+  } catch (_) { /* 캐시/기본값 유지 */ }
+}
+
 // 점·라벨로 그리는 분류 / 아이콘으로 그리는 분류 (정상은 spot-peaks 별도)
 const DOT_CATS = ["분기점", "시종점", "장소"];
 const FACILITY_ICON = {
   조망점: "poi-viewpoint", 화장실: "poi-toilets", 정자: "poi-shelter",
   헬기장: "poi-helipad", 음수대: "poi-drinking_water", 주차장: "poi-parking",
 };
-// 분류별 노출 줌 게이트 — 끔(null)=99 (필터의 zoom 은 정수 줌에서 평가됨)
-const zoomGate = (cats) => [">=", ["zoom"], ["match", ["get", "category"],
-  ...cats.flatMap((c) => [c, spotDisplay[c] ?? 99]), 99]];
+// 스팟 표시 우선순위: 스팟별 오버라이드(disp_zoom·disp_icon·disp_size·disp_bold,
+// 관리자 스팟 편집에서 지정·팩 properties 로 발행) > 분류 전역 설정(spotDisplay).
+// 분류별 노출 줌 게이트 — 끔(null)=99, disp_zoom 99=끔 (필터의 zoom 은 정수 줌에서 평가됨)
+const zoomGate = (cats) => [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"],
+  ["match", ["get", "category"], ...cats.flatMap((c) => [c, spotDisplay[c]?.zoom ?? 99]), 99]]];
+// 분류별 글자 크기·글꼴 (데이터 주도 match — 레이어 하나로 충돌 풀 공유)
+const sizeMatch = (cats) => ["coalesce", ["get", "disp_size"], ["match", ["get", "category"],
+  ...cats.flatMap((c) => [c, spotDisplay[c].size]), 8.9]];
+// disp_bold 3상(true/false/없음→분류) — to-string: 없음(null)은 "" 로 떨어져 분류 폰트
+const fontMatch = (cats) => ["match", ["to-string", ["get", "disp_bold"]],
+  "true", ["literal", SPOT_FONT(true)], "false", ["literal", SPOT_FONT(false)],
+  ["match", ["get", "category"],
+    ...cats.flatMap((c) => [c, ["literal", SPOT_FONT(spotDisplay[c].bold)]]),
+    ["literal", SPOT_FONT(false)]]];
+// 기호 표시 게이트(불리언) — 스팟별 disp_icon 이 분류 설정을 덮음
+const iconGate = (cats) => ["to-boolean", ["coalesce", ["get", "disp_icon"],
+  ["match", ["get", "category"], ...cats.flatMap((c) => [c, spotDisplay[c].icon]), false]]];
 
 // ── 난이도 미터 (흑백) ───────────────────────────────
 function difMeter(diff) {
@@ -467,7 +534,9 @@ function ensureOverlays() {
     // 분류별 노출 줌은 admin 설정(spotDisplay) 주도 — zoomGate 가 필터에서 게이팅
     map.addLayer({
       id: "spots-dots", type: "circle", source: "spots",
-      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], zoomGate(DOT_CATS)],
+      // 기호(점)는 분류 설정+스팟별 오버라이드의 불리언 게이트 — 꺼진 스팟은 라벨만
+      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]],
+        iconGate(DOT_CATS), zoomGate(DOT_CATS)],
       paint: {
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 1.2, 16, 1.8],
         "circle-color": c.line,
@@ -480,32 +549,51 @@ function ensureOverlays() {
       id: "spots-labels", type: "symbol", source: "spots",
       filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], ["has", "name"], zoomGate(DOT_CATS)],
       layout: {
-        "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
-        "text-size": 8.9, "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
+        "text-field": ["get", "name"], "text-font": fontMatch(DOT_CATS),
+        "text-size": sizeMatch(DOT_CATS),
+        "text-offset": [0, 0.7], "text-anchor": "top", "text-max-width": 8
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
     });
-    // 편의시설 아이콘 (조망점·화장실·정자·헬기장·음수대·주차장) — 충돌 시 자동 숨김으로 밀집 정리
+    // 편의시설 (조망점·화장실·정자·헬기장·음수대·주차장) — 아이콘 + 이름(있을 때, 아이콘 우선).
+    // 기호를 끈 분류는 이름만 표시. 충돌 시 자동 숨김으로 밀집 정리.
+    const FAC_CATS = Object.keys(FACILITY_ICON);
     map.addLayer({
       id: "spots-facilities", type: "symbol", source: "spots",
-      filter: ["all", ["in", ["get", "category"], ["literal", Object.keys(FACILITY_ICON)]],
-        zoomGate(Object.keys(FACILITY_ICON))],
+      filter: ["all", ["in", ["get", "category"], ["literal", FAC_CATS]], zoomGate(FAC_CATS)],
       layout: {
-        "icon-image": ["match", ["get", "category"],
-          ...Object.entries(FACILITY_ICON).flat(), ""],
-      }
+        // 기호 게이트(분류 설정+스팟별 disp_icon)가 켜진 피처만 분류 아이콘, 꺼지면 이름만
+        "icon-image": ["case", iconGate(FAC_CATS),
+          ["match", ["get", "category"], ...Object.entries(FACILITY_ICON).flat(), ""], ""],
+        "text-field": ["coalesce", ["get", "name"], ""],
+        "text-font": fontMatch(FAC_CATS),
+        "text-size": sizeMatch(FAC_CATS),
+        "text-offset": [0, 1.05], "text-anchor": "top", "text-max-width": 8,
+        "text-optional": true
+      },
+      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
     });
     // 정상(peak) 스팟 → 봉우리 표식 (팩 주도 — 관리자에서 '정상'으로 찍은 지점).
     // 봉우리 표식: 라이트 ▲(채움) / 다크 △(외곽) + 지명. 테마 토글 시 재부착으로 갱신.
+    // size 설정 = 주봉 크기, 부봉(main=false)은 11/14.4 비율로 축소. icon 설정 = ▲ 접두 기호.
+    const pk = spotDisplay["정상"];
     map.addLayer({
       id: "spot-peaks", type: "symbol", source: "spots",
       filter: ["all", ["==", ["get", "category"], "정상"],
-        [">=", ["zoom"], spotDisplay["정상"] ?? 99]],
+        [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"], pk.zoom ?? 99]]],
       layout: {
-        "text-field": ["concat", theme === "dark" ? "△" : "▲", ["coalesce", ["get", "name"], ""]],
-        "text-font": ["Nanum Gothic Coding Bold"],
-        // 정상은 기본 최상위(14.4). 부봉으로 낮추려면 스팟 main=false.
-        "text-size": ["case", ["==", ["get", "main"], false], 11, 14.4],
+        // ▲ 접두 기호 — 스팟별 disp_icon 이 분류 설정(pk.icon)을 덮음
+        "text-field": ["concat",
+          ["case", ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]],
+            theme === "dark" ? "△" : "▲", ""],
+          ["coalesce", ["get", "name"], ""]],
+        "text-font": ["match", ["to-string", ["get", "disp_bold"]],
+          "true", ["literal", SPOT_FONT(true)], "false", ["literal", SPOT_FONT(false)],
+          ["literal", SPOT_FONT(pk.bold)]],
+        // 정상은 기본 최상위. 부봉으로 낮추려면 스팟 main=false. disp_size 가 최우선.
+        "text-size": ["coalesce", ["get", "disp_size"],
+          ["case", ["==", ["get", "main"], false],
+            Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]],
         "text-offset": [0, -0.6], "text-anchor": "bottom"
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.8 }
@@ -628,8 +716,11 @@ function fitPark(duration = 800) {
   map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: fitPadding(), maxZoom: 15.5, duration });
 }
 
-// setStyle(테마/기저 변경) 후 오버레이 재부착
+// setStyle(테마/기저 변경) 후 오버레이 재부착.
+// 부팅 중 조기 styledata 는 건너뜀 — 스팟 표시 설정(spotDisplayReady)이 오기 전에
+// 레이어를 만들면 기본값으로 굳는다. 첫 부착은 map "load" 핸들러가 설정 확보 후 수행.
 map.on("styledata", () => {
+  if (!spotCfgReady) return;
   if (!map.getSource("trails") || !map.getSource("spots") || !map.getSource("contours")) ensureOverlays();
 });
 
@@ -638,7 +729,7 @@ function useBaseFor(park) {
   const target = localRegistered[park] ? "local-" + park : PMTILES_URL;
   if (target !== baseUrl) {
     baseUrl = target;
-    map.setStyle(buildStyle(baseUrl, theme, terrainFor(baseUrl))); // styledata 가 오버레이 재부착
+    map.setStyle(buildStyle(baseUrl, theme, terrainFor(baseUrl), poiDisplay)); // styledata 가 오버레이 재부착
   }
 }
 
@@ -1533,7 +1624,7 @@ function applyTheme(t) {
   theme = t;
   localStorage.setItem(THEME_KEY, t);
   document.documentElement.dataset.theme = t;
-  map.setStyle(buildStyle(baseUrl, t, terrainFor(baseUrl))); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
+  map.setStyle(buildStyle(baseUrl, t, terrainFor(baseUrl), poiDisplay)); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
 }
 
 // ── 바텀시트 드래그/탭 ───────────────────────────────
@@ -1599,7 +1690,9 @@ setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/
 
 // 부팅 병렬화 — 카탈로그·스팟 설정·첫 산 팩 fetch 를 지도 타일 로드와 동시에 시작.
 // (map "load" 뒤에서 직렬로 기다리면 부팅 꼬리가 ~2초 늘어난다)
-const spotDisplayReady = loadSpotDisplay();
+let spotCfgReady = false; // styledata 핸들러의 조기 오버레이 부착 게이트
+const spotDisplayReady = loadSpotDisplay().finally(() => { spotCfgReady = true; });
+loadPoiDisplay(); // 기저지도 POI 정책 — 초기 스타일은 캐시로 이미 반영, 최신본은 도착 시 재적용
 const catalogReady = loadCatalog().then((codes) => {
   if (codes.length) prefetchPark(codes[0]);
   return codes;

@@ -1,7 +1,7 @@
 // 하이하잇 관리자 콘솔 — 코스 큐레이션·스팟 보정·팩 배포 (로컬 전용 도구)
 import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm";
 import { Protocol } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
-import { buildStyle } from "../basemap-style.js";
+import { buildStyle, normPoiDisplay } from "../basemap-style.js";
 
 const $ = (id) => document.getElementById(id);
 const EMPTY = { type: "FeatureCollection", features: [] };
@@ -95,8 +95,60 @@ const map = new maplibregl.Map({
   localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
 });
 map.addControl(new maplibregl.NavigationControl({ showZoom: true }), "bottom-right");
+window.__adminMap = map; // 디버그·헤드리스 테스트 훅 (앱 window.__map 과 동일 관례)
 
-map.on("load", () => {
+// 표시 설정 라이브 미리보기 상태 — bindDisplayCfg(아래 설정 편집기)가 값 변경 때마다 갱신.
+// 편집 지도가 앱과 같은 모양(크기·볼드·기호·기저지도 POI)을 즉시 보여준다.
+let spotCfgLive = null; // /config/spots categories (v2 객체)
+let poiCfgLive = null;  // /config/poi categories
+
+// 스팟 편집 레이어에 표시 설정 적용 (정상·장소 — 줌 게이트는 제외: 편집 중엔 항상 보여야 함).
+// 우선순위: 스팟별 오버라이드(disp_*) > 분류 전역 설정 — 앱과 동일한 coalesce 규칙.
+function applySpotEditorStyle() {
+  if (!map.getLayer("spot-peak")) return;
+  const cfg = spotCfgLive || {
+    정상: { icon: true, size: 14.4, bold: true }, 장소: { icon: true, size: 8.9, bold: false },
+  };
+  const pk = cfg["정상"], pl = cfg["장소"];
+  const font = (b) => [b ? "Nanum Gothic Coding Bold" : "Nanum Gothic Coding Regular"];
+  // disp_bold 3상(true/false/없음→분류) — to-string: 없음(null)은 "" 로 떨어져 분류 폰트
+  const fontExpr = (catBold) => ["match", ["to-string", ["get", "disp_bold"]],
+    "true", ["literal", font(true)], "false", ["literal", font(false)], ["literal", font(catBold)]];
+  map.setLayoutProperty("spot-peak", "text-field",
+    ["concat", ["case", ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]], "▲", ""],
+      ["coalesce", ["get", "name"], ""]]);
+  map.setLayoutProperty("spot-peak", "text-font", fontExpr(pk.bold));
+  map.setLayoutProperty("spot-peak", "text-size", // 앱과 동일: 부봉(main=false)은 비율 축소
+    ["coalesce", ["get", "disp_size"],
+      ["case", ["==", ["get", "main"], false], Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]]);
+  map.setFilter("spot-place-dot", ["all", ["==", ["get", "category"], "장소"],
+    ["to-boolean", ["coalesce", ["get", "disp_icon"], pl.icon]]]);
+  map.setLayoutProperty("spot-place-label", "text-font", fontExpr(pl.bold));
+  map.setLayoutProperty("spot-place-label", "text-size", ["coalesce", ["get", "disp_size"], pl.size]);
+}
+
+// 기저지도 POI 설정 적용 — 스타일 재생성(앱과 동일 경로). styledata 가 편집 레이어 재부착.
+// map "load" 를 기다리지 않는다: 이 지도는 전국 뷰 타일 로딩이 길어 load 가 매우 늦거나
+// 안 올 수 있고, 인라인 스타일 객체 교체는 로드 중에도 안전함(실측 확인).
+function applyPoiEditorStyle() {
+  map.setStyle(buildStyle(`${location.origin}/pmtiles/v4.pmtiles`, "light",
+    `${location.origin}/pmtiles/kr-terrain.pmtiles`, poiCfgLive));
+}
+
+// 편집 소스/레이어 부착 — 최초 styledata(초기 스타일)와 setStyle(설정 변경) 후 공용.
+// map "load" 에 의존하지 않는다 (위 주석 참고).
+let eventsWired = false;
+map.on("styledata", () => {
+  if (map.getSource("spots")) return;
+  ensureEditorLayers();
+  if (!eventsWired) { // 지도(map) 수준 바인딩 — 레이어 id 기준이라 setStyle 후에도 유효
+    eventsWired = true;
+    wireMapEvents();
+  }
+});
+
+function ensureEditorLayers() {
+  if (map.getSource("spots")) return;
   for (const id of ["contours", "network", "courses", "spots", "gpx-raw", "gpx-matched"])
     map.addSource(id, { type: "geojson", data: EMPTY });
 
@@ -162,14 +214,14 @@ map.on("load", () => {
     },
     paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.5 } });
 
-  wireMapEvents();
-  if (S.draft) { // 지도 로드 전에 산을 선택했다면 데이터 재주입
+  applySpotEditorStyle(); // 표시 설정(크기·볼드·기호)이 이미 로드됐으면 즉시 반영
+  if (S.draft) { // 지도 로드 전에 산을 선택했거나 setStyle 재부착이면 데이터 재주입
     renderCourses();
     renderPeaks();
     loadNetwork(S.code);
     loadContours(S.code);
   }
-});
+}
 
 // ── draft 저장 (디바운스 자동저장) ──
 let saveTimer = null;
@@ -623,7 +675,13 @@ function renderPeakMap() {
   map.getSource("spots").setData({ type: "FeatureCollection",
     features: editSpots().map((s) => ({ type: "Feature",
       geometry: { type: "Point", coordinates: s.coord },
-      properties: { id: s.id, category: s.category, name: s.name || "" } })) });
+      properties: {
+        id: s.id, category: s.category, name: s.name || "", main: s.main,
+        // 스팟별 표시 오버라이드 — 편집 지도 미리보기 표현식(coalesce)이 소비
+        ...(s.disp_icon != null && { disp_icon: s.disp_icon }),
+        ...(s.disp_size != null && { disp_size: s.disp_size }),
+        ...(s.disp_bold != null && { disp_bold: s.disp_bold }),
+      } })) });
 }
 
 // 정상→장소 전환·주봉 삭제 후에도 정상이 남아 있으면 주봉 1점을 보장
@@ -648,7 +706,19 @@ function renderPeaks() {
       <input class="p-name" placeholder="이름${isPeak ? " (비우면 ▲만 표시)" : ""}" value="${(s.name || "").replace(/"/g, "&quot;")}" />
       <input class="p-lat" type="number" step="any" title="위도" value="${s.coord[1]}" />
       <input class="p-lon" type="number" step="any" title="경도" value="${s.coord[0]}" />
-      <button class="p-del danger">삭제</button>`;
+      <button class="p-del danger">삭제</button>
+      <span class="p-disp" title="이 스팟만의 표시 설정 — 비우면 분류 전역 설정을 따름">
+        <small>표시</small>
+        <select class="p-zoom" title="노출 시작 줌">${[["", "줌 따름"], ["99", "끔"], ["0", "항상"],
+          ["10", "z10"], ["12", "z12"], ["14", "z14"], ["16", "z16"], ["18", "z18"]].map(([v, t]) =>
+          `<option value="${v}" ${String(s.disp_zoom ?? "") === v ? "selected" : ""}>${t}</option>`).join("")}</select>
+        <select class="p-icon" title="기호(▲·점)">${[["", "기호 따름"], ["1", "기호 켬"], ["0", "기호 끔"]].map(([v, t]) =>
+          `<option value="${v}" ${(s.disp_icon == null ? "" : s.disp_icon ? "1" : "0") === v ? "selected" : ""}>${t}</option>`).join("")}</select>
+        <input class="p-size" type="number" min="6" max="24" step="0.1" placeholder="크기"
+          title="글자 px — 비우면 분류 설정" value="${s.disp_size ?? ""}" />
+        <select class="p-bold" title="볼드">${[["", "볼드 따름"], ["1", "볼드 켬"], ["0", "볼드 끔"]].map(([v, t]) =>
+          `<option value="${v}" ${(s.disp_bold == null ? "" : s.disp_bold ? "1" : "0") === v ? "selected" : ""}>${t}</option>`).join("")}</select>
+      </span>`;
     li.querySelector(".p-name").addEventListener("change", (e) => {
       s.name = e.target.value.trim() || null;
       markDirty(); renderPeakMap();
@@ -670,6 +740,27 @@ function renderPeaks() {
         map.flyTo({ center: s.coord, zoom: Math.max(map.getZoom(), 13) });
       });
     }
+    // 스팟별 표시 오버라이드 — 값 변경 즉시 draft 저장 + 편집 지도 미리보기 갱신
+    li.querySelector(".p-zoom").addEventListener("change", (e) => {
+      if (e.target.value === "") delete s.disp_zoom;
+      else s.disp_zoom = +e.target.value;
+      markDirty(); renderPeakMap();
+    });
+    for (const [cls, key] of [["p-icon", "disp_icon"], ["p-bold", "disp_bold"]]) {
+      li.querySelector("." + cls).addEventListener("change", (e) => {
+        if (e.target.value === "") delete s[key];
+        else s[key] = e.target.value === "1";
+        markDirty(); renderPeakMap();
+      });
+    }
+    li.querySelector(".p-size").addEventListener("change", (e) => {
+      const v = e.target.value.trim();
+      if (v === "") { delete s.disp_size; markDirty(); renderPeakMap(); return; }
+      const n = parseFloat(v);
+      if (!Number.isFinite(n) || n < 6 || n > 24) { e.target.value = s.disp_size ?? ""; return; }
+      s.disp_size = n;
+      markDirty(); renderPeakMap();
+    });
     li.querySelector(".p-main").onclick = () => {
       if (!isPeak) return;
       peakSpots().forEach((x) => { x.main = x === s; }); // 주봉은 1점만
@@ -955,51 +1046,114 @@ const LAYOUT_KEY = "hiheight-admin-layout";   // "v"(상하) | "h"(좌우)
   applyLayout(layout); // 저장된 배치 복원
 }
 
-// ── 스팟 표시 설정 (앱 전역 — 분류별 표시 시작 줌, R2 config/spot-display.json) ──
+// ── 표시 설정 (앱 전역 — 분류별 {줌, 기호, 크기, 볼드}) ──
+// 스팟(R2 config/spot-display.json)과 기저지도 POI(config/poi-display.json)가 같은 편집기 공유.
 const SPOT_ZOOM_OPTS = [
   [null, "끔"], [0, "항상"], [10, "z10 (광역)"], [12, "z12 (산 전체)"],
   [14, "z14"], [16, "z16"], [18, "z18 (축척 30m)"],
 ];
-let spotCfg = null;
-async function loadSpotCfg() {
-  try {
-    spotCfg = await api("/config/spots");
-  } catch (_) { return; }
-  const box = $("spotcfg-rows");
-  box.innerHTML = "";
-  for (const [cat, val] of Object.entries(spotCfg.categories)) {
-    const row = document.createElement("label");
-    row.className = "spotcfg-row";
-    const sel = document.createElement("select");
-    for (const [v, label] of SPOT_ZOOM_OPTS) {
-      const o = document.createElement("option");
-      o.value = v === null ? "" : v;
-      o.textContent = label;
-      o.selected = (v === null ? null : v) === (val === null ? null : +val);
-      sel.appendChild(o);
-    }
-    sel.onchange = () => {
-      spotCfg.categories[cat] = sel.value === "" ? null : +sel.value;
-      $("spotcfg-state").textContent = "저장 안 됨";
-    };
-    row.append(Object.assign(document.createElement("span"), { textContent: cat }), sel);
-    box.appendChild(row);
-  }
+const POI_ZOOM_OPTS = [
+  [null, "끔"], [12, "z12 (산 전체)"], [12.5, "z12.5"], [13, "z13"], [13.5, "z13.5"],
+  [14, "z14 (동네)"], [14.5, "z14.5"], [15, "z15"], [16, "z16 (근접)"],
+];
+// 아이콘 자체가 없는 분류 (기저지도 도시 POI — 텍스트 전용 레이어)
+const POI_NO_ICON = ["학교", "관공서", "병원", "아파트단지", "공원", "마트·쇼핑", "문화·체육"];
+
+// 컨트롤 + 캡션 묶음
+function ctl(caption, el) {
+  const w = document.createElement("span");
+  w.className = "cfg-ctl";
+  w.append(Object.assign(document.createElement("small"), { textContent: caption }), el);
+  return w;
 }
-$("spotcfg-save").onclick = async () => {
-  if (!spotCfg) return;
-  $("spotcfg-state").textContent = "저장 중…";
-  try {
-    await api("/config/spots", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categories: spotCfg.categories }),
-    });
-    $("spotcfg-state").textContent = "저장됨 ✓ (앱 새로고침 시 반영)";
-  } catch (e) {
-    $("spotcfg-state").textContent = "저장 실패: " + e.message;
+
+// 설정 섹션 바인딩 — load 함수를 돌려준다.
+// onChange(categories): 값이 바뀔 때마다(저장 전에도) 호출 — 편집 지도 라이브 미리보기용.
+function bindDisplayCfg(apiPath, prefix, zoomOpts, noIconCats = [], onChange = null) {
+  let cfg = null;
+  const state = (t) => { $(`${prefix}-state`).textContent = t; };
+  async function load() {
+    try {
+      cfg = await api(apiPath);
+    } catch (_) { return; }
+    onChange?.(cfg.categories); // 저장된 설정을 편집 지도에도 반영
+    const dirty = () => { state("저장 안 됨 (지도는 미리보기)"); onChange?.(cfg.categories); };
+    const box = $(`${prefix}-rows`);
+    box.innerHTML = "";
+    for (const [cat, val] of Object.entries(cfg.categories)) {
+      const row = document.createElement("div");
+      row.className = "spotcfg-row";
+      // 노출 줌
+      const sel = document.createElement("select");
+      const opts = zoomOpts.some(([v]) => v === val.zoom) ? zoomOpts
+        : [...zoomOpts, [val.zoom, `z${val.zoom}`]]; // 목록 밖 저장값도 보이게
+      for (const [v, label] of opts) {
+        const o = document.createElement("option");
+        o.value = v === null ? "" : v;
+        o.textContent = label;
+        o.selected = v === val.zoom;
+        sel.appendChild(o);
+      }
+      sel.onchange = () => { val.zoom = sel.value === "" ? null : +sel.value; dirty(); };
+      // 기호 (점·아이콘·▲)
+      const icon = document.createElement("input");
+      icon.type = "checkbox";
+      icon.checked = val.icon && !noIconCats.includes(cat);
+      icon.disabled = noIconCats.includes(cat);
+      if (icon.disabled) icon.title = "이 분류는 텍스트 전용";
+      icon.onchange = () => { val.icon = icon.checked; dirty(); };
+      // 글자 크기
+      const size = document.createElement("input");
+      size.type = "number";
+      size.min = 6; size.max = 24; size.step = 0.1; size.value = val.size;
+      size.onchange = () => {
+        const n = parseFloat(size.value);
+        if (Number.isFinite(n) && n >= 6 && n <= 24) { val.size = n; dirty(); }
+        else size.value = val.size; // 범위 밖 입력 원복
+      };
+      // 볼드
+      const bold = document.createElement("input");
+      bold.type = "checkbox";
+      bold.checked = val.bold;
+      bold.onchange = () => { val.bold = bold.checked; dirty(); };
+
+      row.append(
+        Object.assign(document.createElement("span"), { textContent: cat, className: "cfg-cat" }),
+        ctl("줌", sel), ctl("기호", icon), ctl("크기", size), ctl("볼드", bold));
+      box.appendChild(row);
+    }
   }
-};
+  $(`${prefix}-save`).onclick = async () => {
+    if (!cfg) return;
+    state("저장 중…");
+    try {
+      await api(apiPath, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categories: cfg.categories }),
+      });
+      state("저장됨 ✓ (앱 새로고침 시 반영)");
+    } catch (e) {
+      state("저장 실패: " + e.message);
+    }
+  };
+  return load;
+}
+// 라이브 미리보기: 스팟 설정 → 편집 레이어 즉시 반영, POI 설정 → 기저지도 재생성.
+// (POI 는 값이 실제로 달라졌을 때만 setStyle — 불필요한 지도 리로드 방지)
+let lastPoiJson = JSON.stringify(normPoiDisplay(null));
+const loadSpotCfg = bindDisplayCfg("/config/spots", "spotcfg", SPOT_ZOOM_OPTS, [], (cats) => {
+  spotCfgLive = cats;
+  applySpotEditorStyle();
+});
+const loadPoiCfg = bindDisplayCfg("/config/poi", "poicfg", POI_ZOOM_OPTS, POI_NO_ICON, (cats) => {
+  poiCfgLive = cats;
+  const j = JSON.stringify(normPoiDisplay(cats));
+  if (j === lastPoiJson) return;
+  lastPoiJson = j;
+  applyPoiEditorStyle();
+});
 
 // ── 부팅 ── (401 이면 api() 가 로그인 게이트를 띄움)
 refreshList().catch(() => {});
 loadSpotCfg().catch(() => {});
+loadPoiCfg().catch(() => {});

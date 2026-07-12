@@ -31,6 +31,18 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
 
 
 class Handler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        # 정적 파일 캐시 정책. Cache-Control 부재 시 브라우저 휴리스틱 캐시가 파일별로
+        # 제각각 동작해, 배포 직후 구 basemap-style.js + 신 app.js 같은 모듈 버전 섞임이
+        # 생긴다(임포트 링크 에러 → 앱 전체 정지). no-cache = 매 로드 재검증(304 아님,
+        # SimpleHTTPRequestHandler 는 조건부 GET 미지원이라 전체 재전송 — 1인 운영엔 충분).
+        # 글리프(내용 안정·파일 512개)만 1일 캐시, PMTiles 프록시/로컬은 자체 헤더 사용.
+        if not self.path.startswith("/pmtiles/"):
+            self.send_header(
+                "Cache-Control",
+                "max-age=86400" if self.path.startswith("/fonts/") else "no-cache")
+        super().end_headers()
+
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")

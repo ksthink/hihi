@@ -1,0 +1,71 @@
+{
+ "version": 2,
+ "categories": {
+  "전철역": {
+   "zoom": 14,
+   "icon": true,
+   "size": 12,
+   "bold": true
+  },
+  "버스정류장": {
+   "zoom": 14,
+   "icon": true,
+   "size": 8.4,
+   "bold": false
+  },
+  "사찰": {
+   "zoom": 13.5,
+   "icon": true,
+   "size": 9.7,
+   "bold": false
+  },
+  "편의시설": {
+   "zoom": 14,
+   "icon": true,
+   "size": 8.4,
+   "bold": false
+  },
+  "학교": {
+   "zoom": 14,
+   "icon": false,
+   "size": 9.2,
+   "bold": false
+  },
+  "관공서": {
+   "zoom": 14.5,
+   "icon": false,
+   "size": 9.2,
+   "bold": false
+  },
+  "병원": {
+   "zoom": 13.5,
+   "icon": false,
+   "size": 9.2,
+   "bold": false
+  },
+  "아파트단지": {
+   "zoom": 14,
+   "icon": false,
+   "size": 9.2,
+   "bold": false
+  },
+  "공원": {
+   "zoom": 14,
+   "icon": false,
+   "size": 9.2,
+   "bold": false
+  },
+  "마트·쇼핑": {
+   "zoom": 15,
+   "icon": false,
+   "size": 9.2,
+   "bold": false
+  },
+  "문화·체육": {
+   "zoom": 15,
+   "icon": false,
+   "size": 9.2,
+   "bold": false
+  }
+ }
+}

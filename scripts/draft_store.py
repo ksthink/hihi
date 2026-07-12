@@ -223,6 +223,10 @@ def to_pack(draft):
             props["name"] = s["name"]
         if s.get("main") is not None:  # 봉우리 위계(정상 main=true/부봉 false) — 앱 peak 크기
             props["main"] = s["main"]
+        # 스팟별 표시 오버라이드(없으면 분류 전역 설정 따름) — disp_zoom 99=끔
+        for k in ("disp_zoom", "disp_icon", "disp_size", "disp_bold"):
+            if s.get(k) is not None:
+                props[k] = s[k]
         sp.append({"type": "Feature",
                    "geometry": {"type": "Point", "coordinates": s["coord"]},
                    "properties": props})

@@ -36,11 +36,68 @@ import pack_lib as pl  # noqa: E402
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
 BIND = os.environ.get("ADMIN_BIND", "0.0.0.0")
 
-# 스팟 표시 정책 기본값 — 값 = 표시 시작 줌(0=항상), null = 끔. 앱 app.js 의 기본값과 일치 유지.
-SPOT_DISPLAY_DEFAULT = {"version": 1, "categories": {
-    "정상": 0, "장소": 14, "조망점": 18, "화장실": 18, "정자": 18, "헬기장": 18, "음수대": 18,
-    "주차장": None, "분기점": None, "시종점": None,
+# 표시 정책 기본값 — 값 = {zoom: 표시 시작 줌(0=항상, null=끔), icon: 기호, size: 글자 px,
+# bold: 볼드}. 레거시 파일/요청(값이 숫자|null)은 _norm_display_cat 이 zoom 으로 승격.
+# 앱(app.js SPOT_DISPLAY_DEFAULT · basemap-style.js POI_DISPLAY_DEFAULT)과 일치 유지.
+SPOT_DISPLAY_DEFAULT = {"version": 2, "categories": {
+    "정상": {"zoom": 0, "icon": True, "size": 14.4, "bold": True},
+    "장소": {"zoom": 14, "icon": True, "size": 8.9, "bold": False},
+    "조망점": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
+    "화장실": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
+    "정자": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
+    "헬기장": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
+    "음수대": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
+    "주차장": {"zoom": None, "icon": True, "size": 8.4, "bold": False},
+    "분기점": {"zoom": None, "icon": True, "size": 8.9, "bold": False},
+    "시종점": {"zoom": None, "icon": True, "size": 8.9, "bold": False},
 }}
+
+POI_DISPLAY_DEFAULT = {"version": 2, "categories": {
+    "전철역": {"zoom": 12, "icon": True, "size": 10.1, "bold": False},
+    "버스정류장": {"zoom": 14.5, "icon": True, "size": 8.4, "bold": False},
+    "사찰": {"zoom": 13.5, "icon": True, "size": 9.7, "bold": False},
+    "편의시설": {"zoom": 14, "icon": True, "size": 8.4, "bold": False},
+    "학교": {"zoom": 14, "icon": False, "size": 9.2, "bold": False},
+    "관공서": {"zoom": 14.5, "icon": False, "size": 9.2, "bold": False},
+    "병원": {"zoom": 13.5, "icon": False, "size": 9.2, "bold": False},
+    "아파트단지": {"zoom": 14, "icon": False, "size": 9.2, "bold": False},
+    "공원": {"zoom": 14, "icon": False, "size": 9.2, "bold": False},
+    "마트·쇼핑": {"zoom": 15, "icon": False, "size": 9.2, "bold": False},
+    "문화·체육": {"zoom": 15, "icon": False, "size": 9.2, "bold": False},
+}}
+
+
+def _norm_display_cat(cat, v, default):
+    """카테고리 설정값 정규화·검증. 레거시(숫자|null)는 zoom 으로 승격."""
+    if v is None or isinstance(v, (int, float)):
+        v = {"zoom": v}
+    if not isinstance(v, dict):
+        raise ValueError(f"{cat}: 숫자·null 또는 객체 필요")
+    out = {**default}
+    for key, val in v.items():
+        if key == "zoom":
+            if val is not None and not (isinstance(val, (int, float)) and 0 <= val <= 22):
+                raise ValueError(f"{cat}.zoom: 0~22 또는 null(끔)")
+        elif key in ("icon", "bold"):
+            if not isinstance(val, bool):
+                raise ValueError(f"{cat}.{key}: true/false 필요")
+        elif key == "size":
+            if not (isinstance(val, (int, float)) and 6 <= val <= 24):
+                raise ValueError(f"{cat}.size: 6~24 px")
+        else:
+            raise ValueError(f"{cat}: 알 수 없는 속성 {key}")
+        out[key] = val
+    return out
+
+
+def _norm_display_cfg(cats, defaults):
+    """categories 전체 정규화 — 누락 분류는 기본값, 알 수 없는 분류는 거부."""
+    for k in cats:
+        if k not in defaults["categories"]:
+            raise ValueError(f"알 수 없는 분류: {k}")
+    return {"version": 2, "categories": {
+        k: _norm_display_cat(k, cats.get(k, d), d)
+        for k, d in defaults["categories"].items()}}
 
 
 def load_env():
@@ -337,31 +394,30 @@ class AdminHandler(BaseHandler):
                         has_draft=draft_store.load(m["code"]) is not None) for m in rows]
             return self._json(out)
 
-        # GET/PUT /api/config/spots — 스팟 표시 정책 (분류별 표시 시작 줌, 앱 전역)
-        # 저장: admin_data/spot-display.json (원본) + R2 config/spot-display.json (앱이 부팅 시 fetch)
-        if p == ["config", "spots"]:
-            cfg_path = os.path.join(draft_store.ADMIN_DATA, "spot-display.json")
+        # GET/PUT /api/config/spots|poi — 표시 정책 (분류별 줌·기호·크기·볼드, 앱 전역)
+        # 저장: admin_data/<이름>.json (원본) + R2 config/<이름>.json (앱이 부팅 시 fetch)
+        # GET 도 정규화를 거쳐 레거시 파일(v1, 값=숫자)이 항상 v2 객체로 보인다.
+        if len(p) == 2 and p[0] == "config" and p[1] in ("spots", "poi"):
+            defaults = SPOT_DISPLAY_DEFAULT if p[1] == "spots" else POI_DISPLAY_DEFAULT
+            fname = "spot-display.json" if p[1] == "spots" else "poi-display.json"
+            cfg_path = os.path.join(draft_store.ADMIN_DATA, fname)
             if method == "GET":
+                cats = {}
                 if os.path.exists(cfg_path):
-                    return self._json(json.load(open(cfg_path, encoding="utf-8")))
-                return self._json(SPOT_DISPLAY_DEFAULT)
+                    cats = json.load(open(cfg_path, encoding="utf-8")).get("categories", {})
+                return self._json(_norm_display_cfg(cats, defaults))
             if method == "PUT":
                 data = json.loads(self._body())
                 cats = data.get("categories")
                 if not isinstance(cats, dict):
                     raise ValueError("categories 객체 필요")
-                for k, v in cats.items():
-                    if k not in SPOT_DISPLAY_DEFAULT["categories"]:
-                        raise ValueError(f"알 수 없는 분류: {k}")
-                    if v is not None and not (isinstance(v, (int, float)) and 0 <= v <= 22):
-                        raise ValueError(f"{k}: 줌은 0~22 또는 null(끔)")
-                cfg = {"version": 1, "categories": {**SPOT_DISPLAY_DEFAULT["categories"], **cats}}
+                cfg = _norm_display_cfg(cats, defaults)
                 body = json.dumps(cfg, ensure_ascii=False, indent=1).encode()
                 os.makedirs(draft_store.ADMIN_DATA, exist_ok=True)
                 with open(cfg_path, "wb") as f:
                     f.write(body)
                 import r2_lib
-                r2_lib.upload_bytes(body, "config/spot-display.json",
+                r2_lib.upload_bytes(body, f"config/{fname}",
                                     content_type="application/json")
                 return self._json({"ok": True, **cfg})
 

@@ -188,12 +188,16 @@ button.active { background: #111; color: #fff; }
 .badge.gpx { border-style: dashed; }
 .badge.b100 { background: #111; color: #fff; border-color: #111; font-size: 10px; vertical-align: 1px; }
 
-/* 스팟 표시 설정 (앱 전역) */
-#sec-spotcfg { border: 1px solid #ddd; border-radius: 8px; background: #fff; padding: 8px 10px; margin: 10px 0 4px; }
-#sec-spotcfg summary { cursor: pointer; font-weight: 700; font-size: 12.5px; }
-#spotcfg-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin: 8px 0 4px; }
-.spotcfg-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0; font-size: 12px; }
-.spotcfg-row select { font-size: 12px; padding: 2px 4px; }
+/* 스팟 표시 설정 · 기저지도 POI 표시 설정 (앱 전역 — 분류별 줌·기호·크기·볼드) */
+#sec-spotcfg, #sec-poicfg { border: 1px solid #ddd; border-radius: 8px; background: #fff; padding: 8px 10px; margin: 10px 0 4px; }
+#sec-spotcfg summary, #sec-poicfg summary { cursor: pointer; font-weight: 700; font-size: 12.5px; }
+#spotcfg-rows, #poicfg-rows { display: grid; grid-template-columns: 1fr; gap: 3px; margin: 8px 0 4px; }
+.spotcfg-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin: 0; font-size: 12px; padding: 3px 0; border-bottom: 1px dashed #eee; }
+.spotcfg-row select { font-size: 11.5px; padding: 2px 3px; max-width: 108px; }
+.cfg-cat { flex: 1; min-width: 56px; font-weight: 600; }
+.cfg-ctl { display: inline-flex; align-items: center; gap: 2px; }
+.cfg-ctl small { color: #888; font-size: 10px; white-space: nowrap; }
+.cfg-ctl input[type="number"] { width: 46px; font-size: 11.5px; padding: 2px 2px; }
 
 /* 코스 드래그 정렬 그립 */
 #course-list .c-grip { flex: 0 0 auto; cursor: grab; color: #aaa; font-size: 13px; user-select: none; }
@@ -221,7 +225,7 @@ button.active { background: #111; color: #fff; }
 #pk-lat, #pk-lon { width: 118px; font-size: 12px; padding: 3px 6px; }
 #pk-cat { font-size: 12px; padding: 3px 4px; }
 #peak-list { list-style: none; margin: 6px 0 0; padding: 0; }
-#peak-list li { display: flex; align-items: center; gap: 6px; padding: 4px 2px; border-bottom: 1px solid #eee; font-size: 12.5px; }
+#peak-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; padding: 4px 2px; border-bottom: 1px solid #eee; font-size: 12.5px; }
 #peak-list li:last-child { border-bottom: 0; }
 #peak-list .p-main { cursor: pointer; color: #ccc; font-size: 14px; flex: 0 0 auto; width: 15px; text-align: center; }
 #peak-list .p-main.on { color: #111; }
@@ -232,6 +236,11 @@ button.active { background: #111; color: #fff; }
 #peak-list .p-name:focus { outline: 1px solid #111; border-radius: 3px; border-bottom-color: transparent; }
 #peak-list .p-lat, #peak-list .p-lon { flex: 0 0 auto; width: 84px; font-size: 11.5px; padding: 1px 3px; border: 1px solid #ddd; border-radius: 4px; }
 #peak-list .p-del { flex: 0 0 auto; font-size: 11px; padding: 2px 7px; }
+/* 스팟별 표시 오버라이드 — 두 번째 줄 전체 폭, 옅게(분류 설정 따름이 기본) */
+#peak-list .p-disp { flex: 1 0 100%; display: inline-flex; align-items: center; gap: 4px; padding-left: 21px; }
+#peak-list .p-disp small { color: #999; font-size: 10px; }
+#peak-list .p-disp select { font-size: 10.5px; padding: 1px 2px; color: #555; }
+#peak-list .p-disp .p-size { width: 48px; font-size: 10.5px; padding: 1px 3px; border: 1px solid #ddd; border-radius: 4px; color: #555; }
 
 /* 잡 진행 */
 .pbar { height: 8px; border-radius: 4px; background: #e5e5e5; margin: 6px 0; overflow: hidden; }
