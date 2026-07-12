@@ -274,7 +274,6 @@ footer .warn { margin-top: 6px; }
 .famous-item:active { transform: scale(.99); }
 .famous-item .fm-name { font-weight: 700; font-size: 15px; }
 .famous-item .fm-meta { font-size: 12px; color: var(--muted); }
-.reco-h2 { font-size: 13px; color: var(--muted); font-weight: 700; margin: 4px 2px 12px; }
 
 /* 추천 카드 (무채색) */
 /* 큐레이션 그룹 제목 (admin 큐레이션 — 그룹당 하나) */
