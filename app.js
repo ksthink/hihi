@@ -1474,6 +1474,53 @@ function setSummary(count, dist, gain) {
   set("sum-gain", (gain || 0).toLocaleString());
 }
 
+// ── 산행 달력 — 기록 있는 날 점 표시, ‹ › 로 월 이동 ──
+let calMonth = null; // Date(연, 월, 1) — 표시 중인 달 (기본: 이번 달)
+let calRecDays = new Set(); // "YYYY-M-D" (로컬 날짜) — 기록 있는 날
+function renderRecCalendar() {
+  const box = document.getElementById("rec-cal");
+  if (!box) return;
+  if (!currentUser) { box.hidden = true; return; }
+  box.hidden = false;
+  if (!calMonth) { const n = new Date(); calMonth = new Date(n.getFullYear(), n.getMonth(), 1); }
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const today = new Date();
+  const first = new Date(y, m, 1).getDay(); // 첫날 요일(일=0)
+  const days = new Date(y, m + 1, 0).getDate();
+
+  box.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "rc-head";
+  const nav = (label, delta) => {
+    const b = Object.assign(document.createElement("button"), { textContent: label });
+    b.onclick = () => { calMonth = new Date(y, m + delta, 1); renderRecCalendar(); };
+    return b;
+  };
+  head.append(nav("‹", -1),
+    Object.assign(document.createElement("span"), { textContent: `${y}.${String(m + 1).padStart(2, "0")}` }),
+    nav("›", 1));
+  box.appendChild(head);
+
+  const grid = document.createElement("div");
+  grid.className = "rc-grid";
+  for (const w of ["일", "월", "화", "수", "목", "금", "토"])
+    grid.appendChild(Object.assign(document.createElement("span"), { className: "rc-w", textContent: w }));
+  for (let i = 0; i < first; i++) grid.appendChild(document.createElement("span"));
+  for (let d = 1; d <= days; d++) {
+    const cell = document.createElement("span");
+    cell.className = "rc-d";
+    if (y === today.getFullYear() && m === today.getMonth() && d === today.getDate())
+      cell.classList.add("today");
+    cell.textContent = d;
+    if (calRecDays.has(`${y}-${m + 1}-${d}`)) {
+      cell.classList.add("has-rec");
+      cell.appendChild(Object.assign(document.createElement("i"), { className: "rc-dot" }));
+    }
+    grid.appendChild(cell);
+  }
+  box.appendChild(grid);
+}
+
 async function renderRecords() {
   const ul = document.getElementById("rec-list");
   const empty = document.getElementById("rec-empty");
@@ -1484,6 +1531,7 @@ async function renderRecords() {
     empty.hidden = false;
     empty.textContent = "로그인하고 등반 기록을 저장하세요.";
     setSummary(0, 0, 0);
+    renderRecCalendar(); // 로그아웃 → 달력 숨김
     return;
   }
 
@@ -1503,6 +1551,13 @@ async function renderRecords() {
   const recs = data || [];
   empty.hidden = recs.length > 0;
   if (!recs.length) empty.textContent = "아직 등반 기록이 없습니다. 코스를 선택해 등반을 시작해 보세요.";
+
+  // 달력용 기록 날짜 집계 (로컬 날짜 기준) 후 렌더
+  calRecDays = new Set(recs.filter((r) => r.started_at).map((r) => {
+    const d = new Date(r.started_at);
+    return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  }));
+  renderRecCalendar();
 
   let totDist = 0, totGain = 0;
   recs.forEach((r) => {
