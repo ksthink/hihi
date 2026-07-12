@@ -3,7 +3,7 @@
  "curations": [
   {
    "id": "cu-e5bvt54x",
-   "title": "HI-HI 이달의 매거진",
+   "title": "HI^HIKE 이달의 매거진",
    "items": [
     {
      "type": "mountain",
@@ -12,15 +12,18 @@
      "sub": "서울, 수도권 근교산 특집",
      "title": "인천시민들의 산뷰",
      "desc": "인천에서 가장 높은 산(395m) — 도심에서 바로 오르는 정상 조망",
-     "logo": "© metaphr",
+     "logo": "© 하이하잇",
      "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/282600201.jpg"
     },
     {
-     "type": "mountain",
+     "type": "course",
      "code": "411900201",
-     "name": "원미산",
-     "title": "원미산",
-     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/411900201.png"
+     "name": "소사역 - 원미도서관",
+     "mountain": "원미산",
+     "sub": "부천의 유일무이 산",
+     "title": "원미산 · 소사역 - 원미도서관",
+     "desc": "소사역에서 시립도서관까지",
+     "logo": "© 하이하잇"
     }
    ]
   }
