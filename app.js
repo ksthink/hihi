@@ -306,6 +306,24 @@ async function loadPoiDisplay() {
   } catch (_) { /* 캐시/기본값 유지 */ }
 }
 
+// ── 큐레이션 (admin 편집 · R2 config/curations.json) — 추천 탭 데이터 ──
+// 있으면 추천 탭이 큐레이션 그룹을 렌더, 없으면(미배포·오프라인 첫 방문) 내장 RECO 폴백.
+let curations = null;
+const CURATIONS_KEY = "hiheight-curations";
+try {
+  curations = JSON.parse(localStorage.getItem(CURATIONS_KEY));
+} catch (_) { /* 폴백 유지 */ }
+async function loadCurations() {
+  try {
+    const url = R2_PACKS_BASE.replace(/\/packs$/, "") + "/config/curations.json";
+    const cfg = await fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null));
+    if (!cfg?.curations) return;
+    curations = cfg.curations;
+    localStorage.setItem(CURATIONS_KEY, JSON.stringify(curations));
+    renderReco(); // 이미 그려진 추천 탭 갱신 (부팅 순서 무관)
+  } catch (_) { /* 캐시/폴백 유지 */ }
+}
+
 // 점·라벨로 그리는 분류 / 아이콘으로 그리는 분류 (정상은 spot-peaks 별도)
 const DOT_CATS = ["분기점", "시종점", "장소"];
 const FACILITY_ICON = {
@@ -1069,6 +1087,37 @@ const RECO = [
 function renderReco() {
   const box = document.getElementById("reco-list");
   box.innerHTML = "";
+  // 큐레이션(admin 등록) 우선 — 카탈로그에 없는 산/코스는 열 수 없으므로 제외
+  if (curations?.length) {
+    for (const cu of curations) {
+      const items = (cu.items || []).filter((it) => PARKS[it.code]);
+      if (!items.length) continue;
+      const h = document.createElement("div");
+      h.className = "reco-group-title";
+      h.textContent = cu.title;
+      box.appendChild(h);
+      for (const it of items) {
+        const el = document.createElement("div");
+        el.className = "reco-card";
+        if (it.type === "mountain") {
+          const m = PARKS[it.code];
+          el.innerHTML = `
+            <div class="rc-park">산</div>
+            <div class="rc-name">${it.name}</div>
+            <div class="rc-why">${[m.region, m.elev ? m.elev + "m" : null].filter(Boolean).join(" · ")}</div>`;
+          el.addEventListener("click", async () => { showTab("tam"); await loadPark(it.code); });
+        } else {
+          el.innerHTML = `
+            <div class="rc-park">${it.mountain || PARKS[it.code].label}</div>
+            <div class="rc-name">${it.name}</div>`;
+          el.addEventListener("click", () => openTrailByName(it.code, it.name));
+        }
+        box.appendChild(el);
+      }
+    }
+    if (box.children.length) return;
+  }
+  // 폴백: 내장 추천 (큐레이션 미배포·오프라인 첫 방문)
   RECO.forEach((r) => {
     const el = document.createElement("div");
     el.className = "reco-card";
@@ -1695,6 +1744,7 @@ setupAuth(); // 세션 복원 + 로그인/가입/로그아웃 바인딩 (기록/
 let spotCfgReady = false; // styledata 핸들러의 조기 오버레이 부착 게이트
 const spotDisplayReady = loadSpotDisplay().finally(() => { spotCfgReady = true; });
 loadPoiDisplay(); // 기저지도 POI 정책 — 초기 스타일은 캐시로 이미 반영, 최신본은 도착 시 재적용
+loadCurations(); // 추천 탭 큐레이션 — 도착 시 renderReco 재호출
 const catalogReady = loadCatalog().then((codes) => {
   if (codes.length) prefetchPark(codes[0]);
   return codes;

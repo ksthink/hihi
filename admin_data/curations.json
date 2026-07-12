@@ -1,0 +1,22 @@
+{
+ "version": 1,
+ "curations": [
+  {
+   "id": "cu-e5bvt54x",
+   "title": "이번 주 추천 코스",
+   "items": [
+    {
+     "type": "mountain",
+     "code": "282600201",
+     "name": "계양산"
+    },
+    {
+     "type": "course",
+     "code": "282600201",
+     "name": "2018-04-19 10:01 계양산",
+     "mountain": "계양산"
+    }
+   ]
+  }
+ ]
+}

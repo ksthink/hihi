@@ -421,6 +421,66 @@ class AdminHandler(BaseHandler):
                                     content_type="application/json")
                 return self._json({"ok": True, **cfg})
 
+        # GET/PUT /api/config/curations — 큐레이션(추천 모음: 산·코스) 문서 전체 교체 방식
+        # 저장: admin_data/curations.json (원본) + R2 config/curations.json (앱 추천 탭이 fetch)
+        if p == ["config", "curations"]:
+            cfg_path = os.path.join(draft_store.ADMIN_DATA, "curations.json")
+            if method == "GET":
+                if os.path.exists(cfg_path):
+                    return self._json(json.load(open(cfg_path, encoding="utf-8")))
+                return self._json({"version": 1, "curations": []})
+            if method == "PUT":
+                data = json.loads(self._body())
+                cus = data.get("curations")
+                if not isinstance(cus, list):
+                    raise ValueError("curations 배열 필요")
+                for cu in cus:
+                    if not isinstance(cu, dict) or not str(cu.get("title", "")).strip():
+                        raise ValueError("큐레이션 이름(title)이 비어 있음")
+                    if not isinstance(cu.get("items"), list):
+                        raise ValueError(f"{cu['title']}: items 배열 필요")
+                    for it in cu["items"]:
+                        if it.get("type") not in ("mountain", "course"):
+                            raise ValueError(f"{cu['title']}: 항목 type 은 mountain|course")
+                        if not re.fullmatch(r"\d{9}", str(it.get("code", ""))):
+                            raise ValueError(f"{cu['title']}: 항목 code 는 9자리 산코드")
+                        if not str(it.get("name", "")).strip():
+                            raise ValueError(f"{cu['title']}: 항목 name 필요")
+                cfg = {"version": 1, "curations": [
+                    {"id": cu.get("id") or f"cu-{uuid.uuid4().hex[:8]}",
+                     "title": str(cu["title"]).strip(),
+                     "items": [{k: it[k] for k in ("type", "code", "name", "mountain")
+                                if it.get(k) is not None} for it in cu["items"]]}
+                    for cu in cus]}
+                body = json.dumps(cfg, ensure_ascii=False, indent=1).encode()
+                os.makedirs(draft_store.ADMIN_DATA, exist_ok=True)
+                with open(cfg_path, "wb") as f:
+                    f.write(body)
+                import r2_lib
+                r2_lib.upload_bytes(body, "config/curations.json",
+                                    content_type="application/json")
+                return self._json({"ok": True, **cfg})
+
+        # GET /api/course-search?q= — 전체 초안의 코스를 이름으로 검색 (큐레이션 항목 추가용)
+        if method == "GET" and p == ["course-search"]:
+            kw = (q.get("q") or [""])[0].strip()
+            out = []
+            if kw:
+                for m in draft_store.list_drafts():
+                    d = draft_store.load(m["code"])
+                    for c in d["courses"]:
+                        name = c.get("name") or ""
+                        if kw in name or kw in m["name"]:
+                            out.append({"code": m["code"], "mountain": m["name"],
+                                        "name": name, "no": c.get("no"),
+                                        "status": c["status"],
+                                        "published": m.get("published", True)})
+                        if len(out) >= 30:
+                            break
+                    if len(out) >= 30:
+                        break
+            return self._json(out)
+
         # GET/POST /api/mountains
         if p == ["mountains"]:
             if method == "GET":

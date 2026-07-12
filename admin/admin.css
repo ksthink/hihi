@@ -188,6 +188,25 @@ button.active { background: #111; color: #fff; }
 .badge.gpx { border-style: dashed; }
 .badge.b100 { background: #111; color: #fff; border-color: #111; font-size: 10px; vertical-align: 1px; }
 
+/* 큐레이션 (추천 모음 — 산·코스) */
+#sec-curation { border: 1px solid #ddd; border-radius: 8px; background: #fff; padding: 8px 10px; margin: 10px 0 4px; }
+#sec-curation summary { cursor: pointer; font-weight: 700; font-size: 12.5px; }
+.cu-block { border: 1px solid #eee; border-radius: 6px; padding: 6px 8px; margin: 8px 0; }
+.cu-head { display: flex; gap: 6px; align-items: center; }
+.cu-title { flex: 1; font-size: 12.5px; font-weight: 600; padding: 3px 6px; border: 1px solid #ddd; border-radius: 4px; }
+.cu-head .danger { font-size: 11px; padding: 2px 7px; }
+.cu-items { list-style: none; margin: 6px 0 0; padding: 0; }
+.cu-items li { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 0; border-bottom: 1px dashed #f0f0f0; }
+.cu-kind { flex: 0 0 auto; font-size: 10px; color: #666; border: 1px solid #ccc; border-radius: 3px; padding: 0 4px; }
+.cu-name { flex: 1; }
+.cu-items button { font-size: 12px; padding: 0 6px; }
+.cu-add { position: relative; margin-top: 6px; }
+.cu-add input { width: 100%; font-size: 12px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+.cu-results { list-style: none; margin: 2px 0 0; padding: 0; border: 1px solid #ddd; border-radius: 4px; background: #fff; max-height: 180px; overflow-y: auto; }
+.cu-results li { font-size: 12px; padding: 4px 8px; cursor: pointer; }
+.cu-results li:hover { background: #f2f2f2; }
+.cu-results li.dup { color: #aaa; cursor: default; }
+
 /* 스팟 표시 설정 · 기저지도 POI 표시 설정 (앱 전역 — 분류별 줌·기호·크기·볼드) */
 #sec-spotcfg, #sec-poicfg { border: 1px solid #ddd; border-radius: 8px; background: #fff; padding: 8px 10px; margin: 10px 0 4px; }
 #sec-spotcfg summary, #sec-poicfg summary { cursor: pointer; font-weight: 700; font-size: 12.5px; }

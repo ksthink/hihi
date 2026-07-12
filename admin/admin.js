@@ -1153,7 +1153,132 @@ const loadPoiCfg = bindDisplayCfg("/config/poi", "poicfg", POI_ZOOM_OPTS, POI_NO
   applyPoiEditorStyle();
 });
 
+// ── 큐레이션 (추천 모음 — 산·코스, R2 config/curations.json → 앱 추천 탭) ──
+let curDoc = null; // {version, curations: [{id, title, items: [{type, code, name, mountain?}]}]}
+const cuState = (t) => { $("cu-state").textContent = t; };
+const cuDirty = () => cuState("저장 안 됨");
+
+async function loadCurations() {
+  try {
+    curDoc = await api("/config/curations");
+  } catch (_) { return; }
+  renderCurations();
+}
+
+function renderCurations() {
+  const box = $("cu-list");
+  box.innerHTML = "";
+  if (!curDoc.curations.length) {
+    box.innerHTML = '<p class="dim" style="margin:6px 0">등록된 큐레이션이 없습니다. ＋ 새 큐레이션으로 시작하세요.</p>';
+    return;
+  }
+  for (const cu of curDoc.curations) box.appendChild(curationBlock(cu));
+}
+
+function curationBlock(cu) {
+  const div = document.createElement("div");
+  div.className = "cu-block";
+
+  // 제목 + 큐레이션 삭제
+  const head = document.createElement("div");
+  head.className = "cu-head";
+  const title = Object.assign(document.createElement("input"), {
+    className: "cu-title", placeholder: "큐레이션 이름 (예: 가을 단풍 추천)", value: cu.title || "",
+  });
+  title.onchange = () => { cu.title = title.value.trim(); cuDirty(); };
+  const del = Object.assign(document.createElement("button"), { className: "danger", textContent: "삭제" });
+  del.onclick = () => {
+    if (!confirm(`큐레이션 "${cu.title || "(이름 없음)"}" 삭제?`)) return;
+    curDoc.curations = curDoc.curations.filter((x) => x !== cu);
+    renderCurations(); cuDirty();
+  };
+  head.append(title, del);
+
+  // 항목 목록 (산·코스)
+  const ul = document.createElement("ul");
+  ul.className = "cu-items";
+  for (const it of cu.items) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span class="cu-kind">${it.type === "mountain" ? "산" : "코스"}</span>
+      <span class="cu-name">${it.type === "course" ? `${it.mountain} · ` : ""}${it.name}</span>`;
+    const rm = Object.assign(document.createElement("button"), { textContent: "×", title: "항목 제거" });
+    rm.onclick = () => {
+      cu.items = cu.items.filter((x) => x !== it);
+      div.replaceWith(curationBlock(cu)); cuDirty();
+    };
+    li.appendChild(rm);
+    ul.appendChild(li);
+  }
+
+  // 항목 추가 — 산·코스 통합 검색 (관리 중인 산 이름 + 초안 코스명)
+  const addWrap = document.createElement("div");
+  addWrap.className = "cu-add";
+  const q = Object.assign(document.createElement("input"), {
+    type: "search", placeholder: "산 이름·코스명 검색해 추가", autocomplete: "off",
+  });
+  const res = document.createElement("ul");
+  res.className = "cu-results";
+  res.hidden = true;
+  let seq = 0;
+  q.oninput = async () => {
+    const kw = q.value.trim();
+    const my = ++seq;
+    if (!kw) { res.hidden = true; return; }
+    // 산: 관리 중인 초안 목록에서 이름 매칭 / 코스: 서버 검색
+    const [mts, courses] = await Promise.all([
+      api("/mountains").then((l) => l.filter((m) => m.name.includes(kw)).slice(0, 5)).catch(() => []),
+      api(`/course-search?q=${encodeURIComponent(kw)}`).catch(() => []),
+    ]);
+    if (my !== seq) return; // 최신 입력만 반영
+    res.innerHTML = "";
+    const already = new Set(cu.items.map((x) => `${x.type}|${x.code}|${x.name || ""}`));
+    const row = (label, item) => {
+      const li = document.createElement("li");
+      li.textContent = label;
+      if (already.has(`${item.type}|${item.code}|${item.name || ""}`)) {
+        li.classList.add("dup"); li.title = "이미 추가됨";
+      } else {
+        li.onclick = () => { cu.items.push(item); div.replaceWith(curationBlock(cu)); cuDirty(); };
+      }
+      res.appendChild(li);
+    };
+    for (const m of mts)
+      row(`산 · ${m.name} (${m.code})${m.published ? "" : " — 비공개"}`,
+        { type: "mountain", code: m.code, name: m.name });
+    for (const c of courses.slice(0, 10))
+      row(`코스 · ${c.mountain} — ${c.name}${c.status !== "ready" ? " (비공개 코스)" : ""}`,
+        { type: "course", code: c.code, name: c.name, mountain: c.mountain });
+    if (!res.children.length) res.innerHTML = '<li class="dup">검색 결과 없음</li>';
+    res.hidden = false;
+  };
+  addWrap.append(q, res);
+
+  div.append(head, ul, addWrap);
+  return div;
+}
+
+$("cu-new").onclick = () => {
+  if (!curDoc) curDoc = { version: 1, curations: [] };
+  curDoc.curations.push({ id: "cu-" + Math.random().toString(36).slice(2, 10), title: "", items: [] });
+  renderCurations(); cuDirty();
+};
+$("cu-save").onclick = async () => {
+  if (!curDoc) return;
+  cuState("저장 중…");
+  try {
+    curDoc = await api("/config/curations", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ curations: curDoc.curations }),
+    });
+    renderCurations();
+    cuState("저장됨 ✓ (앱 새로고침 시 반영)");
+  } catch (e) {
+    cuState("저장 실패: " + e.message);
+  }
+};
+
 // ── 부팅 ── (401 이면 api() 가 로그인 게이트를 띄움)
 refreshList().catch(() => {});
 loadSpotCfg().catch(() => {});
 loadPoiCfg().catch(() => {});
+loadCurations().catch(() => {});

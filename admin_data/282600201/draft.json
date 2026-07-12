@@ -17,7 +17,7 @@
    37.58
   ],
   "sort_order": 100,
-  "famous": false,
+  "famous": true,
   "published": true
  },
  "courses": [
@@ -14250,24 +14250,24 @@
    "category": "장소",
    "name": "우리나라 만세",
    "coord": [
-    126.709805,
-    37.560757
+    126.709675,
+    37.560749
    ],
    "detail": null,
    "etc": null,
    "origin": "manual",
-   "moved": false,
+   "moved": true,
    "deleted": false,
    "main": false,
    "disp_zoom": 12,
    "disp_icon": true,
-   "disp_size": 15,
+   "disp_size": 13,
    "disp_bold": true
   }
  ],
  "publish": {
-  "pack_version": 6,
-  "published_at": "2026-07-12T05:42:28.941427+00:00",
+  "pack_version": 9,
+  "published_at": "2026-07-12T06:25:12.229507+00:00",
   "pack_size_kb": 2508,
   "tiles_bbox": [
    126.68,
