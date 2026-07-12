@@ -14261,13 +14261,13 @@
    "main": false,
    "disp_zoom": 12,
    "disp_icon": true,
-   "disp_size": 24,
+   "disp_size": 15,
    "disp_bold": true
   }
  ],
  "publish": {
-  "pack_version": 4,
-  "published_at": "2026-07-12T04:50:26.885269+00:00",
+  "pack_version": 5,
+  "published_at": "2026-07-12T05:15:13.263030+00:00",
   "pack_size_kb": 2508,
   "tiles_bbox": [
    126.68,
