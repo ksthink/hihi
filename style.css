@@ -305,14 +305,14 @@ footer .warn { margin-top: 6px; }
 .ps-head { position: absolute; top: 30px; left: 18px; right: 18px; }
 .ps-kicker { display: inline-block; background: rgba(0,0,0,.42); color: #fff;
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-  font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 7px; }
-.ps-title { margin-top: 9px; color: #fff; font-size: 27px; font-weight: 800; line-height: 1.25;
+  font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 7px; }
+.ps-title { margin-top: 9px; color: #fff; font-size: 23px; font-weight: 800; line-height: 1.25;
   text-shadow: 0 1px 8px rgba(0,0,0,.55); }
 .ps-desc { position: absolute; bottom: 17%; left: 10%; right: 10%;
   color: #fff; text-align: center; font-size: 13px; font-weight: 600; line-height: 1.6;
   text-shadow: 0 1px 6px rgba(0,0,0,.7); }
 .ps-logo { position: absolute; left: 18px; bottom: 13px; color: rgba(255,255,255,.72);
-  font-size: 10.5px; letter-spacing: .02em; }
+  font-size: 10px; letter-spacing: .02em; }
 .pick-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 4px; }
 .pick-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .35; transition: opacity .2s; }
 .pick-dots i.on { opacity: 1; }
