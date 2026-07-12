@@ -1511,11 +1511,66 @@ async function renderRecords() {
     const li = document.createElement("li");
     li.className = "rec-item";
     li.innerHTML = `
-      <div class="ri-top"><span class="ri-name">${r.course_name || r.mountain_id || "산행"}</span><span class="ri-date">${fmtDate(r.started_at)}</span></div>
-      <div class="ri-meta"><span>${(r.distance_km ?? 0)} km</span><span>${fmtDur(r.duration_s)}</span></div>`;
+      <div class="ri-body">
+        <div class="ri-top"><span class="ri-name">${r.course_name || r.mountain_id || "산행"}</span><span class="ri-date">${fmtDate(r.started_at)}</span></div>
+        <div class="ri-meta"><span>${(r.distance_km ?? 0)} km</span><span>${fmtDur(r.duration_s)}</span></div>
+      </div>
+      <button class="ri-del">삭제</button>`;
+    wireRecordSwipe(li, r);
     ul.appendChild(li);
   });
   setSummary(recs.length, totDist.toFixed(1), totGain);
+}
+
+// ── 기록 스와이프 삭제 ──────────────────────────────
+// 왼쪽 스와이프 → 삭제 버튼 노출(한 번에 한 행) → 확인 후 영구 삭제.
+// 포인터 이벤트(터치·마우스 공용), 세로 제스처는 스크롤에 양보(touch-action: pan-y).
+let openRecRow = null; // 삭제 버튼이 열려 있는 행
+function wireRecordSwipe(li, rec) {
+  const body = li.querySelector(".ri-body");
+  const OPEN = -76; // 삭제 버튼 폭만큼 밀림
+  let startX = 0, startY = 0, base = 0, dragging = false, axis = null;
+  const setX = (x, animate) => {
+    body.style.transition = animate ? "transform .18s ease" : "none";
+    body.style.transform = `translateX(${x}px)`;
+    li._x = x;
+  };
+  li._close = () => { setX(0, true); if (openRecRow === li) openRecRow = null; };
+  body.addEventListener("pointerdown", (e) => {
+    dragging = true; axis = null;
+    startX = e.clientX; startY = e.clientY; base = li._x || 0;
+    if (openRecRow && openRecRow !== li) openRecRow._close(); // 다른 행은 닫기
+  });
+  body.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if (!axis) { // 첫 6px 로 가로/세로 판정 — 세로는 목록 스크롤에 양보
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (axis === "x") body.setPointerCapture(e.pointerId);
+    }
+    if (axis === "x") setX(Math.max(OPEN, Math.min(0, base + dx)), false);
+  });
+  const end = () => {
+    if (!dragging) return;
+    dragging = false;
+    if (axis !== "x") return;
+    const open = (li._x || 0) < OPEN / 2; // 절반 이상 밀면 열림 유지
+    setX(open ? OPEN : 0, true);
+    openRecRow = open ? li : (openRecRow === li ? null : openRecRow);
+  };
+  body.addEventListener("pointerup", end);
+  body.addEventListener("pointercancel", end);
+  li.querySelector(".ri-del").addEventListener("click", async () => {
+    const name = rec.course_name || rec.mountain_id || "산행";
+    if (!confirm(`"${name}" 기록을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) {
+      li._close();
+      return;
+    }
+    const { error } = await supabase.from("climb_records").delete().eq("id", rec.id);
+    if (error) { alert("삭제 실패: " + error.message); return; }
+    renderRecords(); // 목록·상단 합계 갱신
+  });
 }
 
 // ── 계정 (Supabase Auth) ─────────────────────────────

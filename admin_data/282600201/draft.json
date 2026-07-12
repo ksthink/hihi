@@ -19,7 +19,9 @@
   "sort_order": 100,
   "famous": true,
   "published": true,
-  "lists": []
+  "lists": [
+   "bac100"
+  ]
  },
  "courses": [
   {
@@ -14267,8 +14269,8 @@
   }
  ],
  "publish": {
-  "pack_version": 9,
-  "published_at": "2026-07-12T06:25:12.229507+00:00",
+  "pack_version": 10,
+  "published_at": "2026-07-12T08:47:47.072477+00:00",
   "pack_size_kb": 2508,
   "tiles_bbox": [
    126.68,

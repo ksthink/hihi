@@ -361,7 +361,10 @@ footer .warn { margin-top: 6px; }
 .rec-summary span { font-size: 22px; font-weight: 700; color: var(--text); }
 .rec-summary small { font-size: 11px; color: var(--muted); margin-top: 3px; }
 .rec-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.rec-item { background: var(--elevated); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+/* 기록 행 — 왼쪽 스와이프로 삭제 버튼 노출 (ri-body 가 밀리고 아래 버튼이 드러남) */
+.rec-item { position: relative; border-radius: 14px; overflow: hidden; }
+.rec-item .ri-body { background: var(--elevated); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; position: relative; z-index: 1; touch-action: pan-y; cursor: grab; }
+.rec-item .ri-del { position: absolute; top: 0; right: 0; bottom: 0; width: 76px; border: none; cursor: pointer; background: #b3261e; color: #fff; font-size: 13px; font-weight: 700; border-radius: 0 14px 14px 0; }
 .rec-item .ri-top { display: flex; justify-content: space-between; align-items: baseline; }
 .rec-item .ri-name { font-weight: 700; font-size: 15px; }
 .rec-item .ri-date { font-size: 12px; color: var(--muted); }
