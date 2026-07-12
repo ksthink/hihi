@@ -1509,8 +1509,8 @@ async function saveClimb() {
     course_name: p.name,
     started_at: s.startedAt.toISOString(),
     ended_at: ended.toISOString(),
-    // 실측 이동거리가 유의미하면(50m+) 실측, 아니면 코스 거리로 기록
-    distance_km: measuredKm >= 0.05 ? +measuredKm.toFixed(2) : (p.distance_km ?? null),
+    // 실제 걸은 거리만 기록 (코스 계획 거리로 대체하지 않음 — GPS 없으면 0)
+    distance_km: +measuredKm.toFixed(2),
     // 상승고도도 같은 원칙 — 실측(고도 샘플 충분)이면 실측, 아니면 코스 계획값
     ascent_m: elev ? elev.ascent : (p.ascent ?? null),
     duration_s: Math.max(1, Math.round((ended - s.startedAt) / 1000)),
@@ -1635,9 +1635,22 @@ async function renderRecords() {
   }));
   renderRecCalendar();
 
+  // 실제 걸은 거리 — 트랙이 있으면 트랙에서 재계산(구형 기록의 코스 계획 거리 교정),
+  // 없으면 저장값. 시간(duration_s)은 원래 실측(시작→종료).
+  const actualKm = (r) => {
+    const pts = r.track?.points;
+    if (pts?.length >= 2) {
+      let d = 0;
+      for (let i = 1; i < pts.length; i++) d += haversine(pts[i - 1], pts[i]);
+      return +(d / 1000).toFixed(2);
+    }
+    return r.distance_km ?? 0;
+  };
+
   let totDist = 0, totGain = 0;
   recs.forEach((r) => {
-    totDist += r.distance_km || 0;
+    const km = actualKm(r);
+    totDist += km;
     totGain += r.ascent_m || 0;
     const li = document.createElement("li");
     li.className = "rec-item";
@@ -1647,7 +1660,7 @@ async function renderRecords() {
           // "산 이름 | 코스명" — 산은 카탈로그(PARKS)에서, 없으면 코스명만
           [PARKS[r.mountain_id]?.label, r.course_name].filter(Boolean).join(" | ") || r.mountain_id || "산행"
         }</span><span class="ri-date">${fmtDate(r.started_at)}</span></div>
-        <div class="ri-meta"><span>${(r.distance_km ?? 0)} km</span><span>${fmtDur(r.duration_s)}</span>${
+        <div class="ri-meta"><span>${km} km</span><span>${fmtDur(r.duration_s)}</span>${
           r.track?.elev ? `<span>↑${r.track.elev.ascent}m</span>` : ""
         }${hasTrack(r) ? '<span class="ri-route">루트 ›</span>' : ""}</div>
       </div>
