@@ -1512,7 +1512,10 @@ async function renderRecords() {
     li.className = "rec-item";
     li.innerHTML = `
       <div class="ri-body">
-        <div class="ri-top"><span class="ri-name">${r.course_name || r.mountain_id || "산행"}</span><span class="ri-date">${fmtDate(r.started_at)}</span></div>
+        <div class="ri-top"><span class="ri-name">${
+          // "산 이름 | 코스명" — 산은 카탈로그(PARKS)에서, 없으면 코스명만
+          [PARKS[r.mountain_id]?.label, r.course_name].filter(Boolean).join(" | ") || r.mountain_id || "산행"
+        }</span><span class="ri-date">${fmtDate(r.started_at)}</span></div>
         <div class="ri-meta"><span>${(r.distance_km ?? 0)} km</span><span>${fmtDur(r.duration_s)}</span></div>
       </div>
       <button class="ri-del">삭제</button>`;
