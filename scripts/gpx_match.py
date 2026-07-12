@@ -31,6 +31,11 @@ MIN_RUN = 3           # 이보다 짧은 런은 이웃에 흡수
 # 유지한다. (계양산 사례: 서남쪽 3.96km 순환이 우연히 비슷한 길이(비 0.92)의 구간망
 # 경로로 바꿔치기됨 — 길이 비만 보는 detour 로는 걸러지지 않음)
 GAP_FILL_MAX_M = 1000.0
+# 갭 채움 회랑 폭: 대체 그래프 경로의 모든 점이 원본 갭 궤적에서 이 거리 안이어야 함.
+# 드리프트 보정이면 대체 경로는 원본을 바짝 따라간다 — 길이만 비슷하고 옆으로 크게
+# 벗어나는 경로는 다른 길이다. (계양산 2차 사례: 0.6km 갭이 100m+ 벗어난 0.46km
+# 경로로 대체 — 길이 비 0.77 로 밴드 통과, 회랑 검사로만 걸러짐)
+GAP_FILL_CORRIDOR_M = 80.0
 
 
 # ── 업로드 트랙 파싱 (GPX·GeoJSON·Shapefile) ──
@@ -252,6 +257,13 @@ def _dedupe(coords):
     return out
 
 
+def _max_offset(path, ref):
+    """path 각 점에서 ref 점열(5m 리샘플 원본 갭)까지 최근접 거리의 최댓값(m)."""
+    if not ref:
+        return 0.0
+    return max(min(pl.hav(p, r) for r in ref) for p in path)
+
+
 # ── 매칭 본체 ──
 def match(code, raw, tau=25.0, detour=1.6, fname=""):
     """→ dict(lines, segments, report, gpx_name)"""
@@ -318,11 +330,13 @@ def match(code, raw, tau=25.0, detour=1.6, fname=""):
                         # 양방향 조건: 그래프 경로가 GPX 갭과 비슷한 길이일 때만 채택.
                         # 훨씬 짧으면(왕복 조망 스퍼 등 실제 이탈) GPX 원 좌표를 살린다.
                         # + 긴 갭은 대체 금지(GAP_FILL_MAX_M) — 실제 다른 길 보호.
+                        # + 회랑 검사(GAP_FILL_CORRIDOR_M) — 대체 경로가 원본 궤적을
+                        #   벗어나면 드리프트 보정이 아니라 다른 길이므로 원본 유지.
                         if gpx_m <= GAP_FILL_MAX_M and gpx_m / detour <= total <= gpx_m * detour:
                             path = _dedupe([a_q] + coords + [b_q])
-                            if len(path) >= 2:
+                            if len(path) >= 2 and _max_offset(path, seg_pts) <= GAP_FILL_CORRIDOR_M:
                                 pieces.append(("graph", path, cum_km))
-                            fell_back = False
+                                fell_back = False
             if fell_back and len(seg_pts) >= 2:
                 pieces.append(("gpx", [tuple(p) for p in seg_pts], cum_km))
         cum_km += gpx_km
