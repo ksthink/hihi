@@ -1533,6 +1533,7 @@ function wireRecordSwipe(li, rec) {
   const setX = (x, animate) => {
     body.style.transition = animate ? "transform .18s ease" : "none";
     body.style.transform = `translateX(${x}px)`;
+    li.classList.toggle("swiping", x < -1); // 닫힘 상태에선 삭제 버튼 숨김(모서리 비침 방지)
     li._x = x;
   };
   li._close = () => { setX(0, true); if (openRecRow === li) openRecRow = null; };

@@ -364,7 +364,11 @@ footer .warn { margin-top: 6px; }
 /* 기록 행 — 왼쪽 스와이프로 삭제 버튼 노출 (ri-body 가 밀리고 아래 버튼이 드러남) */
 .rec-item { position: relative; border-radius: 14px; overflow: hidden; }
 .rec-item .ri-body { background: var(--elevated); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; position: relative; z-index: 1; touch-action: pan-y; cursor: grab; }
-.rec-item .ri-del { position: absolute; top: 0; right: 0; bottom: 0; width: 76px; border: none; cursor: pointer; background: #b3261e; color: #fff; font-size: 13px; font-weight: 700; border-radius: 0 14px 14px 0; }
+/* 삭제 버튼 — 카드(ri-body) 라운드 뒤까지 왼쪽으로 확장해 빨간 면이 곡면 틈을 채움
+   (왼쪽 사각 모서리가 드러나지 않아 카드와 맞물린 토글처럼 보임). 노출 폭은 76px 유지. */
+.rec-item .ri-del { position: absolute; top: 0; right: 0; bottom: 0; width: 90px; padding-left: 14px; border: none; cursor: pointer; background: #b3261e; color: #fff; font-size: 13px; font-weight: 700; border-radius: 14px;
+  opacity: 0; transition: opacity .18s; pointer-events: none; } /* 닫힘: 카드 곡면 밖 비침 방지 */
+.rec-item.swiping .ri-del { opacity: 1; pointer-events: auto; }
 .rec-item .ri-top { display: flex; justify-content: space-between; align-items: baseline; }
 .rec-item .ri-name { font-weight: 700; font-size: 15px; }
 .rec-item .ri-date { font-size: 12px; color: var(--muted); }
