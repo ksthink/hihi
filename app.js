@@ -1145,7 +1145,8 @@ function pickCarousel(cu, items) {
         ${it.title ? `<div class="ps-title">${it.title}</div>` : ""}
       </div>` : ""}
       ${it.desc ? `<div class="ps-desc">${it.desc}</div>` : ""}
-      ${it.logo ? `<div class="ps-logo">${it.logo}</div>` : ""}`);
+      ${it.logo ? `<div class="ps-logo">${it.logo}</div>` : ""}
+      ${it.credit ? `<div class="ps-credit">${it.credit}</div>` : ""}`);
     slide.addEventListener("click", () => openCurationItem(it));
     car.appendChild(slide);
   }

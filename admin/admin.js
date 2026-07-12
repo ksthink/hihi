@@ -1240,7 +1240,9 @@ function curationBlock(cu) {
     row3.append(field("desc", "설명 (중앙 하단 · 가운데 정렬)"));
     const row4 = document.createElement("div");
     row4.className = "cu-row2";
-    row4.append(field("logo", "로고 (좌하단 · 예: © 하이하잇)", "cu-desc cu-logo"));
+    row4.append(
+      field("logo", "로고 (좌하단 · 예: © 하이하잇)", "cu-desc cu-logo"),
+      field("credit", "출처 (우하단 · 사진 저작자)", "cu-desc cu-logo"));
     // 산 커버 이미지 업로드 → R2 images/mountains/<산코드> (같은 산 항목끼리 재사용)
     const file = Object.assign(document.createElement("input"), { type: "file", accept: "image/jpeg,image/png,image/webp", hidden: true });
     const imgBtn = Object.assign(document.createElement("button"), {

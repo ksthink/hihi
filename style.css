@@ -315,6 +315,10 @@ footer .warn { margin-top: 6px; }
   text-shadow: 0 1px 6px rgba(0,0,0,.7); }
 .ps-logo { position: absolute; left: 18px; bottom: 13px; color: rgba(255,255,255,.72);
   font-size: 10px; letter-spacing: .02em; }
+/* 출처(사진 저작자) — 로고와 같은 포맷, 같은 라인 우측 정렬 */
+.ps-credit { position: absolute; right: 18px; bottom: 13px; color: rgba(255,255,255,.72);
+  font-size: 10px; letter-spacing: .02em; max-width: 55%; text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pick-dots { display: flex; justify-content: center; gap: 6px; margin: 10px 0 4px; }
 .pick-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .35; transition: opacity .2s; }
 .pick-dots i.on { opacity: 1; }
