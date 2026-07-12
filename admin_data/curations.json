@@ -3,18 +3,22 @@
  "curations": [
   {
    "id": "cu-e5bvt54x",
-   "title": "이번 주 추천 코스",
+   "title": "하이하잇 PICK 코스",
    "items": [
     {
      "type": "mountain",
      "code": "282600201",
-     "name": "계양산"
+     "name": "계양산",
+     "desc": "인천에서 가장 높은 산(395m) — 도심에서 바로 오르는 정상 조망",
+     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/282600201.jpg"
     },
     {
      "type": "course",
      "code": "282600201",
      "name": "2018-04-19 10:01 계양산",
-     "mountain": "계양산"
+     "mountain": "계양산",
+     "desc": "계양산을 크게 도는 17.6km 순환 코스",
+     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/282600201.jpg"
     }
    ]
   }

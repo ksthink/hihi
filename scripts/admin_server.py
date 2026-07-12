@@ -446,11 +446,14 @@ class AdminHandler(BaseHandler):
                             raise ValueError(f"{cu['title']}: 항목 code 는 9자리 산코드")
                         if not str(it.get("name", "")).strip():
                             raise ValueError(f"{cu['title']}: 항목 name 필요")
+                        if it.get("img") is not None and not str(it["img"]).startswith("https://"):
+                            raise ValueError(f"{cu['title']}: img 는 https URL")
                 cfg = {"version": 1, "curations": [
                     {"id": cu.get("id") or f"cu-{uuid.uuid4().hex[:8]}",
                      "title": str(cu["title"]).strip(),
-                     "items": [{k: it[k] for k in ("type", "code", "name", "mountain")
-                                if it.get(k) is not None} for it in cu["items"]]}
+                     # desc: 캐러셀 중앙 오버레이 추천 문구 / img: 산 커버 이미지 URL
+                     "items": [{k: it[k] for k in ("type", "code", "name", "mountain", "desc", "img")
+                                if it.get(k) not in (None, "")} for it in cu["items"]]}
                     for cu in cus]}
                 body = json.dumps(cfg, ensure_ascii=False, indent=1).encode()
                 os.makedirs(draft_store.ADMIN_DATA, exist_ok=True)
@@ -460,6 +463,26 @@ class AdminHandler(BaseHandler):
                 r2_lib.upload_bytes(body, "config/curations.json",
                                     content_type="application/json")
                 return self._json({"ok": True, **cfg})
+
+        # POST /api/mountain-image?code= — 산 커버 이미지 업로드 (큐레이션 캐러셀 배경)
+        # 본문 = 이미지 바이트 그대로 (Content-Type 으로 형식 판별) → R2 images/mountains/
+        if method == "POST" and p == ["mountain-image"]:
+            code = (q.get("code") or [""])[0]
+            if not re.fullmatch(r"\d{9}", code):
+                raise ValueError("9자리 산코드 필요")
+            ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+            ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}.get(ctype)
+            if not ext:
+                raise ValueError("이미지 형식은 jpeg/png/webp")
+            body = self._body()
+            if not body:
+                raise ValueError("이미지 본문 없음")
+            if len(body) > 8 * 1024 * 1024:
+                raise ValueError("이미지는 8MB 이하")
+            import r2_lib
+            key = f"images/mountains/{code}.{ext}"
+            r2_lib.upload_bytes(body, key, content_type=ctype)
+            return self._json({"url": f"{r2_lib.public_base()}/{key}"})
 
         # GET /api/course-search?q= — 전체 초안의 코스를 이름으로 검색 (큐레이션 항목 추가용)
         if method == "GET" and p == ["course-search"]:

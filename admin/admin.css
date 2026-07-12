@@ -196,10 +196,14 @@ button.active { background: #111; color: #fff; }
 .cu-title { flex: 1; font-size: 12.5px; font-weight: 600; padding: 3px 6px; border: 1px solid #ddd; border-radius: 4px; }
 .cu-head .danger { font-size: 11px; padding: 2px 7px; }
 .cu-items { list-style: none; margin: 6px 0 0; padding: 0; }
-.cu-items li { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 0; border-bottom: 1px dashed #f0f0f0; }
+.cu-items li { font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #f0f0f0; }
+.cu-row1 { display: flex; align-items: center; gap: 6px; }
+.cu-row2 { display: flex; align-items: center; gap: 6px; margin-top: 3px; padding-left: 2px; }
 .cu-kind { flex: 0 0 auto; font-size: 10px; color: #666; border: 1px solid #ccc; border-radius: 3px; padding: 0 4px; }
 .cu-name { flex: 1; }
 .cu-items button { font-size: 12px; padding: 0 6px; }
+.cu-desc { flex: 1; font-size: 11px; padding: 2px 5px; border: 1px solid #e3e3e3; border-radius: 4px; color: #555; }
+.cu-img-btn { flex: 0 0 auto; font-size: 10.5px !important; padding: 2px 6px !important; }
 .cu-add { position: relative; margin-top: 6px; }
 .cu-add input { width: 100%; font-size: 12px; padding: 4px 6px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
 .cu-results { list-style: none; margin: 2px 0 0; padding: 0; border: 1px solid #ddd; border-radius: 4px; background: #fff; max-height: 180px; overflow-y: auto; }

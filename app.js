@@ -1084,14 +1084,85 @@ const RECO = [
   { name: "진달래길", park: "113050202", parkLabel: "북한산", diff: "초급", why: "진달래능선을 따라 대동문으로, 봄이면 진달래 명소인 대표 등산로 (OSM)" },
   { name: "천불동계곡 코스", park: "428302602", parkLabel: "설악산", diff: "중급", why: "비선대·양폭을 지나는 설악의 대표 계곡길" }
 ];
+// 큐레이션 항목 클릭 → 산(탐험 탭에서 산 열기) 또는 코스(코스 선택·포커스)
+function openCurationItem(it) {
+  if (it.type === "mountain") { showTab("tam"); loadPark(it.code); }
+  else openTrailByName(it.code, it.name);
+}
+
+// 첫 큐레이션 = 정사각 캐러셀 (수동 스와이프 스냅 + 점 인디케이터).
+// 슬라이드: 배경 = 산 커버 이미지(없으면 무채색 그래디언트), 산 이름 + 중앙 추천 문구 오버레이.
+function pickCarousel(cu, items) {
+  const frag = document.createDocumentFragment();
+  const h = document.createElement("div");
+  h.className = "reco-group-title";
+  h.textContent = cu.title;
+  frag.appendChild(h);
+
+  const car = document.createElement("div");
+  car.className = "pick-carousel";
+  for (const it of items) {
+    const slide = document.createElement("div");
+    slide.className = "pick-slide";
+    if (it.img) {
+      const img = Object.assign(document.createElement("img"), {
+        className: "ps-img", src: it.img, alt: "", loading: "lazy",
+      });
+      img.onerror = () => img.remove(); // 이미지 유실 → 그래디언트 배경 노출
+      slide.appendChild(img);
+    }
+    const mtn = it.type === "mountain" ? it.name : (it.mountain || PARKS[it.code].label);
+    slide.insertAdjacentHTML("beforeend", `
+      <div class="ps-shade"></div>
+      ${it.desc ? `<div class="ps-desc">${it.desc}</div>` : ""}
+      <div class="ps-title">
+        <div class="ps-name">${mtn}</div>
+        ${it.type === "course" ? `<div class="ps-sub">${it.name}</div>` : ""}
+      </div>`);
+    slide.addEventListener("click", () => openCurationItem(it));
+    car.appendChild(slide);
+  }
+  frag.appendChild(car);
+
+  // 점 인디케이터 — 스크롤 스냅 위치 추적
+  if (items.length > 1) {
+    const dots = document.createElement("div");
+    dots.className = "pick-dots";
+    items.forEach((_, i) => {
+      const d = document.createElement("i");
+      if (i === 0) d.className = "on";
+      dots.appendChild(d);
+    });
+    let raf = null;
+    car.addEventListener("scroll", () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const w = car.firstChild.offsetWidth + 12; // 슬라이드 폭 + gap
+        const i = Math.max(0, Math.min(items.length - 1, Math.round(car.scrollLeft / w)));
+        [...dots.children].forEach((d, j) => d.classList.toggle("on", j === i));
+      });
+    }, { passive: true });
+    frag.appendChild(dots);
+  }
+  return frag;
+}
+
 function renderReco() {
   const box = document.getElementById("reco-list");
   box.innerHTML = "";
-  // 큐레이션(admin 등록) 우선 — 카탈로그에 없는 산/코스는 열 수 없으므로 제외
+  // 큐레이션(admin 등록) 우선 — 카탈로그에 없는 산/코스는 열 수 없으므로 제외.
+  // 첫 큐레이션은 캐러셀, 나머지는 카드 리스트.
   if (curations?.length) {
+    let carouselDone = false;
     for (const cu of curations) {
       const items = (cu.items || []).filter((it) => PARKS[it.code]);
       if (!items.length) continue;
+      if (!carouselDone) {
+        carouselDone = true;
+        box.appendChild(pickCarousel(cu, items));
+        continue;
+      }
       const h = document.createElement("div");
       h.className = "reco-group-title";
       h.textContent = cu.title;
@@ -1104,14 +1175,14 @@ function renderReco() {
           el.innerHTML = `
             <div class="rc-park">산</div>
             <div class="rc-name">${it.name}</div>
-            <div class="rc-why">${[m.region, m.elev ? m.elev + "m" : null].filter(Boolean).join(" · ")}</div>`;
-          el.addEventListener("click", async () => { showTab("tam"); await loadPark(it.code); });
+            <div class="rc-why">${it.desc || [m.region, m.elev ? m.elev + "m" : null].filter(Boolean).join(" · ")}</div>`;
         } else {
           el.innerHTML = `
             <div class="rc-park">${it.mountain || PARKS[it.code].label}</div>
-            <div class="rc-name">${it.name}</div>`;
-          el.addEventListener("click", () => openTrailByName(it.code, it.name));
+            <div class="rc-name">${it.name}</div>
+            ${it.desc ? `<div class="rc-why">${it.desc}</div>` : ""}`;
         }
+        el.addEventListener("click", () => openCurationItem(it));
         box.appendChild(el);
       }
     }

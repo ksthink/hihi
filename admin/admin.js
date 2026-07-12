@@ -1194,19 +1194,56 @@ function curationBlock(cu) {
   };
   head.append(title, del);
 
-  // 항목 목록 (산·코스)
+  // 항목 목록 (산·코스) — 2행: [분류·이름·제거] + [추천 설명·커버 이미지]
   const ul = document.createElement("ul");
   ul.className = "cu-items";
   for (const it of cu.items) {
     const li = document.createElement("li");
-    li.innerHTML = `<span class="cu-kind">${it.type === "mountain" ? "산" : "코스"}</span>
+    const row1 = document.createElement("div");
+    row1.className = "cu-row1";
+    row1.innerHTML = `<span class="cu-kind">${it.type === "mountain" ? "산" : "코스"}</span>
       <span class="cu-name">${it.type === "course" ? `${it.mountain} · ` : ""}${it.name}</span>`;
     const rm = Object.assign(document.createElement("button"), { textContent: "×", title: "항목 제거" });
     rm.onclick = () => {
       cu.items = cu.items.filter((x) => x !== it);
       div.replaceWith(curationBlock(cu)); cuDirty();
     };
-    li.appendChild(rm);
+    row1.appendChild(rm);
+
+    const row2 = document.createElement("div");
+    row2.className = "cu-row2";
+    // 추천 문구 — 캐러셀 중앙 오버레이
+    const desc = Object.assign(document.createElement("input"), {
+      className: "cu-desc", placeholder: "추천 설명 (캐러셀 중앙 오버레이)", value: it.desc || "",
+    });
+    desc.onchange = () => { it.desc = desc.value.trim(); cuDirty(); };
+    // 산 커버 이미지 업로드 → R2 images/mountains/<산코드> (같은 산 항목끼리 재사용)
+    const file = Object.assign(document.createElement("input"), { type: "file", accept: "image/jpeg,image/png,image/webp", hidden: true });
+    const imgBtn = Object.assign(document.createElement("button"), {
+      className: "cu-img-btn", textContent: it.img ? "이미지 ✓" : "이미지",
+      title: it.img ? `교체: ${it.img}` : "커버 이미지 업로드 (배경)",
+    });
+    imgBtn.onclick = () => file.click();
+    file.onchange = async () => {
+      const f = file.files[0];
+      if (!f) return;
+      imgBtn.textContent = "올리는 중…"; imgBtn.disabled = true;
+      try {
+        const r = await api(`/mountain-image?code=${it.code}`, {
+          method: "POST", headers: { "Content-Type": f.type }, body: f,
+        });
+        it.img = r.url;
+        // 같은 산의 다른 항목에도 커버 공유 (같은 R2 객체)
+        for (const c2 of curDoc.curations) for (const x of c2.items)
+          if (x.code === it.code && !x.img) x.img = r.url;
+        cuDirty();
+        div.replaceWith(curationBlock(cu));
+      } catch (e) {
+        imgBtn.textContent = "실패: " + e.message; imgBtn.disabled = false;
+      }
+    };
+    row2.append(desc, imgBtn, file);
+    li.append(row1, row2);
     ul.appendChild(li);
   }
 
