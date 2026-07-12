@@ -6,7 +6,22 @@
 
 ## 2026-07-12
 
+### 생성 / 추가
+- **지도 글리프 전 범위 자체 호스팅**: `fonts/Nanum Gothic Coding {Regular,Bold}/` — fontnik 으로 0–65535 전 256범위 × 2웨이트 pbf 생성(17.6MB). **역 이름 미표시의 실제 원인 수리**: 누락 범위(변형 선택자 등) 404 하나가 해당 타일의 모든 레이어 파싱을 죽여(buckets 0) 서울역 일대 라벨이 통째로 증발하던 버그 원천 차단
+- **기저지도 POI 표시 시스템**: `basemap-style.js` — 도시 POI 텍스트 레이어 `poi-urban`(학교·관공서·병원·아파트단지·공원·마트·문화체육, kind 매핑) + 관리자 설정·타일 내장 중요도(`min_zoom`)의 이중 줌 게이트. 설정은 `admin_data/poi-display.json` + R2 `config/poi-display.json`(앱 부팅 fetch, localStorage 캐시), 관리자 "기저지도 POI 표시" 섹션에서 편집
+- **표시 설정 v2(분류별 줌·기호·크기·볼드)**: 스팟·기저지도 POI 설정값을 `{zoom, icon, size, bold}` 객체로 확장(레거시 숫자 하위호환 정규화 — `basemap-style.js` `normPoiDisplay`·`app.js` `normSpotDisplay`·`scripts/admin_server.py` `_norm_display_cat`). 관리자 두 섹션 모두 4컨트롤 편집 + **편집 지도 라이브 미리보기**(저장 전 즉시 반영)
+- **스팟별 표시 오버라이드**: 관리자 스팟 행마다 표시 줌·기호·크기·볼드 지정(`disp_zoom/disp_icon/disp_size/disp_bold`, 비우면 분류 설정 따름) — draft 저장(`admin/admin.js`) → 발행 `spots.geojson` properties(`scripts/draft_store.py`) → 앱 레이어 coalesce 소비(`app.js`)
+- **큐레이션 시스템(추천 모음)**: 관리자 "큐레이션" 메뉴 — 목록·새 등록·산/코스 통합 검색 추가·수정·삭제, `admin_data/curations.json` + R2 `config/curations.json`. API `GET/PUT /api/config/curations`·`GET /api/course-search`·`POST /api/mountain-image`(산 커버 이미지 → R2 `images/mountains/`) (`scripts/admin_server.py`)
+- **앱 추천 탭 "하이하잇 PICK" 캐러셀**: `app.js`·`style.css` — 첫 큐레이션을 정사각 이미지 캐러셀로(수동 스와이프 스냅 + 점 인디케이터, 100대 명산 위 배치). 슬라이드 4요소(전부 선택 입력, 비면 미표시): 좌상단 반투명 배지(부가설명) → 큰 제목 → 중앙 하단 가운데 정렬 설명 → 좌하단 © 로고. 배경 = 업로드한 산 사진(없으면 무채색 그래디언트 폴백). 2번째+ 큐레이션은 카드 리스트, 미배포 시 내장 RECO 폴백
+
 ### 수정 / 변경
+- **스팟 앵커 점 가시화**: `app.js` `spots-dots` — 반지름 1.2~1.8px(사실상 비가시) → 2.4~3.8px + 헤일로 링 1.4, 라벨 오프셋 0.9 (라벨이 가리키는 실제 위치 특정)
+- **개발 서버 캐시 정책**: `scripts/serve.py` — 정적 파일 `Cache-Control: no-cache`(글리프만 1일). 헤더 부재 시 브라우저 휴리스틱 캐시가 구 `basemap-style.js` + 신 `app.js` 를 섞어 모듈 임포트 에러 → **인트로에서 앱이 멈추던 문제** 수리
+- **부팅 레이스 2건 수정**: `app.js` — ① 조기 `styledata` 가 스팟 설정 로드 전에 오버레이 레이어를 만들어 설정이 기본값으로 굳던 잠복 버그(설정 확보 후 부착 게이트) ② `isStyleLoaded()` 는 타일 스트리밍 중 false 라 `once("load")` 콜백이 유실되는 함정 — load 발생 플래그로 대체
+- **관리자 편집 지도 개편**: `admin/admin.js` — 스팟(정상·장소) 편집 레이어가 표시 설정·스팟별 오버라이드를 앱과 동일 규칙으로 미리보기, 기저지도 POI 설정 변경 시 스타일 재생성 + 편집 소스/레이어 자동 재부착(styledata 기반 — 전국 뷰에서 map load 미발화 대응, 이벤트 바인딩도 load 비의존화)
+- **운영 이슈 수리(발행 서버 상주 코드)**: `scripts/*.py` 수정이 이미 떠 있는 admin_server(systemd `hiheight-admin`) 프로세스에 반영되지 않아 스팟 오버라이드가 빠진 팩(v4·v5)이 발행됨 — 서버 재시작 후 계양산 v6 재발행으로 해소. **scripts/ 수정 후엔 `systemctl restart hiheight-admin` + 재발행 필요**
+- **추천 탭 정리**: `index.html`·`style.css` — 추천 코스(큐레이션)를 100대 명산 위로 배치, "추천 코스" 고정 헤더(h2) 제거(큐레이션 그룹 제목이 대체)
+- **GPX 갭 채움 회랑 검사**: `scripts/gpx_match.py`(`GAP_FILL_CORRIDOR_M=80`) — 대체 그래프 경로의 모든 점이 원본 갭 궤적 80m 안일 때만 채택. 길이 비 밴드는 통과하지만 옆으로 크게 벗어난 다른 길로 바꿔치기되던 계양산 2차 사례 차단
 - **GPX 맵매칭 갭 채움 상한(긴 미매칭 구간 원본 보호)**: `scripts/gpx_match.py`(`GAP_FILL_MAX_M=1000`) — 계양산 GPX 업로드가 램블러 원본과 다르게 저장되던 원인 규명: 산림청 구간망에 없는 서남쪽 순환 3.96km(둘레길·마을길)가 우연히 비슷한 길이(비 0.92)의 구간망 경로로 대체됨(길이 비만 보는 우회비로는 어떤 값에서도 못 거름 — 실측). 갭 채움을 1km 이하 짧은 GPS 드리프트 보정으로 한정, 그보다 긴 미매칭 구간은 GPX 원 좌표 유지
 - **계양산 코스 재매칭 복원**: `admin_data/282600201/draft.json` — 새 로직으로 재매칭 재적용(14.97→15.36km). 원본→저장 코스 이탈: 중앙값 2m·최대 25m·100m 이상 이탈 0%(수정 전 25%) 검증
 - **스냅·우회비 설정 UI 제거**: `admin/index.html`(스냅(m)·우회비 입력 행, [재매칭] 버튼), `admin/admin.js`(입력 참조·재매칭 핸들러) — 기본값으로만 사용해 왔고 실제 문제(계양산)는 값 조정으로 해결 불가였음. 서버 기본값(25m/1.6)으로 일원화, `/gpx?tau=&detour=` API 파라미터는 예외 상황 튜닝 경로로 유지

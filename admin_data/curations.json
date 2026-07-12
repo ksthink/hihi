@@ -3,13 +3,16 @@
  "curations": [
   {
    "id": "cu-e5bvt54x",
-   "title": "이달의 하이하잇 PICK",
+   "title": "HI-HI 이달의 매거진",
    "items": [
     {
      "type": "mountain",
      "code": "282600201",
      "name": "계양산",
+     "sub": "서울, 수도권 근교산 특집",
+     "title": "인천시민들의 산뷰",
      "desc": "인천에서 가장 높은 산(395m) — 도심에서 바로 오르는 정상 조망",
+     "logo": "© metaphr",
      "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/282600201.jpg"
     },
     {
