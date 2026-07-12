@@ -84,10 +84,6 @@
     <div class="gpx-box">
       <h3>코스 파일 추가 <span class="dim">(GPX · GeoJSON · SHP/ZIP)</span></h3>
       <div class="row">
-        <label>스냅(m) <input id="gpx-tau" type="number" value="25" /></label>
-        <label>우회비 <input id="gpx-detour" type="number" step="0.1" value="1.6" /></label>
-      </div>
-      <div class="row">
         <input id="gpx-file" type="file" multiple accept=".gpx,.geojson,.json,.zip,.shp" />
         <button id="gpx-dir-btn" title="폴더 안의 GPX·GeoJSON·SHP/ZIP 을 전부 가져와 일괄 등록">폴더째 가져오기</button>
         <input id="gpx-dir" type="file" webkitdirectory hidden />
@@ -96,7 +92,6 @@
       <div id="gpx-report" hidden></div>
       <div class="row" id="gpx-actions" hidden>
         <button id="gpx-accept" class="primary">코스로 추가</button>
-        <button id="gpx-rematch">재매칭</button>
         <button id="gpx-cancel">버리기</button>
       </div>
     </div>

@@ -6,8 +6,8 @@
  2. 공간 그리드(≈100m 셀)로 각 점을 구간망 간선에 최근접 투영 — d≤tau 면 matched
  3. matched/unmatched 런 분할 (3점 미만 요동은 이웃에 흡수)
  4. matched 런 → 투영점 폴리라인(구간망 위를 그대로 따라감, src="graph")
-    unmatched 런(갭) → 양끝 투영점의 최근접 노드 간 Dijkstra 경로가
-    GPX 갭 길이 × detour 이내면 그래프 경로(src="graph"),
+    unmatched 런(갭) → 갭이 GAP_FILL_MAX_M 이하이고 양끝 투영점의 최근접 노드 간
+    Dijkstra 경로가 GPX 갭 길이 ÷~× detour 범위면 그래프 경로(src="graph"),
     아니면 GPX 원 좌표 유지(src="gpx") — 산림청 데이터 부실 구간 보완(하이브리드)
  5. 스티칭 + 리포트(매칭률·최대이탈·fallback 목록)
  6. DEM 으로 profile48 / ascent / distance / naismith time / 난이도 초깃값
@@ -26,6 +26,11 @@ import pack_lib as pl
 RESAMPLE_M = 5.0
 CELL = 0.001          # ≈ 90~110m
 MIN_RUN = 3           # 이보다 짧은 런은 이웃에 흡수
+# 갭 채움(그래프 경로 대체) 허용 최대 갭 길이. 갭 채움은 짧은 GPS 드리프트 보정용 —
+# 이보다 긴 미매칭 구간은 구간망에 없는 실제 다른 길(둘레길·마을길 등)이므로 원본을
+# 유지한다. (계양산 사례: 서남쪽 3.96km 순환이 우연히 비슷한 길이(비 0.92)의 구간망
+# 경로로 바꿔치기됨 — 길이 비만 보는 detour 로는 걸러지지 않음)
+GAP_FILL_MAX_M = 1000.0
 
 
 # ── 업로드 트랙 파싱 (GPX·GeoJSON·Shapefile) ──
@@ -312,7 +317,8 @@ def match(code, raw, tau=25.0, detour=1.6, fname=""):
                         gpx_m = max(gpx_km * 1000, 1)
                         # 양방향 조건: 그래프 경로가 GPX 갭과 비슷한 길이일 때만 채택.
                         # 훨씬 짧으면(왕복 조망 스퍼 등 실제 이탈) GPX 원 좌표를 살린다.
-                        if gpx_m / detour <= total <= gpx_m * detour:
+                        # + 긴 갭은 대체 금지(GAP_FILL_MAX_M) — 실제 다른 길 보호.
+                        if gpx_m <= GAP_FILL_MAX_M and gpx_m / detour <= total <= gpx_m * detour:
                             path = _dedupe([a_q] + coords + [b_q])
                             if len(path) >= 2:
                                 pieces.append(("graph", path, cum_km))

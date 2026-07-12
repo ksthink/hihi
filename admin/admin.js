@@ -535,14 +535,13 @@ async function handleTrackFiles(fileList) {
   const rep = $("gpx-report");
   rep.hidden = false;
   $("gpx-actions").hidden = true;
-  const tau = $("gpx-tau").value || 25, detour = $("gpx-detour").value || 1.6;
   const results = [];
   let ok = 0;
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
     rep.textContent = `일괄 등록 중… ${i + 1}/${files.length} — ${f.name}`;
     try {
-      const r = await api(`/mountains/${S.code}/gpx?tau=${tau}&detour=${detour}&name=${encodeURIComponent(f.name)}`, {
+      const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(f.name)}`, {
         method: "POST", headers: { "Content-Type": "application/octet-stream" },
         body: await f.arrayBuffer(),
       });
@@ -568,7 +567,6 @@ $("gpx-dir").addEventListener("change", async (e) => {
   if (e.target.files.length) await handleTrackFiles(e.target.files);
   e.target.value = "";
 });
-$("gpx-rematch").onclick = runMatch;
 $("gpx-cancel").onclick = () => { S.gpx = null; clearGpxPreview(); };
 $("gpx-accept").onclick = () => {
   if (!S.gpx?.candidate) return;
@@ -582,11 +580,10 @@ $("gpx-accept").onclick = () => {
 
 async function runMatch() {
   if (!S.gpx) return;
-  const tau = $("gpx-tau").value || 25, detour = $("gpx-detour").value || 1.6;
   $("gpx-report").hidden = false;
   $("gpx-report").textContent = "매칭 중…";
   try {
-    const r = await api(`/mountains/${S.code}/gpx?tau=${tau}&detour=${detour}&name=${encodeURIComponent(S.gpx.name || "")}`, {
+    const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(S.gpx.name || "")}`, {
       method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: S.gpx.data,
     });
     S.gpx.candidate = r.course;
