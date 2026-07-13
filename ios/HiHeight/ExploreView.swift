@@ -121,7 +121,13 @@ struct ExploreView: View {
                 // 바텀시트 — 등반 중엔 HUD 로 대체(웹: 등반 중 시트 숨김)
                 VStack(spacing: 0) {
                     Spacer()
-                    if climb.tracking { climbHUD(t) } else { infoSheet(t, maxH: geo.size.height, peek: peek) }
+                    if climb.tracking {
+                        // 지도는 세이프에어리어를 무시(전체화면)라 HUD 도 그 영역에 놓여 하단 네비 뒤로
+                        // 잘린다 → 하단 안전영역만큼 띄워 버튼·안내가 네비 위에 오게 한다.
+                        climbHUD(t).padding(.bottom, geo.safeAreaInsets.bottom)
+                    } else {
+                        infoSheet(t, maxH: geo.size.height, peek: peek)
+                    }
                 }
                 .ignoresSafeArea(.keyboard)
             }
