@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // 탐험 탭 — 지도 + 검색 + 바텀시트(산 소개). 웹 index.html #app(탐험) 구성 재현.
 // 코스 목록·스파크라인·날씨·국가지점번호는 후속 슬라이스(M1-S3/M2-S2)에서 카드에 채운다.
@@ -15,6 +16,8 @@ struct ExploreView: View {
     @State private var query = ""
     @State private var expanded = false
     @State private var descExpanded = false
+    @State private var telShown = false
+    @State private var telCopied = false
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
     @State private var npn: String?
@@ -111,7 +114,7 @@ struct ExploreView: View {
             async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
             async let inf = InfoLoader.load(m.id)
             async let wx = WeatherService.fetch(lat: m.center[1], lon: m.center[0])
-            descExpanded = false
+            descExpanded = false; telShown = false
             courses = await cs
             info = await inf
             weather = await wx
@@ -242,24 +245,27 @@ struct ExploreView: View {
             if let m = catalog.selected {
               ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(m.name).font(.system(size: 22, weight: .bold)).foregroundStyle(t.text)
-                        if let e = m.elev {
-                            Text("\(e)m").font(.system(size: 15, weight: .medium)).foregroundStyle(t.muted)
+                    // 헤더 — 웹 mi-head: 이름 + 고도 + (우측)관리 알약(탭 시 전화번호 복사)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(m.name).font(.system(size: 18, weight: .bold)).foregroundStyle(t.text)
+                            if let e = m.elev {
+                                Text("\(e)m").font(.system(size: 13, weight: .bold)).foregroundStyle(t.muted)
+                            }
+                            Spacer()
+                            if let mgr = info?.manager, !mgr.isEmpty {
+                                Button { withAnimation(.easeOut(duration: 0.12)) { telShown.toggle() } } label: {
+                                    Text("관리 · \(mgr)").font(.system(size: 12, weight: .bold)).foregroundStyle(t.muted)
+                                        .padding(.horizontal, 12).padding(.vertical, 5)
+                                        .background(t.elevated, in: Capsule())
+                                        .overlay(Capsule().strokeBorder(t.line))
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
-                        Spacer()
-                        if m.famous == true {
-                            Text("100대 명산").font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(t.onAccent)
-                                .padding(.horizontal, 9).padding(.vertical, 4)
-                                .background(t.accent, in: Capsule())
+                        if telShown, let tel = info?.manager_tel, !tel.isEmpty {
+                            HStack { Spacer(); telPill(tel, t) }
                         }
-                    }
-                    if let r = m.region {
-                        Text(r).font(.system(size: 14)).foregroundStyle(t.muted)
-                    }
-                    if let mgr = info?.manager, !mgr.isEmpty {
-                        Text("관리 · \(mgr)").font(.system(size: 13, weight: .medium)).foregroundStyle(t.muted)
                     }
                     if let desc = info?.description, !desc.isEmpty {
                         descView(desc, t)
@@ -315,6 +321,23 @@ struct ExploreView: View {
                     }
                 }
         )
+    }
+
+    // 관리 전화번호 알약 — 웹 mi-tel (탭하면 클립보드 복사 + "복사됨 ✓").
+    private func telPill(_ tel: String, _ t: Theme) -> some View {
+        Button {
+            UIPasteboard.general.string = tel
+            telCopied = true
+            Task { try? await Task.sleep(nanoseconds: 1_200_000_000); telCopied = false }
+        } label: {
+            Text(telCopied ? "복사됨 ✓" : tel)
+                .font(.system(size: 13, weight: .bold)).foregroundStyle(t.text)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(t.elevated, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(t.line))
+                .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
+        }
+        .buttonStyle(.plain)
     }
 
     // 산 설명 + 더 읽기 — 웹 mi-desc/mi-more (100자 초과 시 자르고 인라인 버튼, 탭하면 펼침/접힘).
