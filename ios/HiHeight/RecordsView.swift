@@ -35,46 +35,30 @@ struct RecordsView: View {
         }
     }
 
-    // MARK: 로그인됨 — 합계 + 목록(List)
+    // MARK: 로그인됨 — 합계 + 목록
+    // List(UICollectionView) self-sizing 재귀 레이아웃 루프 회피를 위해 ScrollView+LazyVStack 사용.
+    // 스와이프 삭제는 웹 .ri-del 처럼 커스텀 드래그로 구현(RecordCardRow).
     private func authedList(_ t: Theme) -> some View {
-        List {
-            Group {
-                HStack {
-                    Text(auth.email ?? "").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                    Spacer()
-                    Button { Task { await auth.signOut() } } label: {
-                        Text("로그아웃").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                    }
-                }
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                authBar(t)                            // 웹 .auth-in — elevated 카드(이메일 + 로그아웃 알약)
                 summary(t)
                 RecCalendar(dayKeys: recordDayKeys)   // 산행 달력 — 기록 있는 날 점 표시
-            }
-            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
-            .listRowSeparator(.hidden)
-            .listRowBackground(t.bg)
-
-            if auth.records.isEmpty {
-                Text("아직 등반 기록이 없습니다.").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                    .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 4, trailing: 20))
-                    .listRowSeparator(.hidden).listRowBackground(t.bg)
-            } else {
-                ForEach(auth.records) { r in
-                    recordRow(r, t)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(t.bg)
-                        .contentShape(Rectangle())
-                        .onTapGesture { if r.hasTrack { onShowRoute(r) } }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { pendingDelete = r } label: {
-                                Label("삭제", systemImage: "trash")
-                            }
+                if auth.records.isEmpty {
+                    Text("아직 등반 기록이 없습니다.").font(.kakao(size: 13)).foregroundStyle(t.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
+                } else {
+                    ForEach(auth.records) { r in       // rec-list gap 10
+                        RecordCardRow(theme: t,
+                                      onTap: { if r.hasTrack { onShowRoute(r) } },
+                                      onDelete: { pendingDelete = r }) {
+                            recordRow(r, t)
                         }
+                    }
                 }
             }
+            .padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 24)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .background(t.bg)
     }
 
@@ -107,42 +91,68 @@ struct RecordsView: View {
         }
     }
 
+    // 웹 .auth-in — elevated 카드: 이메일(14 bold) + 로그아웃 알약(테두리·surface)
+    private func authBar(_ t: Theme) -> some View {
+        HStack(spacing: 12) {
+            Text(auth.email ?? "").font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
+                .lineLimit(1).truncationMode(.tail)
+            Spacer(minLength: 8)
+            Button { Task { await auth.signOut() } } label: {
+                Text("로그아웃").font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
+                    .padding(.horizontal, 16).padding(.vertical, 8)
+                    .background(t.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
+    }
+
+    // 웹 .rec-summary — elevated 카드(border), 값 22 bold + 라벨 11 muted
     private func summary(_ t: Theme) -> some View {
         HStack(spacing: 0) {
             stat("\(auth.totalCount)", "총 산행", t)
             stat(String(format: "%.1f", auth.totalKm), "총 거리(km)", t)
             stat("\(auth.totalAscent)", "누적 고도(m)", t)
         }
-        .padding(.vertical, 14)
-        .background(t.surface, in: RoundedRectangle(cornerRadius: 14))
-        .padding(.top, 6)
+        .padding(.vertical, 18)
+        .background(t.elevated, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(t.line))
     }
 
     private func stat(_ v: String, _ label: String, _ t: Theme) -> some View {
         VStack(spacing: 3) {
-            Text(v).font(.kakao(size: 20, weight: .bold)).foregroundStyle(t.text)
+            Text(v).font(.kakao(size: 22, weight: .bold)).foregroundStyle(t.text)
             Text(label).font(.kakao(size: 11)).foregroundStyle(t.muted)
         }
         .frame(maxWidth: .infinity)
     }
 
+    // 웹 .rec-item ri-body 내용 — ri-top(이름 | 날짜) + ri-meta(거리·시간·↑고도·루트).
+    // 카드 배경·테두리·스와이프는 RecordCardRow 가 담당.
     private func recordRow(_ r: ClimbRecord, _ t: Theme) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title(r)).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.text)
-            HStack(spacing: 10) {
-                if let km = r.distance_km { Text(String(format: "%.1fkm", km)) }
-                if let d = r.duration_s { Text(durationLabel(d)) }
-                if let a = r.ascent_m { Text("↑\(a)m") }
-                if r.hasTrack {
-                    Text("루트 ›").foregroundStyle(t.text)
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .firstTextBaseline) {          // ri-top
+                Text(title(r)).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
+                    .lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 8)
+                if let dt = r.startedDate {
+                    Text(dateLabel(dt)).font(.kakao(size: 12)).foregroundStyle(t.muted)
                 }
-                Spacer()
-                if let dt = r.startedDate { Text(dateLabel(dt)) }
+            }
+            HStack(spacing: 12) {                            // ri-meta
+                Text("\(kmLabel(r.distance_km)) km")
+                Text(durationLabel(r.duration_s))
+                if r.hasTrack, let a = r.ascent_m { Text("↑\(a)m") }
+                if r.hasTrack {
+                    Spacer(minLength: 8)
+                    Text("루트 ›").font(.kakao(size: 12, weight: .semibold)).foregroundStyle(t.text)
+                }
             }
             .font(.kakao(size: 12)).foregroundStyle(t.muted)
         }
-        .padding(.vertical, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: 0.5) }
     }
 
     // 기록 있는 날짜 키 집합 "y-m-d"(로컬) — 달력 점 표시용.
@@ -158,14 +168,69 @@ struct RecordsView: View {
     private func title(_ r: ClimbRecord) -> String {
         let mtn = r.mountain_id.flatMap { id in catalog.mountains.first { $0.id == id }?.name } ?? ""
         let course = r.course_name ?? ""
-        return [mtn, course].filter { !$0.isEmpty }.joined(separator: " · ")
+        return [mtn, course].filter { !$0.isEmpty }.joined(separator: " | ")   // 웹 join(" | ")
     }
-    private func durationLabel(_ s: Int) -> String {
+    // 웹 actualKm — 트랙 있으면 실측(소수), 없으면 distance_km ?? 0. 후행 0 제거("0","1.3","1.23")
+    private func kmLabel(_ km: Double?) -> String { String(format: "%g", km ?? 0) }
+    // 웹 fmtDur — "H:MM" (nil → "–")
+    private func durationLabel(_ s: Int?) -> String {
+        guard let s else { return "–" }
         let h = s / 3600, m = (s % 3600) / 60
-        return h > 0 ? "\(h)시간 \(m)분" : "\(m)분"
+        return "\(h):" + String(format: "%02d", m)
     }
     private func dateLabel(_ d: Date) -> String {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy.MM.dd"; return f.string(from: d)
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.MM.dd"; return f.string(from: d)
+    }
+}
+
+// 기록 카드 + 스와이프 삭제 — 웹 .rec-item/.ri-body/.ri-del 이식.
+// 왼쪽으로 밀면 뒤의 빨간 삭제 버튼(90pt) 노출, 놓으면 절반 기준 스냅. 탭 시 열려있으면 닫고 아니면 onTap.
+struct RecordCardRow<Content: View>: View {
+    let theme: Theme
+    let onTap: () -> Void
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+    @State private var offset: CGFloat = 0
+    @State private var dragStart: CGFloat? = nil     // 드래그 시작 시점의 정지 오프셋
+    private let delW: CGFloat = 90
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button(action: onDelete) {                       // 웹 .ri-del (#b3261e)
+                Text("삭제").font(.kakao(size: 13, weight: .bold)).foregroundStyle(.white)
+                    .frame(width: delW).frame(maxHeight: .infinity)
+                    .background(Color(hex: 0xb3261e))
+            }
+            .buttonStyle(.plain)
+            .opacity(offset < -2 ? 1 : 0)
+
+            content()
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(theme.elevated)
+                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(theme.line))
+                .offset(x: offset)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if offset != 0 { withAnimation(.easeOut(duration: 0.18)) { offset = 0 } }
+                    else { onTap() }
+                }
+                .gesture(
+                    DragGesture(minimumDistance: 12)
+                        .onChanged { v in
+                            guard abs(v.translation.width) > abs(v.translation.height) else { return }
+                            let start = dragStart ?? offset
+                            if dragStart == nil { dragStart = offset }
+                            offset = min(0, max(-delW, start + v.translation.width))
+                        }
+                        .onEnded { v in
+                            let end = min(0, max(-delW, (dragStart ?? offset) + v.translation.width))
+                            withAnimation(.easeOut(duration: 0.18)) { offset = end < -delW / 2 ? -delW : 0 }
+                            dragStart = nil
+                        }
+                )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 
@@ -206,10 +271,11 @@ struct RecCalendar: View {
                         let hasRec = dayKeys.contains("\(y)-\(m)-\(d)")
                         VStack(spacing: 2) {
                             Text("\(d)")
-                                .font(.kakao(size: 12, weight: isToday ? .bold : .regular))
-                                .foregroundStyle(isToday ? t.onAccent : t.text)
+                                .font(.kakao(size: 12, weight: isToday ? .heavy : .regular))
+                                .foregroundStyle(t.text)
                                 .frame(width: 24, height: 24)
-                                .background(isToday ? t.accent : .clear, in: Circle())
+                                // 웹 .rc-d.today::before — 채움 아닌 테두리 링
+                                .overlay { if isToday { Circle().strokeBorder(t.line, lineWidth: 1) } }
                             Circle().fill(hasRec ? t.text : .clear).frame(width: 4, height: 4)
                         }
                         .frame(height: 30)
@@ -220,8 +286,8 @@ struct RecCalendar: View {
             }
         }
         .padding(14)
-        .background(t.surface, in: RoundedRectangle(cornerRadius: 14))
-        .padding(.top, 6)
+        .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
     }
 
     private func startOfMonth(_ date: Date) -> Date {
