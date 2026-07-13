@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var auth = AuthStore()
     @StateObject private var climb = ClimbStore()
     @State private var tab = 0
+    @AppStorage("hiheight-theme") private var themePref = "system"   // system·light·dark (지도 컨트롤 토글)
 
     init() { Self.styleTabBar() }
 
@@ -26,6 +27,7 @@ struct ContentView: View {
                 .tabItem { Label("기록", systemImage: "clock") }.tag(3)
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
+        .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
         .task { await catalog.load() }
     }
 

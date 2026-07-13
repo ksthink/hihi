@@ -7,7 +7,10 @@ struct ExploreView: View {
     @ObservedObject var climb: ClimbStore        // 선택 코스를 등반 탭과 공유
     @ObservedObject var auth: AuthStore          // 등반 종료 시 기록 저장
     @Environment(\.colorScheme) private var scheme
+    @AppStorage("hiheight-theme") private var themePref = "system"
 
+    @State private var locateTick = 0
+    @State private var resetNorthTick = 0
     @State private var searching = false
     @State private var query = ""
     @State private var expanded = false
@@ -30,8 +33,22 @@ struct ExploreView: View {
                         mountain: catalog.selected, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
+                        locateTick: locateTick, resetNorthTick: resetNorthTick,
                         onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) })
                     .ignoresSafeArea()
+
+                // 우측 지도 컨트롤 (테마·나침반·현재위치) — 웹 bottom-right 컨트롤 대응
+                VStack(spacing: 10) {
+                    ctrlButton(scheme == .dark ? "sun.max.fill" : "moon.fill", t) {
+                        themePref = scheme == .dark ? "light" : "dark"
+                    }
+                    ctrlButton("location.north.line.fill", t) { resetNorthTick += 1 }
+                    ctrlButton("location.fill", t) { locateTick += 1 }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(.trailing, 14)
+                .padding(.bottom, climb.tracking ? 200 : 288)
+                .allowsHitTesting(!searching)
 
                 // 상단: 검색 버튼(좌) + 현재 산 이름(중앙) + 국가지점번호 — 웹 search + top-overlay
                 VStack(spacing: 8) {
@@ -99,6 +116,18 @@ struct ExploreView: View {
             climb.mountainName = m.name
             climb.mountainCode = m.id
             climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
+        }
+    }
+
+    // 우측 지도 컨트롤 버튼 (검색 버튼과 동일 프레임)
+    private func ctrlButton(_ icon: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(t.text)
+                .frame(width: 42, height: 42)
+                .background(t.elevated.opacity(0.92), in: Circle())
+                .overlay(Circle().strokeBorder(t.line))
         }
     }
 

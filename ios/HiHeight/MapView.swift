@@ -11,6 +11,8 @@ struct MapView: UIViewRepresentable {
     var climbTrack: [[Double]] = []      // 등반 중 지나온 GPS 트랙 [lng,lat,...]
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
+    var locateTick: Int = 0              // 증가 시 현재위치로 이동(geolocate 버튼)
+    var resetNorthTick: Int = 0          // 증가 시 방위·피치 초기화(나침반 버튼)
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -32,9 +34,8 @@ struct MapView: UIViewRepresentable {
         context.coordinator.applyCourse(selectedCourse, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
         context.coordinator.setRecordTrack(recordTrack, on: mv)
-        mv.showsUserLocation = tracking
-        let mode: MLNUserTrackingMode = tracking ? .follow : .none
-        if mv.userTrackingMode != mode { mv.setUserTrackingMode(mode, animated: true, completionHandler: nil) }
+        context.coordinator.applyUserState(tracking: tracking, locateTick: locateTick,
+                                            resetNorthTick: resetNorthTick, on: mv)
     }
 
     private func applyStyle(_ mv: MLNMapView) {
@@ -48,7 +49,28 @@ struct MapView: UIViewRepresentable {
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
         private var trackCount = -1         // 마지막 반영한 트랙 점 개수 (중복 갱신 방지)
         private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
+        private var lastLocate = 0, lastReset = 0
+        private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
+
+        // 현재위치 점 표시 + 추적 카메라 — 등반 중(tracking) 또는 geolocate 버튼(locateTick).
+        // resetNorthTick 증가 시 방위·피치를 정북/수평으로 되돌린다.
+        func applyUserState(tracking: Bool, locateTick: Int, resetNorthTick: Int, on mv: MLNMapView) {
+            if resetNorthTick != lastReset {
+                lastReset = resetNorthTick
+                let c = mv.camera; c.heading = 0; c.pitch = 0
+                mv.setCamera(c, withDuration: 0.4, animationTimingFunction: nil)
+            }
+            var follow = false
+            if locateTick != lastLocate { lastLocate = locateTick; locateOn = true; follow = true }
+            if tracking { locateOn = false }            // 등반 종료 후 geolocate 상태와 분리
+            mv.showsUserLocation = tracking || locateOn
+            if tracking, mv.userTrackingMode != .follow { follow = true }
+            if !tracking && !locateOn, mv.userTrackingMode != .none {
+                mv.setUserTrackingMode(.none, animated: false, completionHandler: nil)
+            }
+            if follow { mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil) }
+        }
 
         func apply(mountain m: Mountain?, on mv: MLNMapView) {
             guard let m else { return }
