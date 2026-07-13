@@ -8,6 +8,7 @@ struct MapView: UIViewRepresentable {
     let styleResource: String
     let mountain: Mountain?
     var selectedCourse: Course? = nil
+    var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -23,6 +24,7 @@ struct MapView: UIViewRepresentable {
 
     func updateUIView(_ mv: MLNMapView, context: Context) {
         applyStyle(mv)                                   // 테마 전환 시 스타일 교체
+        context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.applyCourse(selectedCourse, on: mv)
     }
@@ -36,6 +38,7 @@ struct MapView: UIViewRepresentable {
         private var desired: Mountain?      // 목표 산
         private var cameraDone: String?     // 카메라를 맞춘 산코드 (중복 이동 방지)
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
+        var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
 
         func apply(mountain m: Mountain?, on mv: MLNMapView) {
             guard let m else { return }
@@ -105,6 +108,11 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
+        }
+
+        // 지도 이동 종료마다 중심 좌표 통지 → 국가지점번호 갱신.
+        func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+            onCenterChanged?(mapView.centerCoordinate)
         }
     }
 }

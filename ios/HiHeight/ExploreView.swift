@@ -12,6 +12,7 @@ struct ExploreView: View {
     @State private var courses: [Course] = []
     @State private var selectedCourse: Course?
     @State private var info: MountainInfo?
+    @State private var npn: String?
 
     private var results: [Mountain] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -24,23 +25,37 @@ struct ExploreView: View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
-                        mountain: catalog.selected, selectedCourse: selectedCourse)
+                        mountain: catalog.selected, selectedCourse: selectedCourse,
+                        onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) })
                     .ignoresSafeArea()
 
-                // 상단: 검색 버튼(좌) + 현재 산 이름(중앙) — 웹 search + top-overlay
-                HStack(alignment: .top) {
-                    searchButton(t)
-                    Spacer()
-                    if let m = catalog.selected {
-                        Text(m.name)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(t.text)
-                            .padding(.horizontal, 14).padding(.vertical, 7)
-                            .background(t.elevated.opacity(0.92), in: Capsule())
-                            .overlay(Capsule().strokeBorder(t.line))
+                // 상단: 검색 버튼(좌) + 현재 산 이름(중앙) + 국가지점번호 — 웹 search + top-overlay
+                VStack(spacing: 8) {
+                    HStack(alignment: .top) {
+                        searchButton(t)
+                        Spacer()
+                        if let m = catalog.selected {
+                            Text(m.name)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(t.text)
+                                .padding(.horizontal, 14).padding(.vertical, 7)
+                                .background(t.elevated.opacity(0.92), in: Capsule())
+                                .overlay(Capsule().strokeBorder(t.line))
+                        }
+                        Spacer()
+                        Color.clear.frame(width: 42, height: 42)   // 좌우 대칭용 스페이서
                     }
-                    Spacer()
-                    Color.clear.frame(width: 42, height: 42)   // 좌우 대칭용 스페이서
+                    if let npn {
+                        HStack(spacing: 5) {
+                            Image(systemName: "mappin.and.ellipse").font(.system(size: 10))
+                            Text("국가지점번호").foregroundStyle(t.muted)
+                            Text(npn).fontWeight(.semibold).foregroundStyle(t.text)
+                        }
+                        .font(.system(size: 11.5))
+                        .padding(.horizontal, 11).padding(.vertical, 5)
+                        .background(t.elevated.opacity(0.92), in: Capsule())
+                        .overlay(Capsule().strokeBorder(t.line))
+                    }
                 }
                 .padding(.horizontal, 14).padding(.top, 8)
 
