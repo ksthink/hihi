@@ -76,6 +76,37 @@ function make(theme) {
       paint: { "line-color": tc.line, "line-width": widthExpr } },
   );
 
+  // ── 스팟 오버레이 (점+라벨+정상) — app.js:582-660 스펙 축약 ──
+  // 편의시설(FACILITY_ICON) 아이콘 레이어는 런타임 이미지 생성이 필요 + 현재 데이터 없음 → 이월.
+  // DOT_CATS=[분기점,시종점,장소], 줌 게이트는 spot-display.json 기본값(장소14·시종점12·분기점off).
+  const DOT_CATS = ["분기점", "시종점", "장소"];
+  // coalesce 오버라이드: 스팟별 disp_zoom 이 분류 기본 zoom 을 덮는다(app.js 동일). 분기점 기본 off(99).
+  const dotZoomGate = [">=", ["zoom"],
+    ["coalesce", ["get", "disp_zoom"], ["match", ["get", "category"], "장소", 14, "시종점", 12, 99]]];
+  style.sources.spots = {
+    type: "geojson",
+    data: `${BASE}/data/packs/${PACK}/spots.geojson`,
+  };
+  style.layers.push(
+    { id: "spots-dots", type: "circle", source: "spots",
+      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], dotZoomGate],
+      paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.4, 16, 3.8],
+               "circle-color": tc.line, "circle-stroke-color": tc.casing, "circle-stroke-width": 1.4 } },
+    { id: "spots-labels", type: "symbol", source: "spots",
+      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], ["has", "name"], dotZoomGate],
+      layout: { "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
+                "text-size": ["coalesce", ["get", "disp_size"], 11],   // disp_size 오버라이드
+                "text-offset": [0, 0.9], "text-anchor": "top", "text-max-width": 8 },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.4 } },
+    // 정상 표식 — ▲(라이트)/△(다크) 텍스트 글리프 (런타임 이미지 불필요)
+    { id: "spot-peaks", type: "symbol", source: "spots",
+      filter: ["==", ["get", "category"], "정상"],
+      layout: { "text-field": ["concat", theme === "dark" ? "△" : "▲", ["coalesce", ["get", "name"], ""]],
+                "text-font": ["Nanum Gothic Coding Regular"], "text-size": 14,
+                "text-offset": [0, -0.6], "text-anchor": "bottom" },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.8 } },
+  );
+
   return JSON.stringify(style, null, 2);
 }
 

@@ -62,6 +62,7 @@ struct MapView: UIViewRepresentable {
             guard let style = mv.style else { return }
             swap(style, "contours", Config.contoursURL(m.id))
             swap(style, "trails", Config.routesURL(m.id))
+            swap(style, "spots", Config.spotsURL(m.id))
         }
 
         // 스타일 JSON 의 geojson 소스 데이터 URL 만 교체(레이어·표현식 유지).
