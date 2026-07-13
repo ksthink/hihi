@@ -12,12 +12,13 @@ echo "✓ .venv 준비 완료"
 
 mkdir -p tools cache/dem
 if [ ! -x tools/pmtiles ]; then
-  # go-pmtiles 릴리스 (Linux x86_64). 다른 플랫폼은 https://github.com/protomaps/go-pmtiles/releases
-  VER=1.28.0
+  # go-pmtiles 릴리스. 자산명은 v1.29+ 에서 `go-pmtiles-<VER>_...`(하이픈)으로 바뀜.
+  # 다른 플랫폼/최신 버전: https://github.com/protomaps/go-pmtiles/releases
+  VER=1.31.0
   case "$(uname -s)-$(uname -m)" in
-    Linux-x86_64)  PKG="go-pmtiles_${VER}_Linux_x86_64.tar.gz" ;;
-    Darwin-arm64)  PKG="go-pmtiles_${VER}_Darwin_arm64.zip" ;;
-    Darwin-x86_64) PKG="go-pmtiles_${VER}_Darwin_x86_64.zip" ;;
+    Linux-x86_64)  PKG="go-pmtiles-${VER}_Linux_x86_64.tar.gz" ;;
+    Darwin-arm64)  PKG="go-pmtiles-${VER}_Darwin_arm64.zip" ;;
+    Darwin-x86_64) PKG="go-pmtiles-${VER}_Darwin_x86_64.zip" ;;
     *) echo "지원하지 않는 플랫폼 — tools/pmtiles 를 수동 설치하세요"; exit 1 ;;
   esac
   URL="https://github.com/protomaps/go-pmtiles/releases/download/v${VER}/${PKG}"
