@@ -40,7 +40,7 @@ struct ExploreView: View {
         GeometryReader { geo in
             // 바텀시트 peek 를 화면 높이 비율로 — 기기별 균형(작은 화면 답답함 완화). 스케일바·컨트롤·
             // fitBounds·저작권 배치가 모두 이 값을 기준으로 시트 위에 정렬된다.
-            let peek = min(292, max(224, geo.size.height * 0.31))
+            let peek = min(284, max(206, geo.size.height * 0.28))
             ZStack(alignment: .top) {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
                         mountain: catalog.selected, selectedCourse: climb.course,

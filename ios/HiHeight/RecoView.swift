@@ -18,22 +18,26 @@ struct RecoView: View {
 
     var body: some View {
         let t = Theme(scheme: scheme)
-        ZStack {
-            t.bg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    Text("추천").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
-                        .padding(.horizontal, 20).padding(.top, 8)
-                    if curations.isEmpty {
-                        Text("추천을 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                            .padding(.horizontal, 20)
+        GeometryReader { geo in
+            // PICK 캐러셀(커버 이미지)을 화면 폭 비율로 — 기기별 균형(작은 화면에서 과도하게 크지 않게).
+            let slideH = min(340, (geo.size.width - 40) * 0.84)
+            ZStack {
+                t.bg.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 26) {
+                        Text("추천").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
+                            .padding(.horizontal, 20).padding(.top, 8)
+                        if curations.isEmpty {
+                            Text("추천을 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
+                                .padding(.horizontal, 20)
+                        }
+                        ForEach(curations) { cu in
+                            group(cu, t, slideH)
+                        }
+                        officialSection(t)
                     }
-                    ForEach(curations) { cu in
-                        group(cu, t)
-                    }
-                    officialSection(t)
+                    .padding(.bottom, 24)
                 }
-                .padding(.bottom, 24)
             }
         }
         .task { curations = await CurationLoader.load() }
@@ -100,13 +104,13 @@ struct RecoView: View {
         .buttonStyle(.plain)
     }
 
-    private func group(_ cu: Curation, _ t: Theme) -> some View {
+    private func group(_ cu: Curation, _ t: Theme, _ slideH: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(cu.title).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.muted)
                 .padding(.horizontal, 20)
             TabView {
                 ForEach(cu.items) { it in
-                    slide(it)
+                    slide(it, slideH)
                         .padding(.horizontal, 20)
                         .contentShape(Rectangle())
                         .onTapGesture { onOpen(it.code) }
@@ -114,12 +118,12 @@ struct RecoView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: cu.items.count > 1 ? .automatic : .never))
             .indexViewStyle(.page(backgroundDisplayMode: .interactive))
-            .frame(height: 340)
+            .frame(height: slideH + 34)
         }
     }
 
     // 슬라이드 — 커버 이미지 위에 어둡게 깔고 흰 텍스트(웹 ps-* 오버레이). 이미지 없으면 그라디언트.
-    private func slide(_ it: CurationItem) -> some View {
+    private func slide(_ it: CurationItem, _ slideH: CGFloat) -> some View {
         ZStack(alignment: .bottomLeading) {
             Group {
                 if let s = it.img, let url = URL(string: s) {
@@ -157,7 +161,7 @@ struct RecoView: View {
             .padding(18)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 300)
+        .frame(height: slideH)
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
