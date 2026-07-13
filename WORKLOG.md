@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-07-13
+
+iOS 네이티브 앱(`ios/`) 이식 — S1 스파이크부터 4탭 기능·디자인 웹 동등까지. 개발환경 EC2→맥북 이전.
+
+### 생성 / 추가
+- **개발환경 이전 마무리**: `scripts/setup_admin.sh` — go-pmtiles darwin-arm64 자산명 수정(1.31.0, 하이픈). 맥북 로컬 `.venv`(rasterio/GDAL arm64 wheel) + `tools/pmtiles` + `admin_server`(8890) 구동, R2 CORS·mountain 원본 복사 검증
+- **S1 스파이크 + M1 지도**: `ios/project.yml`(XcodeGen — MapLibre 6.27 + Supabase 2.51), `ios/gen-style.mjs`(웹 `buildStyle()` 재사용 → `basemap-{light,dark}.json`, 프록시 URL 절대화), `MapView.swift`(MLNMapView 브리지 — 카탈로그 주도 카메라·소스 URL 스왑), 등고선·등산로(난이도별 굵기)·스팟(coalesce 오버라이드)·시종점 오버레이. `CatalogStore`·`Mountain`·`Config`·`Course`·`Sparkline`
+- **M2 UI 셸 4탭 + 탐험 바텀시트**: `ContentView.swift`(TabView 탐험·추천·등반·기록), `ExploreView.swift`(지도+검색+산소개 시트), `MountainInfo.swift`(소개·관리주체), `NPN.swift`(국가지점번호 — npn.js 직역), `Weather.swift`(기상청 단기예보 — weather.js 직역), `RecoView.swift`+`Curation.swift`(추천 PICK 캐러셀)
+- **M3 계정·기록**: `AuthStore.swift`(supabase-swift — 로그인/가입/기록조회·삭제), `RecordsView.swift`(인증폼+합계+목록, List 스와이프 삭제), `ClimbRecord.swift`, `RecCalendar`(산행 달력 — 기록 있는 날 점), 기록 루트 보기(트랙 점선 `rec-track` + fitBounds)
+- **등반 탭 + M5-S1/S2 트래킹**: `DeungView.swift`(선택 코스 카드 — 거리·시간·난이도 미터·고도), `ClimbStore.swift`(CoreLocation 전경 트래킹 — 라이브 트랙·HUD·경과/이동거리/GPS지점), 종료 시 `climb_records` 저장(elevStats 이동평균 누적상승/하강, track jsonb)
+- **M2-S4b 공식 추천 아코디언**: `RecoView` — 100대 명산·BAC·KNPS 카테고리(`Mountain.lists`), 펼침 멤버 목록
+- **지도 컨트롤(웹 오버레이 정합)**: 테마 토글(라이트/다크 — `@AppStorage`+`preferredColorScheme`), 현재위치 버튼(나침반 통합 — 탭 시 정북·수평 복원), 커스텀 단일 스케일바, 저작권 ⓘ(MapLibre 내장), 코스 번호 배지(런타임 `makeBadge` UIImage + `symbol-placement:line-center`)
+- **KakaoSmallSans 폰트**: `Font+Kakao.swift` — 웹 woff2를 fonttools로 ttf 변환(`Resources/fonts`), `UIAppFonts` 등록, 전 UI `.system`→`.kakao`(3 weight 근접 매핑), 탭바 라벨 포함
+- **코스 fitBounds**: `Course.bbox`(지오메트리 전체 경계), 등산로 카드 탭·추천 진입 시 지도를 코스 전체 범위로 프레이밍(`MapView.fitCourseTick`, 가시 영역 정밀 패딩)
+
+### 수정 / 변경
+- **로그인 세션 버그 2건**: `AuthStore` — ① signIn/signUp 반환 세션 직접 사용(currentUser 재조회 타이밍 의존 제거) ② 세션 저장소 Keychain→`UserDefaultsLocalStorage`(서명 없는 시뮬레이터는 Keychain 쓰기 실패로 로그인 유실) + `refresh()` `currentUser`(동기)→`await auth.session`(콜드스타트 유지)
+- **탐험 시트 웹 정합**: `ExploreView` — 산 설명 "더 읽기"(100자 컷 인라인), 날씨 "부근 오늘 날씨"+프레임 카드+"{시}시 기준" 캡션, 등산로 프레임 카드(좌측 강조선·난이도 바 미터·`fmtNum`), 헤더 관리 알약(전화 복사)·지역/명산 배지 제거, 상단 "산이름 | 코스명" 반투명 사각형 박스, 국가지점번호는 등반 중 GPS 위치로만 표시, 날씨 카드 소형화
+- **고도 프로파일**: `Sparkline.swift` — 선만 그리던 것을 채움 영역(prof-area 10%)+선(prof-line)의 `ProfileView`로(웹 profileSVG 정합)
+- **SwiftUI 버그 수정**: 산행 달력에서 빈칸·날짜 `ForEach` id 충돌로 1·2일 셀이 드롭되던 문제 → 단일 배열+인덱스 id
+- **검증 기법**: 시뮬레이터 GPS 주입(`simctl location`)·위치 권한(`simctl privacy`)·임시 `@State`/`.task` 자동 구동 후 스크린샷 — 등반 트래킹·기록 저장·루트 표시·코스 프레이밍 검증. 검증용 더미 기록은 삭제 기능으로 정리
+
+---
+
 ## 2026-07-12
 
 ### 생성 / 추가
