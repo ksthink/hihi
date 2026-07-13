@@ -51,7 +51,7 @@ function make(theme, baseMode) {
       layout: {
         "symbol-placement": "line",
         "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
-        "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.4, "symbol-spacing": 300,
+        "text-font": ["MonaS12 Regular"], "text-size": 8.4, "symbol-spacing": 300,
       },
       paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 } },
   );
@@ -103,7 +103,7 @@ function make(theme, baseMode) {
                "circle-color": tc.line, "circle-stroke-color": tc.casing, "circle-stroke-width": 1.4 } },
     { id: "spots-labels", type: "symbol", source: "spots",
       filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], ["has", "name"], dotZoomGate],
-      layout: { "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
+      layout: { "text-field": ["get", "name"], "text-font": ["MonaS12 Regular"],
                 "text-size": ["coalesce", ["get", "disp_size"], 11],   // disp_size 오버라이드
                 "text-offset": [0, 0.9], "text-anchor": "top", "text-max-width": 8 },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.4 } },
@@ -111,7 +111,7 @@ function make(theme, baseMode) {
     { id: "spot-peaks", type: "symbol", source: "spots",
       filter: ["==", ["get", "category"], "정상"],
       layout: { "text-field": ["concat", theme === "dark" ? "△" : "▲", ["coalesce", ["get", "name"], ""]],
-                "text-font": ["Nanum Gothic Coding Regular"], "text-size": 14,
+                "text-font": ["MonaS12 Regular"], "text-size": 14,
                 "text-offset": [0, -0.6], "text-anchor": "bottom" },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.8 } },
   );
@@ -126,7 +126,7 @@ function make(theme, baseMode) {
                "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], tc.casing, tc.line],
                "circle-stroke-width": 2 } },
     { id: "course-ends-labels", type: "symbol", source: "course-ends",
-      layout: { "text-field": ["get", "label"], "text-font": ["Nanum Gothic Coding Regular"],
+      layout: { "text-field": ["get", "label"], "text-font": ["MonaS12 Regular"],
                 "text-size": 12, "text-offset": [0, 1.1], "text-anchor": "top" },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
   );

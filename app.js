@@ -112,7 +112,7 @@ const map = new maplibregl.Map({
   // 6 미만이면 지명 필터(min_zoom 6: 부산·인천·대구…)가 정수 줌 5에서 평가돼 광역시가 사라짐.
   // 가로 경계가 폰 화면 폭에 맞는 z5.5까지 축소가 풀리는 것을 여기서 차단.
   minZoom: 6,
-  localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace"
+  localIdeographFontFamily: "'MonaS12', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace"
 });
 window.__map = map; // 디버그·헤드리스 테스트 훅 (모듈 스코프라 밖에서 접근 불가)
 // 초기 load 발생 여부 — isStyleLoaded() 는 타일 로딩 중 false 라 이 플래그로 판별
@@ -312,7 +312,7 @@ function normSpotDisplay(raw) {
   }
   return out;
 }
-const SPOT_FONT = (b) => [b ? "Nanum Gothic Coding Bold" : "Nanum Gothic Coding Regular"];
+const SPOT_FONT = (b) => [b ? "MonaS12 Bold" : "MonaS12 Regular"];
 let spotDisplay = normSpotDisplay(null);
 const SPOTCFG_KEY = "hiheight-spot-display";
 async function loadSpotDisplay() {
@@ -448,7 +448,7 @@ function makeBadge(no, sel) {
   }
   const s = String(no);
   ctx.fillStyle = sel ? "#ffffff" : "#111111";
-  ctx.font = `700 ${11.5 * scale}px "Nanum Gothic Coding", monospace`;
+  ctx.font = `700 ${11.5 * scale}px "MonaS12", monospace`;
   ctx.textAlign = "center";
   const m = ctx.measureText(s);
   ctx.fillText(s, cx, cx + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2);
@@ -521,7 +521,7 @@ function ensureOverlays() {
       filter: ["==", ["get", "idx"], 1],
       layout: {
         "symbol-placement": "line", "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
-        "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.4, "symbol-spacing": 300
+        "text-font": ["MonaS12 Regular"], "text-size": 8.4, "symbol-spacing": 300
       },
       paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 }
     });
@@ -581,7 +581,7 @@ function ensureOverlays() {
     map.addLayer({
       id: "course-ends-labels", type: "symbol", source: "course-ends",
       layout: {
-        "text-field": ["get", "label"], "text-font": ["Nanum Gothic Coding Bold"],
+        "text-field": ["get", "label"], "text-font": ["MonaS12 Bold"],
         "text-size": 9.5, "text-offset": [0, 1.1], "text-anchor": "top",
         "text-allow-overlap": true
       },

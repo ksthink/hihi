@@ -36,7 +36,7 @@ export function normPoiDisplay(raw) {
 }
 
 // 글꼴 선택 (볼드 글리프도 전 범위 자체 호스팅됨)
-const FONT = (bold) => [bold ? "Nanum Gothic Coding Bold" : "Nanum Gothic Coding Regular"];
+const FONT = (bold) => [bold ? "MonaS12 Bold" : "MonaS12 Regular"];
 
 // 도시 POI(텍스트 전용 poi-urban 레이어) 카테고리 → pois kind 매핑.
 // 카테고리 간 kind 중복 금지 (match 표현식 라벨 유일성).
@@ -96,8 +96,9 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
 
   return {
     version: 8,
-    // 자체 호스팅 글리프(same-origin 정적). 한글/CJK 는 localIdeographFontFamily(Nanum)로
-    // 기기/번들 폰트 렌더 → 여기엔 Nanum Gothic Coding 의 라틴·기호 범위만 필요.
+    // 자체 호스팅 글리프(same-origin 정적, fonts/MonaS12 {Regular,Bold}/*.pbf — fontnik SDF).
+    // 웹은 한글/CJK 를 localIdeographFontFamily(MonaS12)로 기기 렌더, PBF 는 라틴·기호에 사용.
+    // 네이티브(localIdeograph 없음)는 한글까지 PBF 글리프로 렌더 → PBF 전 BMP 범위 생성.
     glyphs: "/fonts/{fontstack}/{range}.pbf",
     sources: {
       protomaps: {
@@ -213,7 +214,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         layout: {
           "symbol-placement": "line",
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.9, "symbol-spacing": 400
+          "text-font": ["MonaS12 Regular"], "text-size": 8.9, "symbol-spacing": 400
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
       },
@@ -224,7 +225,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         layout: {
           "symbol-placement": "line",
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 9.2, "symbol-spacing": 350
+          "text-font": ["MonaS12 Regular"], "text-size": 9.2, "symbol-spacing": 350
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
@@ -353,7 +354,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         minzoom: 12, filter: ["in", "kind", "macrohood", "neighbourhood"],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"],
+          "text-font": ["MonaS12 Regular"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 12, 9.2, 16, 10.9],
           "text-max-width": 7
         },
@@ -365,7 +366,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         minzoom: 13, filter: ["==", "kind", "administrative"],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"], "text-size": 9.2, "text-max-width": 7
+          "text-font": ["MonaS12 Regular"], "text-size": 9.2, "text-max-width": 7
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.4 }
       },
@@ -381,7 +382,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
           [">=", ["zoom"], ["get", "min_zoom"]]],
         layout: {
           "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["Nanum Gothic Coding Regular"],
+          "text-font": ["MonaS12 Regular"],
           // 대도시(population_rank≥12)는 크게, 그 외 9.6px — 정상(주봉 14.4)이 여전히 최상위
           "text-size": ["interpolate", ["linear"], ["zoom"],
             6, ["case", [">=", ["get", "population_rank"], 12], 11, 9.6],

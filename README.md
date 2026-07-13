@@ -168,14 +168,14 @@ bash scripts/setup_admin.sh                    # 최초 1회: .venv + go-pmtiles
 |---|---|---|
 | 기저 지도 타일 | **Cloudflare R2** (`kr-base.pmtiles`) | egress 무료 · [CLOUDFLARE.md](CLOUDFLARE.md) |
 | 오프라인 팩 파일 | **Cloudflare R2** (`packs/<산코드>/`) | egress 무료 · 브라우저 직접 fetch(R2 CORS) |
-| 지도 라벨 글리프 | **리포 내 `fonts/`** (same-origin) | 나눔고딕코딩 라틴 글리프(PBF) |
-| 지도 한글 폰트 | **리포 내 `fonts/`** (`.woff2`) | 나눔고딕코딩 (localIdeographFontFamily) |
+| 지도 라벨 글리프 | **리포 내 `fonts/`** (same-origin) | MonaS12 SDF 글리프(PBF, fontnik) |
+| 지도 한글 폰트 | **리포 내 `fonts/`** (`.woff2`) | MonaS12 (웹 localIdeographFontFamily · 네이티브 PBF) |
 | UI 폰트 | **리포 내 `fonts/`** (`.woff2`) | MonaS12 (한글+라틴 서브셋, 2 weight) |
 
 **지도 라벨 폰트 구조** (참고)
-- 한글·CJK → `localIdeographFontFamily` 가 기기 canvas 로 렌더 (자체 호스팅 woff2)
-- 라틴·숫자·기호 → SDF 글리프 PBF (`fonts/Nanum Gothic Coding Regular/`)
-- → 지도 전체가 **나눔고딕코딩**으로 통일됨
+- 웹: 한글·CJK → `localIdeographFontFamily`(MonaS12) 가 기기 canvas 로 렌더, 라틴·숫자·기호 → SDF 글리프 PBF
+- 네이티브: localIdeograph 없음 → 한글까지 SDF 글리프 PBF (`fonts/MonaS12 Regular/`, fontnik 생성 · 전 BMP)
+- → 지도·UI 전체가 **MonaS12** 로 통일됨
 
 > 남은 외부 의존은 `maplibre-gl`·`pmtiles`·`supabase-js` 라이브러리(ESM CDN)뿐이며,
 > 이는 iOS 에서 네이티브 SDK로 대체되는 부분입니다.
@@ -196,8 +196,8 @@ hihi/
 │
 ├── fonts/                자체 호스팅 폰트 + 지도 글리프 (§7)
 │   ├── MonaS12*-subset.woff2            UI 폰트 (한글+라틴 서브셋)
-│   ├── NanumGothicCoding-Regular.woff2   지도 한글 폰트
-│   └── Nanum Gothic Coding Regular/*.pbf 지도 라틴 글리프
+│   ├── MonaS12.ttf                      서브셋·PBF 생성 소스
+│   └── MonaS12 Regular/*.pbf            지도 SDF 글리프 (fontnik, 전 BMP)
 │
 ├── api/                  Vercel 서버리스 함수
 │   ├── tiles.js          기저 타일 프록시 (→ Cloudflare R2)
@@ -263,7 +263,7 @@ hihi/
 - **등산로·시설**: OpenStreetMap (ODbL) / 산림청·국립공원공단 공간정보 (약관 준수)
 - **등고선·고도**: Copernicus GLO-30 DEM (AWS Open Data) / NASA SRTM (퍼블릭 도메인)
 - **날씨**: 기상청 단기예보 (data.go.kr)
-- **지도 폰트**: 나눔고딕코딩 (SIL Open Font License) — `fonts/NanumGothicCoding-OFL.txt`
+- **폰트**: MonaS12 (UI·지도 공통) — ⚠️ 재배포·상용 라이선스 확인 필요
 - ⚠️ **등산로 라인은 개략 데이터입니다.** 실제 산행 시 국립공원공단 등 **공식 지도를 반드시 확인**하세요.
 - 한국 정밀 국가기본도의 국외 반출 규제를 고려해, 지도 데이터 호스팅은 국내(서울) 리전을 권장합니다.
 
