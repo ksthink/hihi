@@ -1,0 +1,15 @@
+# XcodeGen 이 project.yml 에서 재생성 — 커밋 금지
+HiHeight.xcodeproj/
+
+# gen-style.mjs 가 basemap-style.js 에서 재생성 — 커밋 금지
+HiHeight/Resources/basemap-*.json
+
+# Xcode 빌드 산출물 / SPM 캐시
+build/
+DerivedData/
+.build/
+*.xcuserstate
+xcuserdata/
+
+# Info.plist 은 XcodeGen 이 project.yml info 블록에서 생성
+HiHeight/Info.plist

@@ -1,0 +1,42 @@
+# XcodeGen 프로젝트 정의 — .xcodeproj 는 커밋하지 않고 이 파일에서 재생성한다.
+#   생성:  cd ios && node gen-style.mjs && xcodegen generate
+#   빌드:  xcodebuild -project ios/HiHeight.xcodeproj -scheme HiHeight -sdk iphonesimulator ...
+name: HiHeight
+options:
+  bundleIdPrefix: dev.metaphr
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+packages:
+  MapLibre:
+    url: https://github.com/maplibre/maplibre-gl-native-distribution
+    exactVersion: 6.27.0
+
+targets:
+  HiHeight:
+    type: application
+    platform: iOS
+    sources:
+      - HiHeight
+    dependencies:
+      - package: MapLibre
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.metaphr.hiheight
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"   # iPhone
+        CODE_SIGNING_ALLOWED: NO      # 시뮬레이터 스파이크 — 서명 불필요
+    info:
+      path: HiHeight/Info.plist
+      properties:
+        CFBundleDisplayName: 하이하잇
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # 스파이크: 시뮬레이터가 맥의 admin_server(http://localhost:8890) 프록시로
+        # PMTiles·글리프를 받는다. ATS 가 http 를 막으므로 로컬 네트워킹 예외 허용.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
