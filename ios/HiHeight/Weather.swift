@@ -44,6 +44,8 @@ enum WeatherService {
         c.timeZone = TimeZone(identifier: "Asia/Seoul")!
         return c
     }
+    // 예보 기준 캡션 — 현재 KST 시각 (weather.js baseLabel 대응).
+    static var baseLabel: String { "\(kst.component(.hour, from: Date()))시 기준" }
     private static func ymd(_ d: Date) -> String {
         let c = kst.dateComponents([.year, .month, .day], from: d)
         return String(format: "%04d%02d%02d", c.year!, c.month!, c.day!)

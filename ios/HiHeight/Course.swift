@@ -12,17 +12,24 @@ struct Course: Decodable, Identifiable {
     let ascent: Int?
     let descent: Int?
     let profile: [Double]?
+    let peak: String?
+    let surface: String?
+    let desc: String?
 
     // 지오메트리에서 파생(Decodable 대상 아님) — PackLoader 가 채운다.
     var start: [Double]? = nil
     var end: [Double]? = nil
 
     enum CodingKeys: String, CodingKey {
-        case no, name, difficulty, distance_km, time_hr, min_elev, max_elev, ascent, descent, profile
+        case no, name, difficulty, distance_km, time_hr, min_elev, max_elev, ascent, descent, profile, peak, surface, desc
     }
 
     var id: Int { no ?? name.hashValue }
     var title: String { no.map { "코스 \($0)" } ?? name }
+
+    // 난이도 표기 — 웹 DIFF_LABEL/DIFF_LEVEL (초급=보통 1, 중급=어려움 2, 고급=매우 어려움 3).
+    var difLabel: String { ["초급": "보통", "중급": "어려움", "고급": "매우 어려움"][difficulty ?? ""] ?? (difficulty ?? "") }
+    var difLevel: Int { ["초급": 1, "중급": 2, "고급": 3][difficulty ?? ""] ?? 1 }
 }
 
 // LineString / MultiLineString 지오메트리의 첫 점·끝 점만 뽑는다(courseEndsData 대응).

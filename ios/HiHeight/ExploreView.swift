@@ -14,6 +14,7 @@ struct ExploreView: View {
     @State private var searching = false
     @State private var query = ""
     @State private var expanded = false
+    @State private var descExpanded = false
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
     @State private var npn: String?
@@ -110,6 +111,7 @@ struct ExploreView: View {
             async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
             async let inf = InfoLoader.load(m.id)
             async let wx = WeatherService.fetch(lat: m.center[1], lon: m.center[0])
+            descExpanded = false
             courses = await cs
             info = await inf
             weather = await wx
@@ -260,13 +262,9 @@ struct ExploreView: View {
                         Text("관리 · \(mgr)").font(.system(size: 13, weight: .medium)).foregroundStyle(t.muted)
                     }
                     if let desc = info?.description, !desc.isEmpty {
-                        Text(desc)
-                            .font(.system(size: 13)).foregroundStyle(t.muted)
-                            .lineSpacing(3)
-                            .lineLimit(expanded ? nil : 2)
-                            .fixedSize(horizontal: false, vertical: true)
+                        descView(desc, t)
                     }
-                    if !weather.isEmpty { weatherStrip(t) }
+                    if !weather.isEmpty { weatherStrip(m.name, t) }
                     Divider().overlay(t.line).padding(.vertical, 2)
                     HStack(spacing: 8) {
                         Text("등산로").font(.system(size: 17, weight: .semibold)).foregroundStyle(t.text)
@@ -282,10 +280,17 @@ struct ExploreView: View {
                     if courses.isEmpty {
                         Text("코스 정보를 불러오는 중…").font(.system(size: 13)).foregroundStyle(t.muted)
                     } else {
-                        VStack(spacing: 0) {
+                        VStack(spacing: 9) {
                             ForEach(courses) { c in courseRow(c, t) }
                         }
                     }
+                    // 출처 표기 + 샘플 데이터 고지 (웹 footer)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("© metaphr · 기저 지도: Protomaps · © OpenStreetMap")
+                        Text("등산로는 개략적인 샘플 데이터입니다. 실제 산행 시 공식 지도를 확인하세요.")
+                    }
+                    .font(.system(size: 11)).foregroundStyle(t.muted).lineSpacing(2)
+                    .padding(.top, 8)
                 }
                 .padding(.horizontal, 18).padding(.bottom, 16)
               }
@@ -312,64 +317,120 @@ struct ExploreView: View {
         )
     }
 
-    // 오늘 날씨 스트립 — 2시간 간격 예보 (weather.js renderStrip 대응).
-    private func weatherStrip(_ t: Theme) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("오늘 날씨").font(.system(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+    // 산 설명 + 더 읽기 — 웹 mi-desc/mi-more (100자 초과 시 자르고 인라인 버튼, 탭하면 펼침/접힘).
+    private func descView(_ desc: String, _ t: Theme) -> some View {
+        let long = desc.count > 100
+        let shown = (descExpanded || !long)
+            ? desc
+            : String(desc.prefix(100)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
+        let more = long ? Text(descExpanded ? "  접기" : " 더 읽기").underline().foregroundColor(t.muted) : Text("")
+        return Button {
+            withAnimation(.easeOut(duration: 0.15)) { descExpanded.toggle() }
+        } label: {
+            (Text(shown).foregroundColor(t.text) + more)
+                .font(.system(size: 13)).lineSpacing(3)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // 오늘 날씨 — "{산} 부근 오늘 날씨" + 프레임 카드(시간별) + 발표기준 캡션 (weather.js renderStrip).
+    private func weatherStrip(_ name: String, _ t: Theme) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(name) 부근 오늘 날씨").font(.system(size: 13, weight: .semibold)).foregroundStyle(t.muted)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(weather) { h in
-                        let s = WeatherService.state(h)
-                        VStack(spacing: 4) {
-                            Text(h.isNow ? "지금" : "\(h.hh)시")
-                                .font(.system(size: 11)).foregroundStyle(t.muted)
-                            Image(systemName: s.symbol).font(.system(size: 17)).foregroundStyle(t.text)
-                                .frame(height: 22)
-                            Text(h.tmp.map { "\(Int($0.rounded()))°" } ?? "–")
-                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(t.text)
-                            Text(h.pty > 0 ? (h.pop.map { "\($0)%" } ?? " ") : " ")
-                                .font(.system(size: 10)).foregroundStyle(t.muted)
-                        }
-                        .frame(width: 38)
-                    }
+                HStack(spacing: 6) {
+                    ForEach(weather) { h in wxChip(h, t) }
                 }
             }
+            Text("\(WeatherService.baseLabel) · 가장 가까운 관측지 기준")
+                .font(.system(size: 11)).foregroundStyle(t.muted)
         }
         .padding(.top, 2)
     }
 
-    // 코스 1행 — 번호 배지 + 이름 + 난이도·거리·시간·상승 + 고도 스파크라인 (웹 trail-list/profile).
-    // 탭 → 선택(시종점 마커 표시). 선택 행은 배경 강조.
+    private func wxChip(_ h: WeatherHour, _ t: Theme) -> some View {
+        let s = WeatherService.state(h)
+        return VStack(spacing: 3) {
+            Text(h.isNow ? "지금" : "\(h.hh)시")
+                .font(.system(size: 11, weight: .semibold)).foregroundStyle(h.isNow ? t.text : t.muted)
+            Image(systemName: s.symbol).font(.system(size: 16)).foregroundStyle(t.text).frame(height: 20)
+            Text(h.tmp.map { "\(Int($0.rounded()))°" } ?? "–")
+                .font(.system(size: 13, weight: .bold)).foregroundStyle(t.text)
+            Text(h.pty > 0 ? (h.pop.map { "\($0)%" } ?? " ") : " ")
+                .font(.system(size: 10)).foregroundStyle(t.muted)
+        }
+        .frame(minWidth: 52)
+        .padding(.vertical, 7).padding(.horizontal, 8)
+        .background(t.bg, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(h.isNow ? t.text : t.line))
+    }
+
+    // 등산로 카드 — 웹 trail-item(프레임 + 좌측 강조선). 이름·난이도 배지·거리/시간·고도 프로파일.
+    // 탭 → 선택(시종점 표시). 선택 시 accent 링 강조.
     private func courseRow(_ c: Course, _ t: Theme) -> some View {
         let sel = climb.course?.id == c.id
         return Button {
             withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
         } label: {
-            HStack(spacing: 11) {
-                Text("\(c.no ?? 0)")
-                    .font(.system(size: 13, weight: .bold)).foregroundStyle(t.onAccent)
-                    .frame(width: 25, height: 25).background(t.accent, in: Circle())
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(c.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(t.text)
-                    HStack(spacing: 9) {
-                        if let d = c.difficulty { Text(d) }
-                        if let km = c.distance_km { Text(String(format: "%.1fkm", km)) }
-                        if let h = c.time_hr { Text(String(format: "%.1f시간", h)) }
-                        if let a = c.ascent { Text("↑\(a)m") }
+            HStack(spacing: 0) {
+                Rectangle().fill(t.accent).frame(width: 3)     // 좌측 강조선 (border-left)
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .top, spacing: 7) {
+                            Text("\(c.no ?? 0)")
+                                .font(.system(size: 11.5, weight: .bold)).foregroundStyle(t.onAccent)
+                                .frame(minWidth: 19, minHeight: 19).padding(.horizontal, 4)
+                                .background(t.accent, in: Capsule())
+                            Text(c.name).font(.system(size: 15, weight: .bold)).foregroundStyle(t.text)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 4)
+                            difBadge(c, t)
+                        }
+                        HStack(spacing: 10) {
+                            if let pk = c.peak, !pk.isEmpty { Text(pk) }
+                            if let km = c.distance_km { Text("\(fmtNum(km))km") }
+                            if let h = c.time_hr { Text("\(fmtNum(h))h") }
+                            if let sf = c.surface, !sf.isEmpty { Text(sf) }
+                        }
+                        .font(.system(size: 12)).foregroundStyle(t.muted)
+                        if let d = c.desc, !d.isEmpty {
+                            Text(d).font(.system(size: 12.5)).foregroundStyle(t.muted).lineSpacing(2)
+                        }
                     }
-                    .font(.system(size: 12)).foregroundStyle(t.muted)
+                    if let p = c.profile, p.count > 1 {
+                        Sparkline(points: p)
+                            .stroke(t.text, style: StrokeStyle(lineWidth: 1.3, lineJoin: .round))
+                            .frame(width: 90, height: 44)
+                    }
                 }
-                Spacer()
-                if let p = c.profile, p.count > 1 {
-                    Sparkline(points: p)
-                        .stroke(t.text, style: StrokeStyle(lineWidth: 1.3, lineJoin: .round))
-                        .frame(width: 84, height: 30)
-                }
+                .padding(.vertical, 12).padding(.horizontal, 14)
             }
-            .padding(.horizontal, sel ? 8 : 0).padding(.vertical, 9)
-            .background(sel ? t.surface : .clear, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: sel ? 0 : 0.5) }
+            .background(t.elevated)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(sel ? t.accent : t.line, lineWidth: sel ? 2.5 : 1))
         }
         .buttonStyle(.plain)
+    }
+
+    // 난이도 배지 — "보통 ▮▮▯" (라벨 + 3칸 바 미터). 웹 difLabel + dmeter.
+    private func difBadge(_ c: Course, _ t: Theme) -> some View {
+        HStack(spacing: 5) {
+            Text(c.difLabel).font(.system(size: 11, weight: .bold)).foregroundStyle(t.muted)
+            HStack(spacing: 2) {
+                ForEach(0..<3, id: \.self) { i in
+                    RoundedRectangle(cornerRadius: 1).fill(i < c.difLevel ? t.text : t.line)
+                        .frame(width: 5, height: 11)
+                }
+            }
+        }
+        .fixedSize()
+    }
+
+    // 숫자 표기 — 정수면 정수로, 아니면 불필요한 0 제거 (웹 raw 값 표기).
+    private func fmtNum(_ v: Double) -> String {
+        v == v.rounded() ? String(Int(v)) : String(format: "%g", v)
     }
 }
