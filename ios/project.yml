@@ -40,6 +40,9 @@ targets:
       properties:
         CFBundleDisplayName: 하이하잇
         UILaunchScreen: {}
+        # iOS 26 Liquid Glass(플로팅 탭바·블러) opt-out — 배터리 절약 컨셉(글래스/블러 효과 배제).
+        # 웹과 동일한 평평·불투명 하단 바 렌더.
+        UIDesignRequiresCompatibility: true
         # UI 폰트 — 웹과 동일한 KakaoSmallSans (woff2→ttf 변환, Resources/fonts).
         UIAppFonts:
           - KakaoSmallSans-Light.ttf
