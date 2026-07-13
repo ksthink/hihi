@@ -48,7 +48,7 @@ struct ContentView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.top, 9).padding(.bottom, 4)
+        .padding(.top, 4)
         .background(t.surface.ignoresSafeArea(edges: .bottom))   // 배경만 홈 인디케이터까지 확장
         .overlay(alignment: .top) { Rectangle().fill(t.line).frame(height: 0.5) }
     }
