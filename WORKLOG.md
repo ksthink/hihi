@@ -18,6 +18,10 @@ iOS 네이티브 앱(`ios/`) 이식 — S1 스파이크부터 4탭 기능·디�
 - **지도 컨트롤(웹 오버레이 정합)**: 테마 토글(라이트/다크 — `@AppStorage`+`preferredColorScheme`), 현재위치 버튼(나침반 통합 — 탭 시 정북·수평 복원), 커스텀 단일 스케일바, 저작권 ⓘ(MapLibre 내장), 코스 번호 배지(런타임 `makeBadge` UIImage + `symbol-placement:line-center`)
 - **KakaoSmallSans 폰트**: `Font+Kakao.swift` — 웹 woff2를 fonttools로 ttf 변환(`Resources/fonts`), `UIAppFonts` 등록, 전 UI `.system`→`.kakao`(3 weight 근접 매핑), 탭바 라벨 포함
 - **코스 fitBounds**: `Course.bbox`(지오메트리 전체 경계), 등산로 카드 탭·추천 진입 시 지도를 코스 전체 범위로 프레이밍(`MapView.fitCourseTick`, 가시 영역 정밀 패딩)
+- **탭 상단 고정 헤더**: `ScreenHeader.swift`(신규) — 웹 `.view-head` 재현(스크롤 무관 상단 고정 + 하단 헤어라인). 추천·등반·기록 탭 적용
+- **인트로 스플래시**: `SplashView.swift`(신규) — 웹 `#splash` 이식(태그라인→브랜드 "하이-하잇/HI-Hike"→© metaphr 순차 페이드인, 2.8s 노출 후 페이드아웃). `ContentView` 전체화면 오버레이
+- **등반 날씨 예보 스트립**: `WeatherStrip.swift`(신규) — 웹 `renderStrip` 칩(지금/N시·아이콘·기온·강수%), 등반 카드에 선택 산 기준 표시. 데이터는 admin_server `/api/weather` 프록시(웹 동일 계약), `Config.weatherURL`
+- **YK Green Forest(유한) 폰트**: `Resources/fonts/YKGreenForest-{Light,Medium,Bold}.ttf`(신규) — 3 weight 실 face, `project.yml` `UIAppFonts` 등록
 
 ### 수정 / 변경
 - **로그인 세션 버그 2건**: `AuthStore` — ① signIn/signUp 반환 세션 직접 사용(currentUser 재조회 타이밍 의존 제거) ② 세션 저장소 Keychain→`UserDefaultsLocalStorage`(서명 없는 시뮬레이터는 Keychain 쓰기 실패로 로그인 유실) + `refresh()` `currentUser`(동기)→`await auth.session`(콜드스타트 유지)
@@ -25,6 +29,18 @@ iOS 네이티브 앱(`ios/`) 이식 — S1 스파이크부터 4탭 기능·디�
 - **고도 프로파일**: `Sparkline.swift` — 선만 그리던 것을 채움 영역(prof-area 10%)+선(prof-line)의 `ProfileView`로(웹 profileSVG 정합)
 - **SwiftUI 버그 수정**: 산행 달력에서 빈칸·날짜 `ForEach` id 충돌로 1·2일 셀이 드롭되던 문제 → 단일 배열+인덱스 id
 - **검증 기법**: 시뮬레이터 GPS 주입(`simctl location`)·위치 권한(`simctl privacy`)·임시 `@State`/`.task` 자동 구동 후 스크린샷 — 등반 트래킹·기록 저장·루트 표시·코스 프레이밍 검증. 검증용 더미 기록은 삭제 기능으로 정리
+
+#### 웹 동등화 후속 (실기기 배포 기반)
+- **하단 네비 커스텀·기기 적응**: `ContentView` — 네이티브 탭바(iOS26 글래스 플로팅) 숨기고 웹식 평평·불투명 하단 바 직접 구현(`UIDesignRequiresCompatibility` opt-out, 아이콘 위치 교정·패딩 조정). 바텀시트 peek·지도 오버레이를 전체 화면 높이 비율(≈32%)로 — 전 기기 동일 비율(`ExploreView`)
+- **추천 탭 웹 정합**: `RecoView.swift` — 노출 매거진 PICK 캐러셀(82% 정사각·스냅·점 인디케이터·가운데 설명), 다크 아코디언(공식 추천 3종), "지난 매거진 보기" 아카이브
+- **기록 탭 웹 UI 이식**: `RecordsView.swift` — 계정바·합계·달력·기록행을 elevated 카드(웹 `.auth-in`/`.rec-summary`/`.rec-cal`/`.rec-item`)로, 구분자 `|`·시간 `H:MM`·날짜 `yyyy.MM.dd`, 달력 today 테두리 링(채움원 아님)
+- **등반 탭 웹 정합**: `DeungView.swift` — 코스 미선택도 카드 상시 표시(stat "–"+날씨 스트립+비활성 회색 버튼+안내), 헤더 산 배지(`.mtn-badge` 검정 배지), 난이도 점→3막대 미터, 거리 원본 표기(`%g`)
+- **기록 삭제 안 되던 문제 수정**: `RecordsView`·`AuthStore` — 커스텀 드래그 스와이프가 ScrollView 세로 스크롤과 충돌해 실기기에서 안 열리던 것 → 네이티브 `List.swipeActions` 복귀, 달력 `LazyVGrid`→비지연 VStack/HStack Grid(List self-sizing 재귀 루프 회피), `deleteRecord` 낙관적 제거 + `.select()` 0행 감지 복원·안내
+- **등반 HUD 하단 잘림 수정**: `ExploreView` — 지도가 세이프에어리어 무시(전체화면)라 트래킹 HUD "등반 종료" 버튼·위치 안내가 하단 네비 뒤로 잘리던 것 → `safeAreaInsets.bottom` 만큼 띄워 네비 위에 오게
+- **등반 날씨칩 높이 균일화**: `WeatherStrip` — 강수확률(30%) 줄을 조건부 렌더해 강수 있는 칩만 커지던 것 → 빈칸으로 자리 항상 확보
+- **UI 폰트 전면 교체**: `Font+Kakao.swift`·`project.yml` — KakaoSmallSans→Mulmaru(단일 웨이트)→최종 YK Green Forest(Light/Medium/Bold 실 face). `Font.kakao` 헬퍼 재지정으로 89개 호출부 전부 반영
+- **등산로/코스 팩 R2 직결**: `Config.swift` — 등산로(routes/contours/spots)를 로컬 맥 프록시 `data/packs`에서 읽어 EC2 관리자 배포가 미반영되던 것 → 웹과 동일한 R2 `packs/<코드>/` 직결로 변경(관리자 배포 즉시 반영). PMTiles·날씨는 개발 단계라 프록시 유지
+- **탐험 바텀시트 3단계 + 실시간 추종**: `ExploreView` — peek↔full 2단계(손 떼야 스냅)→peek·medium(~52%)·large(~88%) 3단계, 드래그 실시간 추종 + 경계 러버밴딩 + 놓을 때 예상 종점(속도 반영) 스냅
 
 ---
 
