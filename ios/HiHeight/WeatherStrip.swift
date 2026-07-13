@@ -34,9 +34,9 @@ struct WeatherChip: View {
                 .font(.system(size: 20)).foregroundStyle(t.text).frame(height: 22)
             Text(hour.tmp.map { "\(Int($0.rounded()))°" } ?? "–")        // .wx-tmp
                 .font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text)
-            if hour.pty > 0, let pop = hour.pop {                        // .wx-pop
-                Text("\(pop)%").font(.kakao(size: 10)).foregroundStyle(t.muted)
-            }
+            // .wx-pop — 강수확률 줄은 항상 자리 확보(빈칸 " ")해 칩 높이를 균일하게.
+            Text(hour.pty > 0 ? (hour.pop.map { "\($0)%" } ?? " ") : " ")
+                .font(.kakao(size: 10)).foregroundStyle(t.muted)
         }
         .frame(minWidth: 52)
         .padding(.vertical, 7).padding(.horizontal, 8)
