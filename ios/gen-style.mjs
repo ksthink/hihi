@@ -74,6 +74,14 @@ function make(theme) {
     { id: "trail-line", type: "line", source: "trails",
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": tc.line, "line-width": widthExpr } },
+    // 코스 번호 배지 — 라인 중앙에 항상 표시 (app.js:522 course-no-badges).
+    // 아이콘 badge-N 은 MapView 가 런타임 UIImage 로 등록(makeBadge).
+    { id: "course-no-badges", type: "symbol", source: "trails", minzoom: 10.5,
+      layout: {
+        "symbol-placement": "line-center",
+        "icon-image": ["concat", "badge-", ["to-string", ["coalesce", ["get", "no"], 1]]],
+        "icon-allow-overlap": true, "icon-ignore-placement": true,
+      } },
   );
 
   // ── 스팟 오버레이 (점+라벨+정상) — app.js:582-660 스펙 축약 ──

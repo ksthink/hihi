@@ -11,8 +11,7 @@ struct MapView: UIViewRepresentable {
     var climbTrack: [[Double]] = []      // 등반 중 지나온 GPS 트랙 [lng,lat,...]
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
-    var locateTick: Int = 0              // 증가 시 현재위치로 이동(geolocate 버튼)
-    var resetNorthTick: Int = 0          // 증가 시 방위·피치 초기화(나침반 버튼)
+    var locateTick: Int = 0              // 증가 시 현재위치로 이동 + 정북·수평 복원(위치/나침반 통합 버튼)
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -21,21 +20,32 @@ struct MapView: UIViewRepresentable {
         let mv = MLNMapView(frame: .zero)
         mv.delegate = context.coordinator
         mv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        mv.logoView.isHidden = false
-        mv.attributionButton.isHidden = false           // OSM·Protomaps·Copernicus 저작자 표시
+        // 지도 장식(웹 오버레이 대응): 로고 숨김, 스케일바(좌하단)·저작권 ⓘ(우하단)·나침반 숨김.
+        // 시트가 하단을 덮으므로 시트 위로 올린다(y 여백).
+        mv.showsLogoView = false
+        mv.showsScale = true
+        mv.scaleBarPosition = .bottomLeft
+        mv.scaleBarUsesMetricSystem = true
+        mv.scaleBarMargins = CGPoint(x: 12, y: 300)
+        mv.showsAttributionButton = true
+        mv.attributionButtonPosition = .bottomRight
+        mv.attributionButtonMargins = CGPoint(x: 12, y: 300)
+        mv.showsCompassView = false                      // 나침반은 위치 버튼에 통합
+        context.coordinator.dark = styleResource.contains("dark")
         applyStyle(mv)
         return mv
     }
 
     func updateUIView(_ mv: MLNMapView, context: Context) {
+        context.coordinator.dark = styleResource.contains("dark")
         applyStyle(mv)                                   // 테마 전환 시 스타일 교체
+        mv.scaleBarShouldShowDarkStyles = !context.coordinator.dark   // 밝은 지도→어두운 스케일바
         context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.applyCourse(selectedCourse, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
         context.coordinator.setRecordTrack(recordTrack, on: mv)
-        context.coordinator.applyUserState(tracking: tracking, locateTick: locateTick,
-                                            resetNorthTick: resetNorthTick, on: mv)
+        context.coordinator.applyUserState(tracking: tracking, locateTick: locateTick, on: mv)
     }
 
     private func applyStyle(_ mv: MLNMapView) {
@@ -49,20 +59,22 @@ struct MapView: UIViewRepresentable {
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
         private var trackCount = -1         // 마지막 반영한 트랙 점 개수 (중복 갱신 방지)
         private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
-        private var lastLocate = 0, lastReset = 0
+        private var lastLocate = 0
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
+        var dark = false                    // 현재 테마 (코스 번호 배지 색)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
 
-        // 현재위치 점 표시 + 추적 카메라 — 등반 중(tracking) 또는 geolocate 버튼(locateTick).
-        // resetNorthTick 증가 시 방위·피치를 정북/수평으로 되돌린다.
-        func applyUserState(tracking: Bool, locateTick: Int, resetNorthTick: Int, on mv: MLNMapView) {
-            if resetNorthTick != lastReset {
-                lastReset = resetNorthTick
-                let c = mv.camera; c.heading = 0; c.pitch = 0
-                mv.setCamera(c, withDuration: 0.4, animationTimingFunction: nil)
-            }
+        // 현재위치 점 표시 + 추적 카메라(등반 중 tracking, 또는 위치 버튼 locateTick).
+        // 위치 버튼은 나침반도 통합 — 탭 시 정북(direction=0)·수평(pitch=0)으로 복원.
+        func applyUserState(tracking: Bool, locateTick: Int, on mv: MLNMapView) {
             var follow = false
-            if locateTick != lastLocate { lastLocate = locateTick; locateOn = true; follow = true }
+            if locateTick != lastLocate {
+                lastLocate = locateTick; locateOn = true; follow = true
+                mv.direction = 0                                  // 나침반 통합: 정북
+                if mv.camera.pitch != 0 {                         // 수평 복원
+                    let c = mv.camera; c.pitch = 0; mv.setCamera(c, animated: true)
+                }
+            }
             if tracking { locateOn = false }            // 등반 종료 후 geolocate 상태와 분리
             mv.showsUserLocation = tracking || locateOn
             if tracking, mv.userTrackingMode != .follow { follow = true }
@@ -70,6 +82,27 @@ struct MapView: UIViewRepresentable {
                 mv.setUserTrackingMode(.none, animated: false, completionHandler: nil)
             }
             if follow { mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil) }
+        }
+
+        // 코스 번호 배지 이미지(badge-N) 등록 — 웹 makeBadge 캔버스 대응(런타임 UIImage).
+        // 스타일 로드/테마 전환마다 재등록. course-no-badges 레이어(gen-style)가 참조.
+        func registerBadges(on style: MLNStyle) {
+            for n in 1...12 { style.setImage(makeBadge(n), forName: "badge-\(n)") }
+        }
+        private func makeBadge(_ n: Int) -> UIImage {
+            let size = CGSize(width: 26, height: 26)
+            let fmt = UIGraphicsImageRendererFormat.default(); fmt.scale = 2
+            let bg = dark ? UIColor(white: 0.949, alpha: 1) : UIColor(white: 0.067, alpha: 1)  // f2 / 11
+            let fg: UIColor = dark ? .black : .white
+            return UIGraphicsImageRenderer(size: size, format: fmt).image { _ in
+                bg.setFill()
+                UIBezierPath(ovalIn: CGRect(origin: .zero, size: size).insetBy(dx: 1.5, dy: 1.5)).fill()
+                let s = "\(n)"
+                let attrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 14, weight: .bold), .foregroundColor: fg]
+                let ts = s.size(withAttributes: attrs)
+                s.draw(at: CGPoint(x: (size.width - ts.width) / 2, y: (size.height - ts.height) / 2), withAttributes: attrs)
+            }
         }
 
         func apply(mountain m: Mountain?, on mv: MLNMapView) {
@@ -204,6 +237,7 @@ struct MapView: UIViewRepresentable {
 
         // 스타일 로드(초기·테마 전환)마다 현재 목표 산 오버레이 + 시종점 재적용.
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+            registerBadges(on: style)            // 코스 번호 배지 이미지(테마색) 등록
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
             trackCount = -1; recTrackKey = ""    // 스타일 재로드 시 트랙 재주입 강제

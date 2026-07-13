@@ -11,7 +11,6 @@ struct ExploreView: View {
     @AppStorage("hiheight-theme") private var themePref = "system"
 
     @State private var locateTick = 0
-    @State private var resetNorthTick = 0
     @State private var searching = false
     @State private var query = ""
     @State private var expanded = false
@@ -37,38 +36,35 @@ struct ExploreView: View {
                         mountain: catalog.selected, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
-                        locateTick: locateTick, resetNorthTick: resetNorthTick,
+                        locateTick: locateTick,
                         onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) })
                     .ignoresSafeArea()
 
-                // 우측 지도 컨트롤 (테마·나침반·현재위치) — 웹 bottom-right 컨트롤 대응
+                // 우측 지도 컨트롤 — 테마 토글 + 현재위치(나침반 통합). 웹 bottom-right 대응.
                 VStack(spacing: 10) {
                     ctrlButton(scheme == .dark ? "sun.max.fill" : "moon.fill", t) {
                         themePref = scheme == .dark ? "light" : "dark"
                     }
-                    ctrlButton("location.north.line.fill", t) { resetNorthTick += 1 }
                     ctrlButton("location.fill", t) { locateTick += 1 }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
-                .padding(.bottom, climb.tracking ? 200 : 288)
+                .padding(.bottom, climb.tracking ? 240 : 360)   // ⓘ 저작권 버튼 위로
                 .allowsHitTesting(!searching)
 
-                // 상단: 검색 버튼(좌) + 현재 산 이름(중앙) + 국가지점번호 — 웹 search + top-overlay
-                VStack(spacing: 8) {
+                // 상단: 검색 버튼(좌) + 현재 산 이름(우상단 텍스트) + 국가지점번호 — 웹 top-overlay
+                VStack(alignment: .trailing, spacing: 8) {
                     HStack(alignment: .top) {
                         searchButton(t)
                         Spacer()
                         if let m = catalog.selected {
                             Text(m.name)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.system(size: 18, weight: .bold))
                                 .foregroundStyle(t.text)
-                                .padding(.horizontal, 14).padding(.vertical, 7)
-                                .background(t.elevated.opacity(0.92), in: Capsule())
-                                .overlay(Capsule().strokeBorder(t.line))
+                                .shadow(color: t.bg.opacity(0.85), radius: 3)
+                                .shadow(color: t.bg.opacity(0.6), radius: 1)
+                                .padding(.top, 6).padding(.trailing, 4)
                         }
-                        Spacer()
-                        Color.clear.frame(width: 42, height: 42)   // 좌우 대칭용 스페이서
                     }
                     if let npn {
                         HStack(spacing: 5) {
