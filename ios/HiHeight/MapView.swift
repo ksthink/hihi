@@ -13,6 +13,7 @@ struct MapView: UIViewRepresentable {
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
     var locateTick: Int = 0              // 증가 시 현재위치로 이동 + 정북·수평 복원(위치/나침반 통합 버튼)
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
+    var onScaleChanged: ((Double) -> Void)? = nil    // 지도 이동 시 축척(m/point) 통지 → 커스텀 스케일바
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -23,10 +24,7 @@ struct MapView: UIViewRepresentable {
         // 지도 장식(웹 오버레이 대응): 로고 숨김, 스케일바(좌하단)·저작권 ⓘ(우하단)·나침반 숨김.
         // 시트가 하단을 덮으므로 시트 위로 올린다(y 여백).
         mv.showsLogoView = false
-        mv.showsScale = true
-        mv.scaleBarPosition = .bottomLeft
-        mv.scaleBarUsesMetricSystem = true
-        mv.scaleBarMargins = CGPoint(x: 12, y: 300)
+        mv.showsScale = false                            // 웹식 단일 눈금 스케일바를 SwiftUI 로 직접 그림
         mv.showsAttributionButton = true
         mv.attributionButtonPosition = .bottomRight
         mv.attributionButtonMargins = CGPoint(x: 12, y: 300)
@@ -41,6 +39,7 @@ struct MapView: UIViewRepresentable {
         applyStyle(mv)                                   // 테마 전환 시 스타일 교체
         mv.scaleBarShouldShowDarkStyles = !context.coordinator.dark   // 밝은 지도→어두운 스케일바
         context.coordinator.onCenterChanged = onCenterChanged
+        context.coordinator.onScaleChanged = onScaleChanged
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.applyCourse(selectedCourse, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
@@ -63,6 +62,7 @@ struct MapView: UIViewRepresentable {
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
         var dark = false                    // 현재 테마 (코스 번호 배지 색)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
+        var onScaleChanged: ((Double) -> Void)?
 
         // 현재위치 점 표시 + 추적 카메라(등반 중 tracking, 또는 위치 버튼 locateTick).
         // 위치 버튼은 나침반도 통합 — 탭 시 정북(direction=0)·수평(pitch=0)으로 복원.
@@ -243,9 +243,10 @@ struct MapView: UIViewRepresentable {
             trackCount = -1; recTrackKey = ""    // 스타일 재로드 시 트랙 재주입 강제
         }
 
-        // 지도 이동 종료마다 중심 좌표 통지 → 국가지점번호 갱신.
+        // 지도 이동 종료마다 중심 좌표 통지(국가지점번호) + 축척 통지(스케일바).
         func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
             onCenterChanged?(mapView.centerCoordinate)
+            onScaleChanged?(mapView.metersPerPoint(atLatitude: mapView.centerCoordinate.latitude))
         }
     }
 }

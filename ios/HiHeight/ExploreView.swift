@@ -11,6 +11,7 @@ struct ExploreView: View {
     @AppStorage("hiheight-theme") private var themePref = "system"
 
     @State private var locateTick = 0
+    @State private var metersPerPoint: Double = 0     // 커스텀 스케일바 축척
     @State private var searching = false
     @State private var query = ""
     @State private var expanded = false
@@ -37,8 +38,18 @@ struct ExploreView: View {
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
                         locateTick: locateTick,
-                        onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) })
+                        onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) },
+                        onScaleChanged: { metersPerPoint = $0 })
                     .ignoresSafeArea()
+
+                // 스케일바 (좌하단, 시트 위) — 웹 ScaleControl 식 단일 눈금 바
+                if let (label, width) = scaleInfo(metersPerPoint) {
+                    scaleBar(label, width, t)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        .padding(.leading, 16)
+                        .padding(.bottom, climb.tracking ? 210 : 296)
+                        .allowsHitTesting(false)
+                }
 
                 // 우측 지도 컨트롤 — 테마 토글 + 현재위치(나침반 통합). 웹 bottom-right 대응.
                 VStack(spacing: 10) {
@@ -118,6 +129,35 @@ struct ExploreView: View {
             climb.mountainCode = m.id
             climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
         }
+    }
+
+    // 스케일바 — 라벨 위, ⊔ 브래킷 아래 (웹 ScaleControl 단일 눈금). 지도 위라 그림자로 가독성.
+    private func scaleBar(_ label: String, _ width: CGFloat, _ t: Theme) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.system(size: 11, weight: .bold)).foregroundStyle(t.text)
+            ZStack(alignment: .bottom) {
+                HStack {
+                    Rectangle().fill(t.text).frame(width: 1.5, height: 6)
+                    Spacer(minLength: 0)
+                    Rectangle().fill(t.text).frame(width: 1.5, height: 6)
+                }
+                Rectangle().fill(t.text).frame(height: 1.5)
+            }
+            .frame(width: width, height: 6)
+        }
+        .shadow(color: t.bg.opacity(0.9), radius: 2)
+    }
+
+    // 축척(m/point) → 가장 큰 "깔끔한" 거리(1/2/3/5×10ⁿ)와 픽셀 폭 (maxWidth 이하).
+    private func scaleInfo(_ mpp: Double, maxWidth: CGFloat = 88) -> (String, CGFloat)? {
+        guard mpp > 0 else { return nil }
+        let maxMeters = Double(maxWidth) * mpp
+        let p = pow(10.0, floor(log10(maxMeters)))
+        var meters = p
+        for s in [5.0, 3, 2, 1] where s * p <= maxMeters { meters = s * p; break }
+        let width = CGFloat(meters / mpp)
+        let label = meters >= 1000 ? "\(fmtNum(meters / 1000)) km" : "\(Int(meters)) m"
+        return (label, width)
     }
 
     // 우측 지도 컨트롤 버튼 (검색 버튼과 동일 프레임)
