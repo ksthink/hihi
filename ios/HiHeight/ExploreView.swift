@@ -67,30 +67,32 @@ struct ExploreView: View {
                 .padding(.bottom, climb.tracking ? 240 : 360)   // ⓘ 저작권 버튼 위로
                 .allowsHitTesting(!searching)
 
-                // 상단: 검색 버튼(좌) + 현재 산 이름(우상단 텍스트) + 국가지점번호 — 웹 top-overlay
-                VStack(alignment: .trailing, spacing: 8) {
+                // 상단: 검색 버튼(좌) + 산이름 | 코스명(우상단) + 국가지점번호 — 웹 title-block/npn-box
+                VStack(alignment: .trailing, spacing: 6) {
                     HStack(alignment: .top) {
                         searchButton(t)
                         Spacer()
                         if let m = catalog.selected {
-                            Text(m.name)
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(t.text)
-                                .shadow(color: t.bg.opacity(0.85), radius: 3)
-                                .shadow(color: t.bg.opacity(0.6), radius: 1)
-                                .padding(.top, 6).padding(.trailing, 4)
+                            overlayBox(t) {
+                                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                                    Text(m.name).fontWeight(.bold).foregroundStyle(t.text)
+                                    if let c = climb.course {
+                                        Text("|").fontWeight(.regular).foregroundStyle(t.muted)
+                                        Text(c.name).fontWeight(.bold).foregroundStyle(t.text)
+                                    }
+                                }
+                                .lineLimit(1)
+                            }
+                            .padding(.top, 6)
                         }
                     }
                     if let npn = npnCode {
-                        HStack(spacing: 5) {
-                            Image(systemName: "mappin.and.ellipse").font(.system(size: 10))
-                            Text("국가지점번호").foregroundStyle(t.muted)
-                            Text(npn).fontWeight(.semibold).foregroundStyle(t.text)
+                        overlayBox(t) {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                Text("국가지점번호").font(.system(size: 10.5)).foregroundStyle(t.muted)
+                                Text(npn).fontWeight(.bold).foregroundStyle(t.text).monospacedDigit()
+                            }
                         }
-                        .font(.system(size: 11.5))
-                        .padding(.horizontal, 11).padding(.vertical, 5)
-                        .background(t.elevated.opacity(0.92), in: Capsule())
-                        .overlay(Capsule().strokeBorder(t.line))
                     }
                     if let msg = climb.saveResult {
                         Text(msg)
@@ -133,6 +135,15 @@ struct ExploreView: View {
             climb.mountainCode = m.id
             climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
         }
+    }
+
+    // 상단 오버레이 박스 — 웹 title-block/npn-box: 반투명 흰(다크는 검정) 사각형 배경.
+    private func overlayBox<V: View>(_ t: Theme, @ViewBuilder _ content: () -> V) -> some View {
+        content()
+            .font(.system(size: 14))
+            .padding(.horizontal, 13).padding(.vertical, 7)
+            .background(scheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.6))
+            .overlay(scheme == .dark ? Rectangle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) : nil)
     }
 
     // 스케일바 — 라벨 위, ⊔ 브래킷 아래 (웹 ScaleControl 단일 눈금). 지도 위라 그림자로 가독성.
