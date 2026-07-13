@@ -10,25 +10,47 @@ struct ContentView: View {
     @State private var tab = 0
     @AppStorage("hiheight-theme") private var themePref = "system"   // system·light·dark (지도 컨트롤 토글)
 
-    init() { Self.styleTabBar() }
+    private let tabs: [(icon: String, label: String)] = [
+        ("safari", "탐험"), ("star", "추천"), ("mountain.2", "등반"), ("clock", "기록"),
+    ]
 
     var body: some View {
+        // 네이티브 탭바(iOS 26 글래스 플로팅) 숨기고 웹식 평평·불투명 하단 네비를 직접 그린다.
+        // safeAreaInset 으로 공간을 확보해 각 탭 콘텐츠(지도 시트 포함)가 네비 위에 놓인다.
         TabView(selection: $tab) {
-            ExploreView(catalog: catalog, climb: climb, auth: auth)
-                .tabItem { Label("탐험", systemImage: "safari") }.tag(0)
-
-            RecoView(catalog: catalog, onOpen: openCuration)
-                .tabItem { Label("추천", systemImage: "star") }.tag(1)
-
-            DeungView(climb: climb, auth: auth, onStart: { tab = 0 })
-                .tabItem { Label("등반", systemImage: "mountain.2") }.tag(2)
-
-            RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute)
-                .tabItem { Label("기록", systemImage: "clock") }.tag(3)
+            ExploreView(catalog: catalog, climb: climb, auth: auth).tag(0).toolbar(.hidden, for: .tabBar)
+            RecoView(catalog: catalog, onOpen: openCuration).tag(1).toolbar(.hidden, for: .tabBar)
+            DeungView(climb: climb, auth: auth, onStart: { tab = 0 }).tag(2).toolbar(.hidden, for: .tabBar)
+            RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute).tag(3).toolbar(.hidden, for: .tabBar)
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
+        .safeAreaInset(edge: .bottom, spacing: 0) { bottomNav }
         .task { await catalog.load() }
+    }
+
+    // 웹 하단 네비 — 평평·불투명 전폭 바(상단 헤어라인), 아이콘+라벨, 선택 강조. 글래스 효과 없음.
+    private var bottomNav: some View {
+        let t = Theme(scheme: scheme)
+        return HStack(spacing: 0) {
+            ForEach(Array(tabs.enumerated()), id: \.offset) { i, item in
+                let on = tab == i
+                Button { tab = i } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 21, weight: on ? .semibold : .regular))
+                        Text(item.label).font(.kakao(size: 10, weight: on ? .bold : .regular))
+                    }
+                    .foregroundStyle(on ? t.text : t.muted)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 9).padding(.bottom, 4)
+        .background(t.surface.ignoresSafeArea(edges: .bottom))   // 배경만 홈 인디케이터까지 확장
+        .overlay(alignment: .top) { Rectangle().fill(t.line).frame(height: 0.5) }
     }
 
     // 큐레이션 슬라이드 탭 → 해당 산 선택 후 탐험 탭으로 이동.
@@ -48,20 +70,5 @@ struct ContentView: View {
         }
         climb.recordTrack = r.trackPoints
         tab = 0
-    }
-
-    // 흑백 탭바 — 선택=accent, 비선택=muted, 배경=surface + 상단 헤어라인. 라벨은 KakaoSmallSans.
-    private static func styleTabBar() {
-        let a = UITabBarAppearance()
-        a.configureWithOpaqueBackground()
-        a.shadowColor = UIColor.separator
-        if let font = UIFont(name: "KakaoSmallSans-Bold", size: 10) {
-            for item in [a.stackedLayoutAppearance, a.inlineLayoutAppearance, a.compactInlineLayoutAppearance] {
-                item.normal.titleTextAttributes = [.font: font]
-                item.selected.titleTextAttributes = [.font: font]
-            }
-        }
-        UITabBar.appearance().standardAppearance = a
-        UITabBar.appearance().scrollEdgeAppearance = a
     }
 }
