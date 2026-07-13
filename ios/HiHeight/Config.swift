@@ -14,15 +14,17 @@ enum Config {
     static let supabaseURL = "https://durnojryhhsajnlwvdzt.supabase.co"
     static let supabaseKey = "sb_publishable_qltsOvZhvVwPF5YNQARgCg_6KcV6Km5"
 
-    // 팩 오버레이(등고선/스팟/루트) — admin_server 정적 서빙(data/packs/<코드>/…)
+    // 팩 오버레이(등고선/스팟/루트) — 웹과 동일하게 R2(packs/<코드>/…) 직결.
+    // 관리자 '배포'가 R2 로 올리므로, 로컬 맥/EC2 어디서 배포하든 즉시 같은 소스를 읽는다.
+    // (프록시 data/packs 는 로컬 맥 파일이라 EC2 관리자 배포가 반영 안 됐다.)
     static func contoursURL(_ code: String) -> URL? {
-        URL(string: "\(proxyBase)/data/packs/\(code)/contours.geojson")
+        URL(string: "\(r2Public)/packs/\(code)/contours.geojson")
     }
     static func routesURL(_ code: String) -> URL? {
-        URL(string: "\(proxyBase)/data/packs/\(code)/routes.geojson")
+        URL(string: "\(r2Public)/packs/\(code)/routes.geojson")
     }
     static func spotsURL(_ code: String) -> URL? {
-        URL(string: "\(proxyBase)/data/packs/\(code)/spots.geojson")
+        URL(string: "\(r2Public)/packs/\(code)/spots.geojson")
     }
 
     // 기상청 단기예보 프록시 — 웹 /api/weather 와 동일 계약(CORS 회피·키 은닉).
