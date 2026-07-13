@@ -13,6 +13,7 @@ struct ExploreView: View {
     @State private var selectedCourse: Course?
     @State private var info: MountainInfo?
     @State private var npn: String?
+    @State private var weather: [WeatherHour] = []
 
     private var results: [Mountain] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -70,13 +71,15 @@ struct ExploreView: View {
             }
         }
         .task(id: catalog.selected?.id) {
-            guard let code = catalog.selected?.id else {
-                courses = []; info = nil; selectedCourse = nil; return
+            guard let m = catalog.selected else {
+                courses = []; info = nil; weather = []; selectedCourse = nil; return
             }
-            async let cs = PackLoader.courses(code)   // 팩(프록시)·산정보(Supabase) 병렬
-            async let inf = InfoLoader.load(code)
+            async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
+            async let inf = InfoLoader.load(m.id)
+            async let wx = WeatherService.fetch(lat: m.center[1], lon: m.center[0])
             courses = await cs
             info = await inf
+            weather = await wx
             selectedCourse = courses.first            // 단일 코스 자동 선택 → 시종점 즉시 표시
         }
     }
@@ -138,6 +141,7 @@ struct ExploreView: View {
         return VStack(spacing: 0) {
             Capsule().fill(t.line).frame(width: 38, height: 5).padding(.top, 8).padding(.bottom, 10)
             if let m = catalog.selected {
+              ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(m.name).font(.system(size: 22, weight: .bold)).foregroundStyle(t.text)
@@ -165,6 +169,7 @@ struct ExploreView: View {
                             .lineLimit(expanded ? nil : 2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    if !weather.isEmpty { weatherStrip(t) }
                     Divider().overlay(t.line).padding(.vertical, 2)
                     HStack(spacing: 8) {
                         Text("등산로").font(.system(size: 17, weight: .semibold)).foregroundStyle(t.text)
@@ -180,15 +185,13 @@ struct ExploreView: View {
                     if courses.isEmpty {
                         Text("코스 정보를 불러오는 중…").font(.system(size: 13)).foregroundStyle(t.muted)
                     } else {
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                ForEach(courses) { c in courseRow(c, t) }
-                            }
+                        VStack(spacing: 0) {
+                            ForEach(courses) { c in courseRow(c, t) }
                         }
                     }
-                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 18).padding(.bottom, 16)
+              }
             } else {
                 Text("산을 불러오는 중…").foregroundStyle(t.muted).padding()
                 Spacer(minLength: 0)
@@ -210,6 +213,32 @@ struct ExploreView: View {
                     }
                 }
         )
+    }
+
+    // 오늘 날씨 스트립 — 2시간 간격 예보 (weather.js renderStrip 대응).
+    private func weatherStrip(_ t: Theme) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("오늘 날씨").font(.system(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(weather) { h in
+                        let s = WeatherService.state(h)
+                        VStack(spacing: 4) {
+                            Text(h.isNow ? "지금" : "\(h.hh)시")
+                                .font(.system(size: 11)).foregroundStyle(t.muted)
+                            Image(systemName: s.symbol).font(.system(size: 17)).foregroundStyle(t.text)
+                                .frame(height: 22)
+                            Text(h.tmp.map { "\(Int($0.rounded()))°" } ?? "–")
+                                .font(.system(size: 13, weight: .semibold)).foregroundStyle(t.text)
+                            Text(h.pty > 0 ? (h.pop.map { "\($0)%" } ?? " ") : " ")
+                                .font(.system(size: 10)).foregroundStyle(t.muted)
+                        }
+                        .frame(width: 38)
+                    }
+                }
+            }
+        }
+        .padding(.top, 2)
     }
 
     // 코스 1행 — 번호 배지 + 이름 + 난이도·거리·시간·상승 + 고도 스파크라인 (웹 trail-list/profile).
