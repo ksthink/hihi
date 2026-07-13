@@ -38,12 +38,16 @@ struct ExploreView: View {
     var body: some View {
         let t = Theme(scheme: scheme)
         GeometryReader { geo in
+            // 바텀시트 peek 를 화면 높이 비율로 — 기기별 균형(작은 화면 답답함 완화). 스케일바·컨트롤·
+            // fitBounds·저작권 배치가 모두 이 값을 기준으로 시트 위에 정렬된다.
+            let peek = min(292, max(224, geo.size.height * 0.31))
             ZStack(alignment: .top) {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
                         mountain: catalog.selected, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
                         locateTick: locateTick, fitCourseTick: courseFitTick,
+                        bottomInset: peek + 40,
                         onScaleChanged: { metersPerPoint = $0 })
                     .ignoresSafeArea()
 
@@ -52,7 +56,7 @@ struct ExploreView: View {
                     scaleBar(label, width, t)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         .padding(.leading, 16)
-                        .padding(.bottom, climb.tracking ? 210 : 296)
+                        .padding(.bottom, climb.tracking ? 210 : peek + 28)
                         .allowsHitTesting(false)
                 }
 
@@ -65,7 +69,7 @@ struct ExploreView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
-                .padding(.bottom, climb.tracking ? 240 : 360)   // ⓘ 저작권 버튼 위로
+                .padding(.bottom, climb.tracking ? 240 : peek + 92)   // ⓘ 저작권 버튼 위로
                 .allowsHitTesting(!searching)
 
                 // 상단: 검색 버튼(좌) + 산이름 | 코스명(우상단) + 국가지점번호 — 웹 title-block/npn-box
@@ -115,7 +119,7 @@ struct ExploreView: View {
                 // 바텀시트 — 등반 중엔 HUD 로 대체(웹: 등반 중 시트 숨김)
                 VStack(spacing: 0) {
                     Spacer()
-                    if climb.tracking { climbHUD(t) } else { infoSheet(t, maxH: geo.size.height) }
+                    if climb.tracking { climbHUD(t) } else { infoSheet(t, maxH: geo.size.height, peek: peek) }
                 }
                 .ignoresSafeArea(.keyboard)
             }
@@ -292,9 +296,8 @@ struct ExploreView: View {
         String(format: "%d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60)
     }
 
-    // MARK: 바텀시트 (산 소개)
-    private func infoSheet(_ t: Theme, maxH: CGFloat) -> some View {
-        let peek: CGFloat = 268
+    // MARK: 바텀시트 (산 소개) — peek 는 기기별 비율(상위에서 계산)
+    private func infoSheet(_ t: Theme, maxH: CGFloat, peek: CGFloat) -> some View {
         let full = maxH * 0.62
         return VStack(spacing: 0) {
             Capsule().fill(t.line).frame(width: 38, height: 5).padding(.top, 8).padding(.bottom, 10)

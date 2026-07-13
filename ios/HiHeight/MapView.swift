@@ -13,6 +13,7 @@ struct MapView: UIViewRepresentable {
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
     var locateTick: Int = 0              // 증가 시 현재위치로 이동 + 정북·수평 복원(위치/나침반 통합 버튼)
     var fitCourseTick: Int = 0           // 증가 시 선택 코스 범위로 fitBounds(코스 탭)
+    var bottomInset: CGFloat = 306       // 시트가 가리는 하단 높이(기기별) — fitBounds·저작권 배치
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
     var onScaleChanged: ((Double) -> Void)? = nil    // 지도 이동 시 축척(m/point) 통지 → 커스텀 스케일바
 
@@ -37,8 +38,10 @@ struct MapView: UIViewRepresentable {
 
     func updateUIView(_ mv: MLNMapView, context: Context) {
         context.coordinator.dark = styleResource.contains("dark")
+        context.coordinator.bottomInset = bottomInset
         applyStyle(mv)                                   // 테마 전환 시 스타일 교체
         mv.scaleBarShouldShowDarkStyles = !context.coordinator.dark   // 밝은 지도→어두운 스케일바
+        mv.attributionButtonMargins = CGPoint(x: 12, y: bottomInset)  // 저작권 ⓘ 를 시트 위로(기기별)
         context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.onScaleChanged = onScaleChanged
         context.coordinator.apply(mountain: mountain, on: mv)
@@ -60,6 +63,7 @@ struct MapView: UIViewRepresentable {
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
         private var trackCount = -1         // 마지막 반영한 트랙 점 개수 (중복 갱신 방지)
         private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
+        var bottomInset: CGFloat = 306      // 시트가 가리는 하단 높이 (fitBounds 하단 여백)
         private var lastLocate = 0
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
         var dark = false                    // 현재 테마 (코스 번호 배지 색)
@@ -159,8 +163,8 @@ struct MapView: UIViewRepresentable {
             let bounds = MLNCoordinateBounds(
                 sw: CLLocationCoordinate2D(latitude: b[1], longitude: b[0]),
                 ne: CLLocationCoordinate2D(latitude: b[3], longitude: b[2]))
-            // 가시 영역(시트 위) 에 코스 전체를 꽉 차게: 상단=상단 오버레이 아래, 하단=시트 위.
-            let pad = UIEdgeInsets(top: 96, left: 24, bottom: 306, right: 24)
+            // 가시 영역(시트 위) 에 코스 전체를 꽉 차게: 상단=상단 오버레이 아래, 하단=시트 위(기기별).
+            let pad = UIEdgeInsets(top: 96, left: 24, bottom: bottomInset, right: 24)
             mv.setVisibleCoordinateBounds(bounds, edgePadding: pad, animated: true, completionHandler: nil)
         }
 
