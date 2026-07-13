@@ -5,7 +5,7 @@ name: HiHeight
 options:
   bundleIdPrefix: dev.metaphr
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"   # 추천 캐러셀 스냅·scrollPosition 등 iOS 17 스크롤 API (테스트 기기 전부 iOS 26)
   createIntermediateGroups: true
 
 packages:
@@ -34,7 +34,9 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"   # iPhone
-        CODE_SIGNING_ALLOWED: NO      # 시뮬레이터 스파이크 — 서명 불필요
+        # 실기기 테스트 — 개인팀(무료) 자동 서명. 시뮬레이터는 서명 없이도 빌드됨.
+        DEVELOPMENT_TEAM: 977YU63XXZ
+        CODE_SIGN_STYLE: Automatic
     info:
       path: HiHeight/Info.plist
       properties:

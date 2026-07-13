@@ -15,6 +15,7 @@ struct CurationItem: Decodable, Identifiable {
     let title: String?
     let desc: String?
     let logo: String?
+    let credit: String?       // 사진 저작자(우하단)
     let img: String?
     let mountain: String?
 

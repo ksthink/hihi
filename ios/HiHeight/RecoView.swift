@@ -1,12 +1,15 @@
 import SwiftUI
 
-// 추천 탭 — 하이하잇 PICK 캐러셀(큐레이션). 웹 renderReco/pickCarousel 대응.
-// 슬라이드 탭 → 해당 산을 탐험 탭에서 연다(onOpen). 공식 추천 아코디언은 후속 슬라이스.
+// 추천 탭 — 웹 renderReco/pickCarousel(app.js:1160) 이식.
+// 노출 매거진 1세트만 PICK 캐러셀(82% 폭 정사각·옆 카드 살짝 보임·스냅·점 인디케이터),
+// 나머지는 "지난 매거진 보기" 아코디언. 공식 추천 3종 아코디언(다크 필). 슬라이드 탭 → onOpen.
 struct RecoView: View {
     @ObservedObject var catalog: CatalogStore
     let onOpen: (String) -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var curations: [Curation] = []
+    @State private var magIndex = 0              // 캐러셀에 표시 중인 매거진
+    @State private var pickID: String?           // 캐러셀 스크롤 위치(점 인디케이터)
     @State private var openLists: Set<String> = []
 
     // 공식 추천 카테고리 (app.js:1009) — 산의 famous/lists 로 분류.
@@ -16,157 +19,204 @@ struct RecoView: View {
         ("국립공원공단 공식탐방로", { ($0.lists ?? []).contains("knps") }),
     ]
 
+    private let cardColor = Color(hex: 0x171717)   // 다크 카드(웹 --card-bg, 라이트/다크 공통 다크)
+
     var body: some View {
         let t = Theme(scheme: scheme)
         GeometryReader { geo in
-            // PICK 캐러셀(커버 이미지)을 화면 폭 비율로 — 기기별 균형(작은 화면에서 과도하게 크지 않게).
-            let slideH = min(340, (geo.size.width - 40) * 0.84)
-            ZStack {
-                t.bg.ignoresSafeArea()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 26) {
-                        Text("추천").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
-                            .padding(.horizontal, 20).padding(.top, 8)
-                        if curations.isEmpty {
-                            Text("추천을 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                                .padding(.horizontal, 20)
-                        }
-                        ForEach(curations) { cu in
-                            group(cu, t, slideH)
-                        }
-                        officialSection(t)
+            let cardW = geo.size.width * 0.82       // 웹 pick-slide flex 0 0 82% (정사각)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("추천").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
+                        .padding(.horizontal, 20).padding(.top, 8)
+
+                    if curations.isEmpty {
+                        Text("추천을 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
+                            .padding(.horizontal, 20)
+                    } else {
+                        magazineSection(cardW, t)
                     }
-                    .padding(.bottom, 24)
+
+                    accordions(t)
                 }
+                .padding(.bottom, 24)
             }
+            .background(t.bg)
         }
-        .task { curations = await CurationLoader.load() }
+        .task {
+            curations = await CurationLoader.load()
+            pickID = curations.first?.items.first?.id   // 캐러셀 첫 카드부터 시작
+        }
     }
 
-    // MARK: 공식 추천 아코디언 (100대 명산·BAC·KNPS)
-    private func officialSection(_ t: Theme) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("공식 추천").font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.muted)
+    // MARK: 매거진 캐러셀 (노출 1세트)
+    @ViewBuilder
+    private func magazineSection(_ cardW: CGFloat, _ t: Theme) -> some View {
+        let mag = curations[min(magIndex, curations.count - 1)]
+        VStack(alignment: .leading, spacing: 12) {
+            Text(mag.title).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.muted)
                 .padding(.horizontal, 20)
-            VStack(spacing: 0) {
-                ForEach(Self.officialLists, id: \.label) { list in
-                    accordion(list.label, members: catalog.mountains.filter(list.member), t)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(mag.items) { it in
+                        slide(it, cardW)
+                            .id(it.id)
+                            .contentShape(Rectangle())
+                            .onTapGesture { onOpen(it.code) }
+                    }
                 }
+                .scrollTargetLayout()
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 20)
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $pickID)
+            if mag.items.count > 1 {                // 점 인디케이터
+                let cur = mag.items.firstIndex { $0.id == pickID } ?? 0
+                HStack(spacing: 6) {
+                    ForEach(Array(mag.items.enumerated()), id: \.offset) { i, _ in
+                        Circle().fill(t.muted).opacity(i == cur ? 1 : 0.35).frame(width: 6, height: 6)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
         }
     }
 
-    private func accordion(_ label: String, members: [Mountain], _ t: Theme) -> some View {
+    // MARK: 슬라이드 (정사각, 웹 ps-*)
+    private func slide(_ it: CurationItem, _ cardW: CGFloat) -> some View {
+        ZStack {
+            Group {
+                if let s = it.img, let url = URL(string: s) {
+                    AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { fallbackGradient }
+                } else { fallbackGradient }
+            }
+            // ps-shade — 아래 어둡게(글자 가독)
+            LinearGradient(stops: [
+                .init(color: .black.opacity(0.30), location: 0),
+                .init(color: .black.opacity(0.12), location: 0.58),
+                .init(color: .black.opacity(0.68), location: 1),
+            ], startPoint: .top, endPoint: .bottom)
+        }
+        .frame(width: cardW, height: cardW)
+        .overlay(alignment: .topLeading) {      // ps-head: 키커 + 제목
+            VStack(alignment: .leading, spacing: 9) {
+                if let sub = it.sub {
+                    Text(sub).font(.kakao(size: 11, weight: .semibold)).foregroundStyle(.white)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(.black.opacity(0.42), in: RoundedRectangle(cornerRadius: 7))
+                }
+                if let title = it.title ?? it.name {
+                    Text(title).font(.kakao(size: 22, weight: .bold)).foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.55), radius: 6, y: 1)
+                }
+            }
+            .padding(.top, 30).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .overlay(alignment: .bottom) {            // ps-desc: 가운데 정렬
+            if let desc = it.desc {
+                Text(desc).font(.kakao(size: 13, weight: .semibold)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center).lineSpacing(3)
+                    .shadow(color: .black.opacity(0.7), radius: 6, y: 1)
+                    .padding(.horizontal, cardW * 0.10).padding(.bottom, cardW * 0.17)
+            }
+        }
+        .overlay(alignment: .bottomLeading) {     // ps-logo
+            if let logo = it.logo {
+                Text(logo).font(.kakao(size: 10)).foregroundStyle(.white.opacity(0.72)).padding(18)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {    // ps-credit
+            if let credit = it.credit {
+                Text(credit).font(.kakao(size: 10)).foregroundStyle(.white.opacity(0.72))
+                    .lineLimit(1).padding(18)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .shadow(color: .black.opacity(0.2), radius: 8, y: 6)
+    }
+
+    private var fallbackGradient: some View {
+        LinearGradient(colors: [Color(hex: 0x2b2b2b), Color(hex: 0x171717)],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    // MARK: 아코디언 (지난 매거진 + 공식 추천) — 다크 필 + / −
+    @ViewBuilder
+    private func accordions(_ t: Theme) -> some View {
+        VStack(spacing: 12) {
+            if curations.count > 1 {
+                archiveAccordion(t)
+            }
+            ForEach(Self.officialLists, id: \.label) { list in
+                let members = catalog.mountains.filter(list.member)
+                accordion(list.label, count: members.isEmpty ? nil : members.count, t) {
+                    if members.isEmpty {
+                        Text("등록된 산 준비 중").font(.kakao(size: 13)).foregroundStyle(t.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
+                    } else {
+                        ForEach(members) { m in
+                            memberRow(m.name, "\(m.elev.map { "\($0)m" } ?? "") · \(m.region ?? "")", t) { onOpen(m.id) }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    // "지난 매거진 보기" — 다른 매거진 목록(탭하면 캐러셀 전환)
+    private func archiveAccordion(_ t: Theme) -> some View {
+        accordion("지난 매거진 보기", count: nil, t) {
+            ForEach(Array(curations.enumerated()), id: \.offset) { i, cu in
+                if i != magIndex {
+                    memberRow(cu.title, cu.items.first?.displayMountain ?? "", t) {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            magIndex = i; pickID = curations[i].items.first?.id
+                            openLists.remove("지난 매거진 보기")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func accordion<Content: View>(_ label: String, count: Int?, _ t: Theme,
+                                          @ViewBuilder _ content: () -> Content) -> some View {
         let open = openLists.contains(label)
-        return VStack(spacing: 0) {
+        return VStack(spacing: 8) {
             Button {
                 withAnimation(.easeOut(duration: 0.18)) {
                     if open { openLists.remove(label) } else { openLists.insert(label) }
                 }
             } label: {
-                HStack {
-                    Text(label).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.text)
-                    if !members.isEmpty {
-                        Text("\(members.count)").font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.muted)
-                    }
+                HStack(spacing: 6) {
+                    Text(label).font(.kakao(size: 16, weight: .bold)).foregroundStyle(.white)
+                    if let count { Text("\(count)").font(.kakao(size: 13, weight: .bold)).foregroundStyle(.white.opacity(0.6)) }
                     Spacer()
-                    Image(systemName: "chevron.down").font(.kakao(size: 12, weight: .semibold))
-                        .foregroundStyle(t.muted).rotationEffect(.degrees(open ? 180 : 0))
+                    Text(open ? "−" : "+").font(.system(size: 20)).foregroundStyle(.white.opacity(0.8))
                 }
-                .padding(.vertical, 14)
+                .padding(.horizontal, 16).padding(.vertical, 15)
+                .background(cardColor, in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
-            if open {
-                if members.isEmpty {
-                    Text("등록된 산 준비 중").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.bottom, 12)
-                } else {
-                    ForEach(members) { m in memberRow(m, t) }
-                }
-            }
-            Rectangle().fill(t.line).frame(height: 0.5)
+            if open { VStack(spacing: 8) { content() } }
         }
     }
 
-    private func memberRow(_ m: Mountain, _ t: Theme) -> some View {
-        Button { onOpen(m.id) } label: {
+    // 아코디언 항목 — 테두리 카드 행(웹 famous-item)
+    private func memberRow(_ name: String, _ meta: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
             HStack {
-                Text(m.name).font(.kakao(size: 14)).foregroundStyle(t.text)
+                Text(name).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
                 Spacer()
-                Text([m.elev.map { "\($0)m" }, m.region].compactMap { $0 }.joined(separator: " · "))
-                    .font(.kakao(size: 12)).foregroundStyle(t.muted)
+                Text(meta).font(.kakao(size: 12)).foregroundStyle(t.muted).lineLimit(1)
             }
-            .padding(.vertical, 9).padding(.leading, 4)
+            .padding(.horizontal, 16).padding(.vertical, 14)
+            .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    private func group(_ cu: Curation, _ t: Theme, _ slideH: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(cu.title).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.muted)
-                .padding(.horizontal, 20)
-            TabView {
-                ForEach(cu.items) { it in
-                    slide(it, slideH)
-                        .padding(.horizontal, 20)
-                        .contentShape(Rectangle())
-                        .onTapGesture { onOpen(it.code) }
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: cu.items.count > 1 ? .automatic : .never))
-            .indexViewStyle(.page(backgroundDisplayMode: .interactive))
-            .frame(height: slideH + 34)
-        }
-    }
-
-    // 슬라이드 — 커버 이미지 위에 어둡게 깔고 흰 텍스트(웹 ps-* 오버레이). 이미지 없으면 그라디언트.
-    private func slide(_ it: CurationItem, _ slideH: CGFloat) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            Group {
-                if let s = it.img, let url = URL(string: s) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable().scaledToFill()
-                        } else {
-                            fallbackGradient
-                        }
-                    }
-                } else {
-                    fallbackGradient
-                }
-            }
-            LinearGradient(colors: [.clear, .black.opacity(0.75)],
-                           startPoint: .center, endPoint: .bottom)
-            VStack(alignment: .leading, spacing: 6) {
-                if let sub = it.sub {
-                    Text(sub).font(.kakao(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-                if let title = it.title {
-                    Text(title).font(.kakao(size: 22, weight: .bold)).foregroundStyle(.white)
-                } else if let name = it.name {
-                    Text(name).font(.kakao(size: 22, weight: .bold)).foregroundStyle(.white)
-                }
-                if let desc = it.desc {
-                    Text(desc).font(.kakao(size: 13)).foregroundStyle(.white.opacity(0.9))
-                        .lineLimit(2)
-                }
-                if let logo = it.logo {
-                    Text(logo).font(.kakao(size: 11)).foregroundStyle(.white.opacity(0.7)).padding(.top, 2)
-                }
-            }
-            .padding(18)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: slideH)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-    }
-
-    private var fallbackGradient: some View {
-        LinearGradient(colors: [Color(hex: 0x3a3a3a), Color(hex: 0x0d0d0d)],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }
