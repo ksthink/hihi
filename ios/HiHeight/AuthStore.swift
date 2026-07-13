@@ -21,16 +21,22 @@ final class AuthStore: ObservableObject {
 
     func signIn(_ e: String, _ p: String) async {
         await run {
-            try await self.client.auth.signIn(email: e, password: p)
-            await self.refresh()
+            // 반환된 세션을 직접 사용 — currentUser 재조회 타이밍에 의존하지 않는다.
+            let session = try await self.client.auth.signIn(email: e, password: p)
+            self.email = session.user.email
+            await self.loadRecords()
         }
     }
 
     func signUp(_ e: String, _ p: String) async {
         await run {
-            try await self.client.auth.signUp(email: e, password: p)
-            await self.refresh()
-            if self.email == nil { self.message = "확인 메일을 확인한 뒤 로그인하세요." }
+            let res = try await self.client.auth.signUp(email: e, password: p)
+            if let session = res.session {          // 이메일 확인 꺼짐 → 즉시 로그인
+                self.email = session.user.email
+                await self.loadRecords()
+            } else {                                 // 확인 메일 발송됨
+                self.message = "확인 메일을 확인한 뒤 로그인하세요."
+            }
         }
     }
 
