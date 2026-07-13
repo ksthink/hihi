@@ -1,6 +1,17 @@
 import Foundation
 import CoreLocation
 
+// 종료 시점 스냅샷 — AuthStore.saveClimb 이 climb_records 로 변환/삽입한다.
+struct ClimbDraft {
+    let mountainCode: String?
+    let courseName: String
+    let startedAt: Date
+    let endedAt: Date
+    let distanceKm: Double
+    let plannedAscent: Int?
+    let track: [[Double]]     // [lng, lat, 고도(m·-1=없음), unix초]
+}
+
 // 등반 세션 관리 — 웹 startClimb/stopClimb(app.js:1362-1446) 이식.
 // 탐험 탭에서 고른 코스를 공유하고, 등반 시작 시 CoreLocation 으로 전경 트래킹한다.
 // (M5-S1: 전경 GPS + HUD + 라이브 트랙. 저장은 M5-S2, 백그라운드 지속은 M5-S3.)
@@ -8,6 +19,8 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     // 선택 코스(등반 카드/시종점)
     @Published var course: Course?
     @Published var mountainName: String?
+    @Published var mountainCode: String?  // climb_records.mountain_id 용
+    @Published var saveResult: String?    // 종료 후 저장 결과 배너
 
     // 트래킹 세션 상태 (HUD 표시용)
     @Published var tracking = false
@@ -47,13 +60,23 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         manager.startUpdatingLocation()
     }
 
-    // 트랙 반환(M5-S2 저장에서 사용). 세션 종료·리셋.
+    // 트랙 반환. 세션 종료·리셋.
     @discardableResult
     func stop() -> [[Double]] {
         manager.stopUpdatingLocation()
         timer?.invalidate(); timer = nil
         tracking = false
         return track
+    }
+
+    // 종료 + 저장용 드래프트 산출(웹 saveClimb 입력). 세션이 없으면 nil.
+    func finish() -> ClimbDraft? {
+        guard tracking, let started = startedAt, let c = course else { stop(); return nil }
+        let ended = Date()
+        let t = stop()
+        return ClimbDraft(mountainCode: mountainCode, courseName: c.name,
+                          startedAt: started, endedAt: ended,
+                          distanceKm: distance / 1000, plannedAscent: c.ascent, track: t)
     }
 
     // MARK: CLLocationManagerDelegate (main 스레드 전달 — manager 를 main 에서 생성)

@@ -13,7 +13,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            ExploreView(catalog: catalog, climb: climb)
+            ExploreView(catalog: catalog, climb: climb, auth: auth)
                 .tabItem { Label("탐험", systemImage: "safari") }.tag(0)
 
             RecoView(catalog: catalog, onOpen: openCuration)

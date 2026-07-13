@@ -5,6 +5,7 @@ import SwiftUI
 struct ExploreView: View {
     @ObservedObject var catalog: CatalogStore
     @ObservedObject var climb: ClimbStore        // 선택 코스를 등반 탭과 공유
+    @ObservedObject var auth: AuthStore          // 등반 종료 시 기록 저장
     @Environment(\.colorScheme) private var scheme
 
     @State private var searching = false
@@ -58,6 +59,18 @@ struct ExploreView: View {
                         .background(t.elevated.opacity(0.92), in: Capsule())
                         .overlay(Capsule().strokeBorder(t.line))
                     }
+                    if let msg = climb.saveResult {
+                        Text(msg)
+                            .font(.system(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(t.accent, in: RoundedRectangle(cornerRadius: 12))
+                            .onTapGesture { climb.saveResult = nil }
+                            .task {   // 5초 후 자동 사라짐
+                                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                                climb.saveResult = nil
+                            }
+                    }
                 }
                 .padding(.horizontal, 14).padding(.top, 8)
 
@@ -73,7 +86,8 @@ struct ExploreView: View {
         }
         .task(id: catalog.selected?.id) {
             guard let m = catalog.selected else {
-                courses = []; info = nil; weather = []; climb.course = nil; climb.mountainName = nil; return
+                courses = []; info = nil; weather = []
+                climb.course = nil; climb.mountainName = nil; climb.mountainCode = nil; return
             }
             async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
             async let inf = InfoLoader.load(m.id)
@@ -82,6 +96,7 @@ struct ExploreView: View {
             info = await inf
             weather = await wx
             climb.mountainName = m.name
+            climb.mountainCode = m.id
             climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
         }
     }
@@ -152,7 +167,8 @@ struct ExploreView: View {
                 hudStat("\(climb.pointCount)", "GPS 지점", t)
             }
             Button {
-                climb.stop()
+                guard let draft = climb.finish() else { climb.stop(); return }
+                Task { climb.saveResult = await auth.saveClimb(draft) }
             } label: {
                 Text("등반 종료").font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 13)
