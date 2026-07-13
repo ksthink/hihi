@@ -12,6 +12,7 @@ struct Mountain: Identifiable, Decodable, Equatable {
     let elev: Int?
     let region: String?
     let famous: Bool?
+    let lists: [String]?     // 공식 추천 카테고리(bac100·knps 등, migrations-002)
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: center[1], longitude: center[0])

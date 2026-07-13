@@ -7,6 +7,14 @@ struct RecoView: View {
     let onOpen: (String) -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var curations: [Curation] = []
+    @State private var openLists: Set<String> = []
+
+    // 공식 추천 카테고리 (app.js:1009) — 산의 famous/lists 로 분류.
+    private static let officialLists: [(label: String, member: (Mountain) -> Bool)] = [
+        ("대한민국 100대 명산", { $0.famous == true }),
+        ("블랙야크(BAC) 명산 100", { ($0.lists ?? []).contains("bac100") }),
+        ("국립공원공단 공식탐방로", { ($0.lists ?? []).contains("knps") }),
+    ]
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -23,11 +31,73 @@ struct RecoView: View {
                     ForEach(curations) { cu in
                         group(cu, t)
                     }
+                    officialSection(t)
                 }
                 .padding(.bottom, 24)
             }
         }
         .task { curations = await CurationLoader.load() }
+    }
+
+    // MARK: 공식 추천 아코디언 (100대 명산·BAC·KNPS)
+    private func officialSection(_ t: Theme) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("공식 추천").font(.system(size: 15, weight: .semibold)).foregroundStyle(t.muted)
+                .padding(.horizontal, 20)
+            VStack(spacing: 0) {
+                ForEach(Self.officialLists, id: \.label) { list in
+                    accordion(list.label, members: catalog.mountains.filter(list.member), t)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private func accordion(_ label: String, members: [Mountain], _ t: Theme) -> some View {
+        let open = openLists.contains(label)
+        return VStack(spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    if open { openLists.remove(label) } else { openLists.insert(label) }
+                }
+            } label: {
+                HStack {
+                    Text(label).font(.system(size: 15, weight: .semibold)).foregroundStyle(t.text)
+                    if !members.isEmpty {
+                        Text("\(members.count)").font(.system(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(t.muted).rotationEffect(.degrees(open ? 180 : 0))
+                }
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+            if open {
+                if members.isEmpty {
+                    Text("등록된 산 준비 중").font(.system(size: 13)).foregroundStyle(t.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 12)
+                } else {
+                    ForEach(members) { m in memberRow(m, t) }
+                }
+            }
+            Rectangle().fill(t.line).frame(height: 0.5)
+        }
+    }
+
+    private func memberRow(_ m: Mountain, _ t: Theme) -> some View {
+        Button { onOpen(m.id) } label: {
+            HStack {
+                Text(m.name).font(.system(size: 14)).foregroundStyle(t.text)
+                Spacer()
+                Text([m.elev.map { "\($0)m" }, m.region].compactMap { $0 }.joined(separator: " · "))
+                    .font(.system(size: 12)).foregroundStyle(t.muted)
+            }
+            .padding(.vertical, 9).padding(.leading, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func group(_ cu: Curation, _ t: Theme) -> some View {
