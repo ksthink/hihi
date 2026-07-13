@@ -38,9 +38,11 @@ struct ExploreView: View {
     var body: some View {
         let t = Theme(scheme: scheme)
         GeometryReader { geo in
-            // 바텀시트 peek 를 화면 높이 비율로 — 기기별 균형(작은 화면 답답함 완화). 스케일바·컨트롤·
-            // fitBounds·저작권 배치가 모두 이 값을 기준으로 시트 위에 정렬된다.
-            let peek = min(284, max(206, geo.size.height * 0.28))
+            // 바텀시트 peek 를 "전체 화면 높이" 비율로 — 모든 기기에서 동일 비율(웹 참조 ~32%).
+            // geo.size.height 는 상단 노치·하단 네비/안전영역이 빠진 축소값이라, 안전영역을 더해
+            // 실제 화면 높이로 환산해야 기기 간 비율이 일정하다. 스케일바·컨트롤·fitBounds·저작권도 이 값 기준.
+            let fullH = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
+            let peek = min(330, max(248, fullH * 0.32))
             ZStack(alignment: .top) {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
                         mountain: catalog.selected, selectedCourse: climb.course,
