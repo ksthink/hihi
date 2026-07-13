@@ -46,3 +46,5 @@ targets:
         # PMTiles·글리프를 받는다. ATS 가 http 를 막으므로 로컬 네트워킹 예외 허용.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # 등반 트래킹(M5) — 산행 중 현재 위치·이동 경로 기록.
+        NSLocationWhenInUseUsageDescription: 등반 중 현재 위치를 지도에 표시하고 이동 경로를 기록합니다.

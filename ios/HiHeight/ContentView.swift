@@ -19,7 +19,7 @@ struct ContentView: View {
             RecoView(catalog: catalog, onOpen: openCuration)
                 .tabItem { Label("추천", systemImage: "star") }.tag(1)
 
-            DeungView(climb: climb)
+            DeungView(climb: climb, auth: auth, onStart: { tab = 0 })
                 .tabItem { Label("등반", systemImage: "mountain.2") }.tag(2)
 
             RecordsView(auth: auth, catalog: catalog)

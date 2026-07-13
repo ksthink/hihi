@@ -8,6 +8,8 @@ struct MapView: UIViewRepresentable {
     let styleResource: String
     let mountain: Mountain?
     var selectedCourse: Course? = nil
+    var climbTrack: [[Double]] = []      // 등반 중 지나온 GPS 트랙 [lng,lat,...]
+    var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -27,6 +29,10 @@ struct MapView: UIViewRepresentable {
         context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.applyCourse(selectedCourse, on: mv)
+        context.coordinator.setTrack(climbTrack, on: mv)
+        mv.showsUserLocation = tracking
+        let mode: MLNUserTrackingMode = tracking ? .follow : .none
+        if mv.userTrackingMode != mode { mv.setUserTrackingMode(mode, animated: true, completionHandler: nil) }
     }
 
     private func applyStyle(_ mv: MLNMapView) {
@@ -38,6 +44,7 @@ struct MapView: UIViewRepresentable {
         private var desired: Mountain?      // 목표 산
         private var cameraDone: String?     // 카메라를 맞춘 산코드 (중복 이동 방지)
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
+        private var trackCount = -1         // 마지막 반영한 트랙 점 개수 (중복 갱신 방지)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
 
         func apply(mountain m: Mountain?, on mv: MLNMapView) {
@@ -94,6 +101,33 @@ struct MapView: UIViewRepresentable {
             src.shape = shape
         }
 
+        // 등반 라이브 트랙 — 트랙 점 배열을 LineString shape 로 climb-track 소스에 주입.
+        // 점 수가 바뀔 때만 갱신(매 프레임 재직렬화 방지).
+        func setTrack(_ track: [[Double]], on mv: MLNMapView) {
+            guard mv.style != nil else { return }
+            if track.count == trackCount { return }
+            trackCount = track.count
+            applyTrack(track, on: mv)
+        }
+
+        private func applyTrack(_ track: [[Double]], on mv: MLNMapView) {
+            guard let style = mv.style,
+                  let src = style.source(withIdentifier: "climb-track") as? MLNShapeSource else { return }
+            guard track.count >= 2,
+                  let data = Self.trackGeoJSON(track),
+                  let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+                src.shape = nil; return
+            }
+            src.shape = shape
+        }
+
+        private static func trackGeoJSON(_ track: [[Double]]) -> Data? {
+            let coords = track.map { [$0[0], $0[1]] }   // [lng,lat] 만
+            let fc: [String: Any] = ["type": "Feature", "properties": [:],
+                "geometry": ["type": "LineString", "coordinates": coords]]
+            return try? JSONSerialization.data(withJSONObject: fc)
+        }
+
         private static func endsGeoJSON(start: [Double], end: [Double]) -> Data? {
             let fc: [String: Any] = ["type": "FeatureCollection", "features": [
                 ["type": "Feature", "properties": ["kind": "start", "label": "출발"],
@@ -108,6 +142,7 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
+            trackCount = -1                      // 스타일 재로드 시 트랙 재주입 강제
         }
 
         // 지도 이동 종료마다 중심 좌표 통지 → 국가지점번호 갱신.

@@ -5,8 +5,10 @@ import SwiftUI
 // 실시간 GPS 트래킹·HUD·기록 저장은 M5(CoreLocation/백그라운드 위치) 단계에서 구현한다.
 struct DeungView: View {
     @ObservedObject var climb: ClimbStore
+    @ObservedObject var auth: AuthStore
+    var onStart: () -> Void = {}            // 등반 시작 → 지도(탐험) 탭으로 전환
     @Environment(\.colorScheme) private var scheme
-    @State private var showTrackingNote = false
+    @State private var loginHint = false
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -58,13 +60,19 @@ struct DeungView: View {
                         .padding(.vertical, 2)
                 }
 
-                Button { showTrackingNote = true } label: {
+                Button {
+                    guard climb.course != nil else { return }
+                    if auth.email == nil { loginHint = true; return }   // 저장하려면 로그인 필요(웹 동일)
+                    loginHint = false
+                    climb.start()
+                    onStart()
+                } label: {
                     Text("등반 시작").font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 13)
                         .background(t.accent, in: RoundedRectangle(cornerRadius: 12))
                 }
-                if showTrackingNote {
-                    Text("실시간 GPS 트래킹은 다음 단계(백그라운드 위치)에서 지원됩니다.")
+                if loginHint {
+                    Text("등반 기록을 저장하려면 기록 탭에서 로그인하세요.")
                         .font(.footnote).foregroundStyle(t.muted)
                 }
             } else {

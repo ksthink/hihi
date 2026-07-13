@@ -27,6 +27,7 @@ struct ExploreView: View {
             ZStack(alignment: .top) {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
                         mountain: catalog.selected, selectedCourse: climb.course,
+                        climbTrack: climb.track, tracking: climb.tracking,
                         onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) })
                     .ignoresSafeArea()
 
@@ -62,10 +63,10 @@ struct ExploreView: View {
 
                 if searching { searchPanel(t) }
 
-                // 바텀시트
+                // 바텀시트 — 등반 중엔 HUD 로 대체(웹: 등반 중 시트 숨김)
                 VStack(spacing: 0) {
                     Spacer()
-                    infoSheet(t, maxH: geo.size.height)
+                    if climb.tracking { climbHUD(t) } else { infoSheet(t, maxH: geo.size.height) }
                 }
                 .ignoresSafeArea(.keyboard)
             }
@@ -133,6 +134,54 @@ struct ExploreView: View {
         .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
         .padding(.horizontal, 14)
         .padding(.top, 58)
+    }
+
+    // MARK: 등반 중 HUD (웹 #climb-hud) — 경과·이동거리·GPS 지점 + 종료
+    private func climbHUD(_ t: Theme) -> some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Circle().fill(.red).frame(width: 9, height: 9)
+                Text(climb.course?.title ?? "등반 중").font(.system(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                Spacer()
+                Text(fmtClock(climb.elapsed))
+                    .font(.system(size: 16, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
+            }
+            HStack(spacing: 0) {
+                hudStat(String(format: "%.2f", climb.distance / 1000), "이동(km)", t)
+                hudStat(climb.course?.distance_km.map { String(format: "%.1f", $0) } ?? "–", "코스(km)", t)
+                hudStat("\(climb.pointCount)", "GPS 지점", t)
+            }
+            Button {
+                climb.stop()
+            } label: {
+                Text("등반 종료").font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 13)
+                    .background(t.accent, in: RoundedRectangle(cornerRadius: 12))
+            }
+            if let note = climb.note {
+                Text(note).font(.footnote).foregroundStyle(t.muted).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(16)
+        .background(t.elevated)
+        .clipShape(.rect(topLeadingRadius: 18, topTrailingRadius: 18))
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 18).strokeBorder(t.line).mask(Rectangle().padding(.bottom, -20))
+        }
+        .shadow(color: .black.opacity(0.10), radius: 12, y: -3)
+        .padding(.horizontal, 0)
+    }
+
+    private func hudStat(_ v: String, _ label: String, _ t: Theme) -> some View {
+        VStack(spacing: 3) {
+            Text(v).font(.system(size: 20, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
+            Text(label).font(.system(size: 11)).foregroundStyle(t.muted)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func fmtClock(_ sec: Int) -> String {
+        String(format: "%d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60)
     }
 
     // MARK: 바텀시트 (산 소개)

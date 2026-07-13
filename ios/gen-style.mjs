@@ -122,6 +122,18 @@ function make(theme) {
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
   );
 
+  // ── 등반 중 라이브 트랙(지나온 곳) — app.js:566-578. ──
+  // 빈 FC 로 두고, 등반 세션의 GPS 갱신마다 MapView 가 source.shape 로 채운다(본선색).
+  style.sources["climb-track"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  style.layers.push(
+    { id: "climb-track-casing", type: "line", source: "climb-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.casing, "line-width": 6.5 } },
+    { id: "climb-track", type: "line", source: "climb-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.line, "line-width": 3.4 } },
+  );
+
   return JSON.stringify(style, null, 2);
 }
 
