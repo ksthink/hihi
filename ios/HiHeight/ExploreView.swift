@@ -10,6 +10,7 @@ struct ExploreView: View {
     @State private var query = ""
     @State private var expanded = false
     @State private var courses: [Course] = []
+    @State private var selectedCourse: Course?
 
     private var results: [Mountain] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -22,7 +23,7 @@ struct ExploreView: View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
-                        mountain: catalog.selected)
+                        mountain: catalog.selected, selectedCourse: selectedCourse)
                     .ignoresSafeArea()
 
                 // 상단: 검색 버튼(좌) + 현재 산 이름(중앙) — 웹 search + top-overlay
@@ -58,6 +59,7 @@ struct ExploreView: View {
             } else {
                 courses = []
             }
+            selectedCourse = courses.first   // 단일 코스는 자동 선택 → 시종점 즉시 표시
         }
     }
 
@@ -182,25 +184,38 @@ struct ExploreView: View {
         )
     }
 
-    // 코스 1행 — 번호 배지 + 이름 + 난이도·거리·시간·상승 (웹 trail-list 대응).
+    // 코스 1행 — 번호 배지 + 이름 + 난이도·거리·시간·상승 + 고도 스파크라인 (웹 trail-list/profile).
+    // 탭 → 선택(시종점 마커 표시). 선택 행은 배경 강조.
     private func courseRow(_ c: Course, _ t: Theme) -> some View {
-        HStack(spacing: 11) {
-            Text("\(c.no ?? 0)")
-                .font(.system(size: 13, weight: .bold)).foregroundStyle(t.onAccent)
-                .frame(width: 25, height: 25).background(t.accent, in: Circle())
-            VStack(alignment: .leading, spacing: 3) {
-                Text(c.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(t.text)
-                HStack(spacing: 9) {
-                    if let d = c.difficulty { Text(d) }
-                    if let km = c.distance_km { Text(String(format: "%.1fkm", km)) }
-                    if let h = c.time_hr { Text(String(format: "%.1f시간", h)) }
-                    if let a = c.ascent { Text("↑\(a)m") }
+        let sel = selectedCourse?.id == c.id
+        return Button {
+            withAnimation(.easeOut(duration: 0.15)) { selectedCourse = c }
+        } label: {
+            HStack(spacing: 11) {
+                Text("\(c.no ?? 0)")
+                    .font(.system(size: 13, weight: .bold)).foregroundStyle(t.onAccent)
+                    .frame(width: 25, height: 25).background(t.accent, in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(c.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(t.text)
+                    HStack(spacing: 9) {
+                        if let d = c.difficulty { Text(d) }
+                        if let km = c.distance_km { Text(String(format: "%.1fkm", km)) }
+                        if let h = c.time_hr { Text(String(format: "%.1f시간", h)) }
+                        if let a = c.ascent { Text("↑\(a)m") }
+                    }
+                    .font(.system(size: 12)).foregroundStyle(t.muted)
                 }
-                .font(.system(size: 12)).foregroundStyle(t.muted)
+                Spacer()
+                if let p = c.profile, p.count > 1 {
+                    Sparkline(points: p)
+                        .stroke(t.text, style: StrokeStyle(lineWidth: 1.3, lineJoin: .round))
+                        .frame(width: 84, height: 30)
+                }
             }
-            Spacer()
+            .padding(.horizontal, sel ? 8 : 0).padding(.vertical, 9)
+            .background(sel ? t.surface : .clear, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: sel ? 0 : 0.5) }
         }
-        .padding(.vertical, 9)
-        .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: 0.5) }
+        .buttonStyle(.plain)
     }
 }

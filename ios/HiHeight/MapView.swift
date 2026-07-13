@@ -7,6 +7,7 @@ import MapLibre
 struct MapView: UIViewRepresentable {
     let styleResource: String
     let mountain: Mountain?
+    var selectedCourse: Course? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -23,6 +24,7 @@ struct MapView: UIViewRepresentable {
     func updateUIView(_ mv: MLNMapView, context: Context) {
         applyStyle(mv)                                   // 테마 전환 시 스타일 교체
         context.coordinator.apply(mountain: mountain, on: mv)
+        context.coordinator.applyCourse(selectedCourse, on: mv)
     }
 
     private func applyStyle(_ mv: MLNMapView) {
@@ -33,6 +35,7 @@ struct MapView: UIViewRepresentable {
     final class Coordinator: NSObject, MLNMapViewDelegate {
         private var desired: Mountain?      // 목표 산
         private var cameraDone: String?     // 카메라를 맞춘 산코드 (중복 이동 방지)
+        private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
 
         func apply(mountain m: Mountain?, on mv: MLNMapView) {
             guard let m else { return }
@@ -71,9 +74,37 @@ struct MapView: UIViewRepresentable {
             if src.url != url { src.url = url }
         }
 
-        // 스타일 로드(초기·테마 전환)마다 현재 목표 산 오버레이 재적용.
+        // 코스 선택 → 시종점(course-ends) 갱신. 데이터는 런타임 파생이라 in-memory shape 로 주입.
+        func applyCourse(_ c: Course?, on mv: MLNMapView) {
+            desiredCourse = c
+            if mv.style != nil { setCourseEnds(c, on: mv) }
+        }
+
+        private func setCourseEnds(_ c: Course?, on mv: MLNMapView) {
+            guard let style = mv.style,
+                  let src = style.source(withIdentifier: "course-ends") as? MLNShapeSource else { return }
+            guard let c, let s = c.start, let e = c.end,
+                  let data = Self.endsGeoJSON(start: s, end: e),
+                  let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+                src.shape = nil; return
+            }
+            src.shape = shape
+        }
+
+        private static func endsGeoJSON(start: [Double], end: [Double]) -> Data? {
+            let fc: [String: Any] = ["type": "FeatureCollection", "features": [
+                ["type": "Feature", "properties": ["kind": "start", "label": "출발"],
+                 "geometry": ["type": "Point", "coordinates": start]],
+                ["type": "Feature", "properties": ["kind": "end", "label": "도착"],
+                 "geometry": ["type": "Point", "coordinates": end]],
+            ]]
+            return try? JSONSerialization.data(withJSONObject: fc)
+        }
+
+        // 스타일 로드(초기·테마 전환)마다 현재 목표 산 오버레이 + 시종점 재적용.
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             if let d = desired { applyOverlay(d, on: mapView) }
+            setCourseEnds(desiredCourse, on: mapView)
         }
     }
 }
