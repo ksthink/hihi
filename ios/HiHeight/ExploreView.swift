@@ -11,6 +11,7 @@ struct ExploreView: View {
     @AppStorage("hiheight-theme") private var themePref = "system"
 
     @State private var locateTick = 0
+    @State private var courseFitTick = 0              // 코스 탭 → 지도 fitBounds
     @State private var metersPerPoint: Double = 0     // 커스텀 스케일바 축척
     @State private var searching = false
     @State private var query = ""
@@ -42,7 +43,7 @@ struct ExploreView: View {
                         mountain: catalog.selected, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
-                        locateTick: locateTick,
+                        locateTick: locateTick, fitCourseTick: courseFitTick,
                         onScaleChanged: { metersPerPoint = $0 })
                     .ignoresSafeArea()
 
@@ -448,6 +449,9 @@ struct ExploreView: View {
         let sel = climb.course?.id == c.id
         return Button {
             withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
+            climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
+            courseFitTick += 1                         // 지도를 코스 범위로 이동
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { expanded = false }  // 시트 낮춰 지도 노출
         } label: {
             HStack(spacing: 0) {
                 Rectangle().fill(t.accent).frame(width: 3)     // 좌측 강조선 (border-left)

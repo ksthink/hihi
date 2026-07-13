@@ -19,6 +19,7 @@ struct Course: Decodable, Identifiable {
     // 지오메트리에서 파생(Decodable 대상 아님) — PackLoader 가 채운다.
     var start: [Double]? = nil
     var end: [Double]? = nil
+    var bbox: [Double]? = nil     // [minLng, minLat, maxLng, maxLat] — 코스 탭 시 fitBounds
 
     enum CodingKeys: String, CodingKey {
         case no, name, difficulty, distance_km, time_hr, min_elev, max_elev, ascent, descent, profile, peak, surface, desc
@@ -32,29 +33,40 @@ struct Course: Decodable, Identifiable {
     var difLevel: Int { ["초급": 1, "중급": 2, "고급": 3][difficulty ?? ""] ?? 1 }
 }
 
-// LineString / MultiLineString 지오메트리의 첫 점·끝 점만 뽑는다(courseEndsData 대응).
-private struct Endpoints: Decodable {
+// LineString / MultiLineString 지오메트리의 첫 점·끝 점 + 전체 bbox (시종점·fitBounds 용).
+private struct Geometry: Decodable {
     let first: [Double]?
     let last: [Double]?
+    let bbox: [Double]?
     enum CK: String, CodingKey { case type, coordinates }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CK.self)
         switch try c.decode(String.self, forKey: .type) {
         case "LineString":
             let co = try c.decode([[Double]].self, forKey: .coordinates)
-            first = co.first; last = co.last
+            first = co.first; last = co.last; bbox = Self.bounds(co)
         case "MultiLineString":
             let co = try c.decode([[[Double]]].self, forKey: .coordinates)
-            first = co.first?.first; last = co.last?.last
+            let flat = co.flatMap { $0 }
+            first = co.first?.first; last = co.last?.last; bbox = Self.bounds(flat)
         default:
-            first = nil; last = nil
+            first = nil; last = nil; bbox = nil
         }
+    }
+    static func bounds(_ coords: [[Double]]) -> [Double]? {
+        guard !coords.isEmpty else { return nil }
+        var minX = 180.0, minY = 90.0, maxX = -180.0, maxY = -90.0
+        for c in coords where c.count >= 2 {
+            minX = min(minX, c[0]); maxX = max(maxX, c[0])
+            minY = min(minY, c[1]); maxY = max(maxY, c[1])
+        }
+        return [minX, minY, maxX, maxY]
     }
 }
 
 enum PackLoader {
     private struct FC: Decodable { let features: [Feature] }
-    private struct Feature: Decodable { let properties: Course; let geometry: Endpoints }
+    private struct Feature: Decodable { let properties: Course; let geometry: Geometry }
 
     static func courses(_ code: String) async -> [Course] {
         guard let url = Config.routesURL(code) else { return [] }
@@ -65,6 +77,7 @@ enum PackLoader {
                 var c = f.properties
                 c.start = f.geometry.first
                 c.end = f.geometry.last
+                c.bbox = f.geometry.bbox
                 return c
             }.sorted { ($0.no ?? 0) < ($1.no ?? 0) }
         } catch {

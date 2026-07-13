@@ -12,6 +12,7 @@ struct MapView: UIViewRepresentable {
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
     var locateTick: Int = 0              // 증가 시 현재위치로 이동 + 정북·수평 복원(위치/나침반 통합 버튼)
+    var fitCourseTick: Int = 0           // 증가 시 선택 코스 범위로 fitBounds(코스 탭)
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
     var onScaleChanged: ((Double) -> Void)? = nil    // 지도 이동 시 축척(m/point) 통지 → 커스텀 스케일바
 
@@ -42,6 +43,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.onScaleChanged = onScaleChanged
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.applyCourse(selectedCourse, on: mv)
+        context.coordinator.fitCourse(fitCourseTick, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
         context.coordinator.setRecordTrack(recordTrack, on: mv)
         context.coordinator.applyUserState(tracking: tracking, locateTick: locateTick, on: mv)
@@ -146,6 +148,19 @@ struct MapView: UIViewRepresentable {
         func applyCourse(_ c: Course?, on mv: MLNMapView) {
             desiredCourse = c
             if mv.style != nil { setCourseEnds(c, on: mv) }
+        }
+
+        // 코스 탭 → 코스 전체 범위로 카메라 이동(웹 focusTrail fitBounds). 틱 변화 시에만.
+        private var lastFitCourse = 0
+        func fitCourse(_ tick: Int, on mv: MLNMapView) {
+            guard tick != lastFitCourse else { return }
+            lastFitCourse = tick
+            guard let b = desiredCourse?.bbox, b.count == 4 else { return }
+            let bounds = MLNCoordinateBounds(
+                sw: CLLocationCoordinate2D(latitude: b[1], longitude: b[0]),
+                ne: CLLocationCoordinate2D(latitude: b[3], longitude: b[2]))
+            let pad = UIEdgeInsets(top: 90, left: 40, bottom: 300, right: 40)
+            mv.setVisibleCoordinateBounds(bounds, edgePadding: pad, animated: true, completionHandler: nil)
         }
 
         private func setCourseEnds(_ c: Course?, on mv: MLNMapView) {
