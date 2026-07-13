@@ -1,50 +1,62 @@
 import SwiftUI
 
-// M1 탐험 화면 — 카탈로그 주도 지도. 산 선택 → 카메라 + 등고선 오버레이 전환.
-// 임시 산 선택 메뉴는 M1-S2 검색 UI 로 교체 예정(지금은 데이터 구동 검증용).
+// M2 UI 셸 — 웹의 4탭 하단 바(탐험·추천·등반·기록) 재현.
+// 탐험만 지도+검색+바텀시트 구현(M1 진행분), 나머지 3탭은 웹 헤더를 맞춘 플레이스홀더(후속 슬라이스).
 struct ContentView: View {
     @Environment(\.colorScheme) private var scheme
     @StateObject private var catalog = CatalogStore()
 
-    var body: some View {
-        ZStack(alignment: .top) {
-            MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
-                    mountain: catalog.selected)
-                .ignoresSafeArea()
+    init() { Self.styleTabBar() }
 
-            if !catalog.mountains.isEmpty {
-                mountainPicker
-                    .padding(.top, 8)
-            } else if let err = catalog.error {
-                Text(err)
-                    .font(.footnote).padding(8)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                    .padding(.top, 8)
-            }
+    var body: some View {
+        TabView {
+            ExploreView(catalog: catalog)
+                .tabItem { Label("탐험", systemImage: "safari") }
+
+            PlaceholderView(title: "추천", subtitle: "하이하잇 PICK · 공식 추천")
+                .tabItem { Label("추천", systemImage: "star") }
+
+            PlaceholderView(title: "등반", subtitle: "코스를 골라 산행을 시작하세요")
+                .tabItem { Label("등반", systemImage: "mountain.2") }
+
+            PlaceholderView(title: "기록", subtitle: "나의 산행 이력")
+                .tabItem { Label("기록", systemImage: "clock") }
         }
+        .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .task { await catalog.load() }
     }
 
-    private var mountainPicker: some View {
-        Menu {
-            ForEach(catalog.mountains) { m in
-                Button {
-                    catalog.selected = m
-                } label: {
-                    Label(m.elev.map { "\(m.name) · \($0)m" } ?? m.name,
-                          systemImage: m.id == catalog.selected?.id ? "checkmark" : "mountain.2")
-                }
+    // 흑백 탭바 — 선택=accent, 비선택=muted, 배경=surface + 상단 헤어라인.
+    private static func styleTabBar() {
+        let a = UITabBarAppearance()
+        a.configureWithOpaqueBackground()
+        a.shadowColor = UIColor.separator
+        UITabBar.appearance().standardAppearance = a
+        UITabBar.appearance().scrollEdgeAppearance = a
+    }
+}
+
+// 미구현 탭 — 웹 view-head(제목 + 부제) 형태만 맞춘 자리표시.
+struct PlaceholderView: View {
+    let title: String
+    let subtitle: String
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let t = Theme(scheme: scheme)
+        ZStack {
+            t.bg.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
+                Text(subtitle).font(.system(size: 14)).foregroundStyle(t.muted)
+                Spacer()
+                Text("이 탭은 다음 슬라이스에서 구현됩니다.")
+                    .font(.footnote).foregroundStyle(t.muted)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                Spacer()
             }
-        } label: {
-            HStack(spacing: 6) {
-                Text(catalog.selected?.name ?? "산 선택")
-                    .font(.system(size: 15, weight: .semibold))
-                Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
-            }
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 16).padding(.vertical, 9)
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(.primary.opacity(0.12)))
+            .padding(20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }
