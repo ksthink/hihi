@@ -13,20 +13,15 @@ struct RecordsView: View {
 
     var body: some View {
         let t = Theme(scheme: scheme)
-        ZStack {
-            t.bg.ignoresSafeArea()
+        VStack(spacing: 0) {
+            ScreenHeader(title: "기록", subtitle: "나의 산행 이력")   // 상단 고정
             if auth.email == nil {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        Text("기록").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
-                        authForm(t)
-                    }
-                    .padding(20)
-                }
+                ScrollView { authForm(t).padding(20) }
             } else {
                 authedList(t)
             }
         }
+        .background(t.bg)
         .task { await auth.refresh() }
         .confirmationDialog("이 기록을 삭제할까요? 되돌릴 수 없습니다.",
                             isPresented: Binding(get: { pendingDelete != nil },
@@ -44,14 +39,13 @@ struct RecordsView: View {
     private func authedList(_ t: Theme) -> some View {
         List {
             Group {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("기록").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
+                HStack {
+                    Text(auth.email ?? "").font(.kakao(size: 13)).foregroundStyle(t.muted)
                     Spacer()
                     Button { Task { await auth.signOut() } } label: {
                         Text("로그아웃").font(.kakao(size: 13)).foregroundStyle(t.muted)
                     }
                 }
-                Text(auth.email ?? "").font(.kakao(size: 13)).foregroundStyle(t.muted)
                 summary(t)
                 RecCalendar(dayKeys: recordDayKeys)   // 산행 달력 — 기록 있는 날 점 표시
             }

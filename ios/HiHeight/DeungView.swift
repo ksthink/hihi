@@ -12,27 +12,32 @@ struct DeungView: View {
 
     var body: some View {
         let t = Theme(scheme: scheme)
-        ZStack {
-            t.bg.ignoresSafeArea()
+        VStack(spacing: 0) {
+            header(t)                       // 상단 고정
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    header(t)
-                    card(t)
-                }
-                .padding(20)
+                card(t).padding(20)
             }
         }
+        .background(t.bg)
     }
 
+    // 고정 헤더 — 웹 view-head "등반 | {산}" + 부제
     private func header(_ t: Theme) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("등반").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
-            if let mtn = climb.mountainName, !mtn.isEmpty {
-                Text("|").foregroundStyle(t.line)
-                Text(mtn).font(.kakao(size: 16, weight: .medium)).foregroundStyle(t.muted)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("등반").font(.kakao(size: 26, weight: .bold)).foregroundStyle(t.text)
+                if let mtn = climb.mountainName, !mtn.isEmpty {
+                    Text("|").foregroundStyle(t.line)
+                    Text(mtn).font(.kakao(size: 16, weight: .medium)).foregroundStyle(t.muted)
+                }
+                Spacer()
             }
-            Spacer()
+            Text("코스를 골라 산행을 시작하세요").font(.kakao(size: 13)).foregroundStyle(t.muted)
         }
+        .padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(t.bg)
+        .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: 0.5) }
     }
 
     // MARK: 등반 카드

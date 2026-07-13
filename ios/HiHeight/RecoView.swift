@@ -23,26 +23,25 @@ struct RecoView: View {
 
     var body: some View {
         let t = Theme(scheme: scheme)
-        GeometryReader { geo in
-            let cardW = geo.size.width * 0.82       // 웹 pick-slide flex 0 0 82% (정사각)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text("추천").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
-                        .padding(.horizontal, 20).padding(.top, 8)
-
-                    if curations.isEmpty {
-                        Text("추천을 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                            .padding(.horizontal, 20)
-                    } else {
-                        magazineSection(cardW, t)
+        VStack(spacing: 0) {
+            ScreenHeader(title: "추천")                 // 상단 고정
+            GeometryReader { geo in
+                let cardW = geo.size.width * 0.82       // 웹 pick-slide flex 0 0 82% (정사각)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        if curations.isEmpty {
+                            Text("추천을 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
+                                .padding(.horizontal, 20)
+                        } else {
+                            magazineSection(cardW, t)
+                        }
+                        accordions(t)
                     }
-
-                    accordions(t)
+                    .padding(.top, 16).padding(.bottom, 24)
                 }
-                .padding(.bottom, 24)
             }
-            .background(t.bg)
         }
+        .background(t.bg)
         .task {
             curations = await CurationLoader.load()
             pickID = curations.first?.items.first?.id   // 캐러셀 첫 카드부터 시작
