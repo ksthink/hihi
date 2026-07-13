@@ -12,6 +12,10 @@ packages:
   MapLibre:
     url: https://github.com/maplibre/maplibre-gl-native-distribution
     exactVersion: 6.27.0
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    minVersion: 2.51.0
+    maxVersion: 3.0.0
 
 targets:
   HiHeight:
@@ -21,6 +25,8 @@ targets:
       - HiHeight
     dependencies:
       - package: MapLibre
+      - package: Supabase
+        product: Supabase
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.metaphr.hiheight

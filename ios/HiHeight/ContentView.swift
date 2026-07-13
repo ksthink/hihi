@@ -5,6 +5,7 @@ import SwiftUI
 struct ContentView: View {
     @Environment(\.colorScheme) private var scheme
     @StateObject private var catalog = CatalogStore()
+    @StateObject private var auth = AuthStore()
     @State private var tab = 0
 
     init() { Self.styleTabBar() }
@@ -20,7 +21,7 @@ struct ContentView: View {
             PlaceholderView(title: "등반", subtitle: "코스를 골라 산행을 시작하세요")
                 .tabItem { Label("등반", systemImage: "mountain.2") }.tag(2)
 
-            PlaceholderView(title: "기록", subtitle: "나의 산행 이력")
+            RecordsView(auth: auth, catalog: catalog)
                 .tabItem { Label("기록", systemImage: "clock") }.tag(3)
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
