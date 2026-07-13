@@ -54,8 +54,7 @@ struct DeungView: View {
                 ])
 
                 if let p = c.profile, p.count > 1 {
-                    Sparkline(points: p)
-                        .stroke(t.text, style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
+                    ProfileView(points: p, color: t.text)
                         .frame(height: 64)
                         .padding(.vertical, 2)
                 }

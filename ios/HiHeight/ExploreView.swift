@@ -475,9 +475,7 @@ struct ExploreView: View {
                         }
                     }
                     if let p = c.profile, p.count > 1 {
-                        Sparkline(points: p)
-                            .stroke(t.text, style: StrokeStyle(lineWidth: 1.3, lineJoin: .round))
-                            .frame(width: 90, height: 44)
+                        ProfileView(points: p, color: t.text).frame(width: 90, height: 44)
                     }
                 }
                 .padding(.vertical, 12).padding(.horizontal, 14)
