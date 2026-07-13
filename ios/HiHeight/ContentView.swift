@@ -6,19 +6,20 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var scheme
     @StateObject private var catalog = CatalogStore()
     @StateObject private var auth = AuthStore()
+    @StateObject private var climb = ClimbStore()
     @State private var tab = 0
 
     init() { Self.styleTabBar() }
 
     var body: some View {
         TabView(selection: $tab) {
-            ExploreView(catalog: catalog)
+            ExploreView(catalog: catalog, climb: climb)
                 .tabItem { Label("탐험", systemImage: "safari") }.tag(0)
 
             RecoView(catalog: catalog, onOpen: openCuration)
                 .tabItem { Label("추천", systemImage: "star") }.tag(1)
 
-            PlaceholderView(title: "등반", subtitle: "코스를 골라 산행을 시작하세요")
+            DeungView(climb: climb)
                 .tabItem { Label("등반", systemImage: "mountain.2") }.tag(2)
 
             RecordsView(auth: auth, catalog: catalog)
@@ -43,30 +44,5 @@ struct ContentView: View {
         a.shadowColor = UIColor.separator
         UITabBar.appearance().standardAppearance = a
         UITabBar.appearance().scrollEdgeAppearance = a
-    }
-}
-
-// 미구현 탭 — 웹 view-head(제목 + 부제) 형태만 맞춘 자리표시.
-struct PlaceholderView: View {
-    let title: String
-    let subtitle: String
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        let t = Theme(scheme: scheme)
-        ZStack {
-            t.bg.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
-                Text(subtitle).font(.system(size: 14)).foregroundStyle(t.muted)
-                Spacer()
-                Text("이 탭은 다음 슬라이스에서 구현됩니다.")
-                    .font(.footnote).foregroundStyle(t.muted)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                Spacer()
-            }
-            .padding(20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
     }
 }

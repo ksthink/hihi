@@ -4,13 +4,13 @@ import SwiftUI
 // 코스 목록·스파크라인·날씨·국가지점번호는 후속 슬라이스(M1-S3/M2-S2)에서 카드에 채운다.
 struct ExploreView: View {
     @ObservedObject var catalog: CatalogStore
+    @ObservedObject var climb: ClimbStore        // 선택 코스를 등반 탭과 공유
     @Environment(\.colorScheme) private var scheme
 
     @State private var searching = false
     @State private var query = ""
     @State private var expanded = false
     @State private var courses: [Course] = []
-    @State private var selectedCourse: Course?
     @State private var info: MountainInfo?
     @State private var npn: String?
     @State private var weather: [WeatherHour] = []
@@ -26,7 +26,7 @@ struct ExploreView: View {
         GeometryReader { geo in
             ZStack(alignment: .top) {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
-                        mountain: catalog.selected, selectedCourse: selectedCourse,
+                        mountain: catalog.selected, selectedCourse: climb.course,
                         onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) })
                     .ignoresSafeArea()
 
@@ -72,7 +72,7 @@ struct ExploreView: View {
         }
         .task(id: catalog.selected?.id) {
             guard let m = catalog.selected else {
-                courses = []; info = nil; weather = []; selectedCourse = nil; return
+                courses = []; info = nil; weather = []; climb.course = nil; climb.mountainName = nil; return
             }
             async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
             async let inf = InfoLoader.load(m.id)
@@ -80,7 +80,8 @@ struct ExploreView: View {
             courses = await cs
             info = await inf
             weather = await wx
-            selectedCourse = courses.first            // 단일 코스 자동 선택 → 시종점 즉시 표시
+            climb.mountainName = m.name
+            climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
         }
     }
 
@@ -244,9 +245,9 @@ struct ExploreView: View {
     // 코스 1행 — 번호 배지 + 이름 + 난이도·거리·시간·상승 + 고도 스파크라인 (웹 trail-list/profile).
     // 탭 → 선택(시종점 마커 표시). 선택 행은 배경 강조.
     private func courseRow(_ c: Course, _ t: Theme) -> some View {
-        let sel = selectedCourse?.id == c.id
+        let sel = climb.course?.id == c.id
         return Button {
-            withAnimation(.easeOut(duration: 0.15)) { selectedCourse = c }
+            withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
         } label: {
             HStack(spacing: 11) {
                 Text("\(c.no ?? 0)")
