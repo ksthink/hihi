@@ -22,6 +22,39 @@ function make(theme) {
   );
   // 글리프: 웹의 "/fonts/{fontstack}/{range}.pbf" 상대경로 → 프록시 절대 URL.
   style.glyphs = `${BASE}/fonts/{fontstack}/{range}.pbf`;
+
+  // ── S1 오버레이 검증: 등고선 3종 (팩 geojson) ──
+  // buildStyle() 기저엔 없고 웹은 app.js:463-489 에서 별도 오버레이로 얹는다.
+  // 동일 GL 표현식을 스타일 JSON 에 그대로 추가 → Native 가 NSExpression 변환 없이 렌더.
+  // 소스 데이터는 admin_server 정적 서빙(data/packs/<코드>/contours.geojson).
+  const PACK = "282600201"; // 계양산
+  const cc = theme === "dark"
+    ? { line: "#3a3a3a", label: "#8a8a8a", halo: "#000000" }
+    : { line: "#c4bfb5", label: "#8a857c", halo: "#ffffff" };
+  style.sources.contours = {
+    type: "geojson",
+    data: `${BASE}/data/packs/${PACK}/contours.geojson`,
+  };
+  style.layers.push(
+    // 50m 보조 등고선
+    { id: "contour-line", type: "line", source: "contours", minzoom: 12.5,
+      filter: ["==", ["get", "idx"], 0],
+      paint: { "line-color": cc.line, "line-width": 0.5, "line-opacity": 0.5 } },
+    // 100m 주 등고선
+    { id: "contour-index", type: "line", source: "contours", minzoom: 10.5,
+      filter: ["==", ["get", "idx"], 1],
+      paint: { "line-color": cc.line, "line-width": 1.1, "line-opacity": 0.7 } },
+    // 고도 라벨 (주 등고선)
+    { id: "contour-label", type: "symbol", source: "contours", minzoom: 13.5,
+      filter: ["==", ["get", "idx"], 1],
+      layout: {
+        "symbol-placement": "line",
+        "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
+        "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.4, "symbol-spacing": 300,
+      },
+      paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 } },
+  );
+
   return JSON.stringify(style, null, 2);
 }
 

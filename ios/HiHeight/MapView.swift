@@ -12,9 +12,9 @@ struct MapView: UIViewRepresentable {
         mv.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         mv.logoView.isHidden = false      // MapLibre 로고
         mv.attributionButton.isHidden = false  // OSM(ODbL)·Protomaps·Copernicus 저작자 표시 유지
-        // 계양산 부근 초기 카메라 (웹 기본 진입과 유사한 등산 줌)
-        mv.setCenter(CLLocationCoordinate2D(latitude: 37.53, longitude: 126.74),
-                     zoomLevel: 12.5, animated: false)
+        // 계양산 정상 부근 — 등고선(minzoom 12.5)·등산로가 보이는 줌으로 S1 오버레이 검증
+        mv.setCenter(CLLocationCoordinate2D(latitude: 37.5600, longitude: 126.7150),
+                     zoomLevel: 14, animated: false)
         applyStyle(mv)
         return mv
     }
