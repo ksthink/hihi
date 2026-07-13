@@ -53,6 +53,7 @@ struct RecordsView: View {
                 }
                 Text(auth.email ?? "").font(.system(size: 13)).foregroundStyle(t.muted)
                 summary(t)
+                RecCalendar(dayKeys: recordDayKeys)   // 산행 달력 — 기록 있는 날 점 표시
             }
             .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
             .listRowSeparator(.hidden)
@@ -150,6 +151,16 @@ struct RecordsView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: 0.5) }
     }
 
+    // 기록 있는 날짜 키 집합 "y-m-d"(로컬) — 달력 점 표시용.
+    private var recordDayKeys: Set<String> {
+        let cal = Calendar.current
+        return Set(auth.records.compactMap { r -> String? in
+            guard let d = r.startedDate else { return nil }
+            let c = cal.dateComponents([.year, .month, .day], from: d)
+            return "\(c.year!)-\(c.month!)-\(c.day!)"
+        })
+    }
+
     private func title(_ r: ClimbRecord) -> String {
         let mtn = r.mountain_id.flatMap { id in catalog.mountains.first { $0.id == id }?.name } ?? ""
         let course = r.course_name ?? ""
@@ -161,5 +172,71 @@ struct RecordsView: View {
     }
     private func dateLabel(_ d: Date) -> String {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yy.MM.dd"; return f.string(from: d)
+    }
+}
+
+// 산행 달력 — 웹 renderRecCalendar(app.js:1556) 이식. ‹ › 월 이동, 오늘 강조, 기록 있는 날 점.
+struct RecCalendar: View {
+    let dayKeys: Set<String>          // "y-m-d"(로컬)
+    @Environment(\.colorScheme) private var scheme
+    @State private var offset = 0     // 표시 월 = 이번 달 + offset
+    private let cal = Calendar.current
+    private let cols = Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
+
+    var body: some View {
+        let t = Theme(scheme: scheme)
+        let base = cal.date(byAdding: .month, value: offset, to: startOfMonth(Date())) ?? Date()
+        let y = cal.component(.year, from: base), m = cal.component(.month, from: base)
+        let lead = cal.component(.weekday, from: base) - 1            // 첫날 앞 빈칸(일=0)
+        let days = cal.range(of: .day, in: .month, for: base)?.count ?? 30
+        let tc = cal.dateComponents([.year, .month, .day], from: Date())
+
+        return VStack(spacing: 8) {
+            HStack {
+                navButton("chevron.left", t) { offset -= 1 }
+                Spacer()
+                Text("\(String(y)).\(String(format: "%02d", m))")
+                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                Spacer()
+                navButton("chevron.right", t) { offset += 1 }
+            }
+            LazyVGrid(columns: cols, spacing: 4) {
+                ForEach(["일","월","화","수","목","금","토"], id: \.self) { w in
+                    Text(w).font(.system(size: 10)).foregroundStyle(t.muted)
+                }
+                // 앞 빈칸(nil) + 날짜 — 단일 배열/인덱스 id 로 ForEach id 충돌 방지.
+                let cells: [Int?] = Array(repeating: nil, count: lead) + (1...days).map { $0 }
+                ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
+                    if let d = day {
+                        let isToday = tc.year == y && tc.month == m && tc.day == d
+                        let hasRec = dayKeys.contains("\(y)-\(m)-\(d)")
+                        VStack(spacing: 2) {
+                            Text("\(d)")
+                                .font(.system(size: 12, weight: isToday ? .bold : .regular))
+                                .foregroundStyle(isToday ? t.onAccent : t.text)
+                                .frame(width: 24, height: 24)
+                                .background(isToday ? t.accent : .clear, in: Circle())
+                            Circle().fill(hasRec ? t.text : .clear).frame(width: 4, height: 4)
+                        }
+                        .frame(height: 30)
+                    } else {
+                        Color.clear.frame(height: 30)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(t.surface, in: RoundedRectangle(cornerRadius: 14))
+        .padding(.top, 6)
+    }
+
+    private func startOfMonth(_ date: Date) -> Date {
+        cal.date(from: cal.dateComponents([.year, .month], from: date)) ?? date
+    }
+    private func navButton(_ icon: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Image(systemName: icon).font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(t.muted).frame(width: 32, height: 28)
+        }
     }
 }
