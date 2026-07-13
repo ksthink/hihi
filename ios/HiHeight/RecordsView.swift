@@ -18,7 +18,7 @@ struct RecordsView: View {
             if auth.email == nil {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        Text("기록").font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
+                        Text("기록").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
                         authForm(t)
                     }
                     .padding(20)
@@ -45,13 +45,13 @@ struct RecordsView: View {
         List {
             Group {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("기록").font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
+                    Text("기록").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
                     Spacer()
                     Button { Task { await auth.signOut() } } label: {
-                        Text("로그아웃").font(.system(size: 13)).foregroundStyle(t.muted)
+                        Text("로그아웃").font(.kakao(size: 13)).foregroundStyle(t.muted)
                     }
                 }
-                Text(auth.email ?? "").font(.system(size: 13)).foregroundStyle(t.muted)
+                Text(auth.email ?? "").font(.kakao(size: 13)).foregroundStyle(t.muted)
                 summary(t)
                 RecCalendar(dayKeys: recordDayKeys)   // 산행 달력 — 기록 있는 날 점 표시
             }
@@ -60,7 +60,7 @@ struct RecordsView: View {
             .listRowBackground(t.bg)
 
             if auth.records.isEmpty {
-                Text("아직 등반 기록이 없습니다.").font(.system(size: 13)).foregroundStyle(t.muted)
+                Text("아직 등반 기록이 없습니다.").font(.kakao(size: 13)).foregroundStyle(t.muted)
                     .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 4, trailing: 20))
                     .listRowSeparator(.hidden).listRowBackground(t.bg)
             } else {
@@ -87,7 +87,7 @@ struct RecordsView: View {
     // MARK: 비로그인 — 이메일 인증
     private func authForm(_ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("로그인하고 등반 기록을 저장하세요.").font(.system(size: 14)).foregroundStyle(t.muted)
+            Text("로그인하고 등반 기록을 저장하세요.").font(.kakao(size: 14)).foregroundStyle(t.muted)
             TextField("이메일", text: $email)
                 .textContentType(.emailAddress).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -96,19 +96,19 @@ struct RecordsView: View {
                 .padding(12).background(t.surface, in: RoundedRectangle(cornerRadius: 10))
             HStack(spacing: 10) {
                 Button { Task { await auth.signIn(email, pass) } } label: {
-                    Text("로그인").font(.system(size: 15, weight: .semibold))
+                    Text("로그인").font(.kakao(size: 15, weight: .semibold))
                         .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 11)
                         .background(t.accent, in: RoundedRectangle(cornerRadius: 10))
                 }
                 Button { Task { await auth.signUp(email, pass) } } label: {
-                    Text("가입").font(.system(size: 15, weight: .semibold))
+                    Text("가입").font(.kakao(size: 15, weight: .semibold))
                         .foregroundStyle(t.text).frame(maxWidth: .infinity).padding(.vertical, 11)
                         .background(t.surface, in: RoundedRectangle(cornerRadius: 10))
                 }
             }
             .disabled(auth.busy)
             if let msg = auth.message {
-                Text(msg).font(.footnote).foregroundStyle(t.muted)
+                Text(msg).font(.kakao(size: 13)).foregroundStyle(t.muted)
             }
         }
     }
@@ -126,15 +126,15 @@ struct RecordsView: View {
 
     private func stat(_ v: String, _ label: String, _ t: Theme) -> some View {
         VStack(spacing: 3) {
-            Text(v).font(.system(size: 20, weight: .bold)).foregroundStyle(t.text)
-            Text(label).font(.system(size: 11)).foregroundStyle(t.muted)
+            Text(v).font(.kakao(size: 20, weight: .bold)).foregroundStyle(t.text)
+            Text(label).font(.kakao(size: 11)).foregroundStyle(t.muted)
         }
         .frame(maxWidth: .infinity)
     }
 
     private func recordRow(_ r: ClimbRecord, _ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title(r)).font(.system(size: 15, weight: .semibold)).foregroundStyle(t.text)
+            Text(title(r)).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.text)
             HStack(spacing: 10) {
                 if let km = r.distance_km { Text(String(format: "%.1fkm", km)) }
                 if let d = r.duration_s { Text(durationLabel(d)) }
@@ -145,7 +145,7 @@ struct RecordsView: View {
                 Spacer()
                 if let dt = r.startedDate { Text(dateLabel(dt)) }
             }
-            .font(.system(size: 12)).foregroundStyle(t.muted)
+            .font(.kakao(size: 12)).foregroundStyle(t.muted)
         }
         .padding(.vertical, 10)
         .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: 0.5) }
@@ -196,13 +196,13 @@ struct RecCalendar: View {
                 navButton("chevron.left", t) { offset -= 1 }
                 Spacer()
                 Text("\(String(y)).\(String(format: "%02d", m))")
-                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                    .font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
                 Spacer()
                 navButton("chevron.right", t) { offset += 1 }
             }
             LazyVGrid(columns: cols, spacing: 4) {
                 ForEach(["일","월","화","수","목","금","토"], id: \.self) { w in
-                    Text(w).font(.system(size: 10)).foregroundStyle(t.muted)
+                    Text(w).font(.kakao(size: 10)).foregroundStyle(t.muted)
                 }
                 // 앞 빈칸(nil) + 날짜 — 단일 배열/인덱스 id 로 ForEach id 충돌 방지.
                 let cells: [Int?] = Array(repeating: nil, count: lead) + (1...days).map { $0 }
@@ -212,7 +212,7 @@ struct RecCalendar: View {
                         let hasRec = dayKeys.contains("\(y)-\(m)-\(d)")
                         VStack(spacing: 2) {
                             Text("\(d)")
-                                .font(.system(size: 12, weight: isToday ? .bold : .regular))
+                                .font(.kakao(size: 12, weight: isToday ? .bold : .regular))
                                 .foregroundStyle(isToday ? t.onAccent : t.text)
                                 .frame(width: 24, height: 24)
                                 .background(isToday ? t.accent : .clear, in: Circle())
@@ -235,7 +235,7 @@ struct RecCalendar: View {
     }
     private func navButton(_ icon: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
-            Image(systemName: icon).font(.system(size: 13, weight: .semibold))
+            Image(systemName: icon).font(.kakao(size: 13, weight: .semibold))
                 .foregroundStyle(t.muted).frame(width: 32, height: 28)
         }
     }

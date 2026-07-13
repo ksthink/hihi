@@ -49,11 +49,17 @@ struct ContentView: View {
         tab = 0
     }
 
-    // 흑백 탭바 — 선택=accent, 비선택=muted, 배경=surface + 상단 헤어라인.
+    // 흑백 탭바 — 선택=accent, 비선택=muted, 배경=surface + 상단 헤어라인. 라벨은 KakaoSmallSans.
     private static func styleTabBar() {
         let a = UITabBarAppearance()
         a.configureWithOpaqueBackground()
         a.shadowColor = UIColor.separator
+        if let font = UIFont(name: "KakaoSmallSans-Bold", size: 10) {
+            for item in [a.stackedLayoutAppearance, a.inlineLayoutAppearance, a.compactInlineLayoutAppearance] {
+                item.normal.titleTextAttributes = [.font: font]
+                item.selected.titleTextAttributes = [.font: font]
+            }
+        }
         UITabBar.appearance().standardAppearance = a
         UITabBar.appearance().scrollEdgeAppearance = a
     }

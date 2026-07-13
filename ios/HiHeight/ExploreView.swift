@@ -75,10 +75,10 @@ struct ExploreView: View {
                         if let m = catalog.selected {
                             overlayBox(t) {
                                 HStack(alignment: .firstTextBaseline, spacing: 7) {
-                                    Text(m.name).fontWeight(.bold).foregroundStyle(t.text)
+                                    Text(m.name).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
                                     if let c = climb.course {
-                                        Text("|").fontWeight(.regular).foregroundStyle(t.muted)
-                                        Text(c.name).fontWeight(.bold).foregroundStyle(t.text)
+                                        Text("|").font(.kakao(size: 14)).foregroundStyle(t.muted)
+                                        Text(c.name).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
                                     }
                                 }
                                 .lineLimit(1)
@@ -89,14 +89,14 @@ struct ExploreView: View {
                     if let npn = npnCode {
                         overlayBox(t) {
                             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text("국가지점번호").font(.system(size: 10.5)).foregroundStyle(t.muted)
-                                Text(npn).fontWeight(.bold).foregroundStyle(t.text).monospacedDigit()
+                                Text("국가지점번호").font(.kakao(size: 10.5)).foregroundStyle(t.muted)
+                                Text(npn).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text).monospacedDigit()
                             }
                         }
                     }
                     if let msg = climb.saveResult {
                         Text(msg)
-                            .font(.system(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
+                            .font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
                             .padding(.horizontal, 14).padding(.vertical, 10)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(t.accent, in: RoundedRectangle(cornerRadius: 12))
@@ -140,7 +140,7 @@ struct ExploreView: View {
     // 상단 오버레이 박스 — 웹 title-block/npn-box: 반투명 흰(다크는 검정) 사각형 배경.
     private func overlayBox<V: View>(_ t: Theme, @ViewBuilder _ content: () -> V) -> some View {
         content()
-            .font(.system(size: 14))
+            .font(.kakao(size: 14))
             .padding(.horizontal, 13).padding(.vertical, 7)
             .background(scheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.6))
             .overlay(scheme == .dark ? Rectangle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) : nil)
@@ -149,7 +149,7 @@ struct ExploreView: View {
     // 스케일바 — 라벨 위, ⊔ 브래킷 아래 (웹 ScaleControl 단일 눈금). 지도 위라 그림자로 가독성.
     private func scaleBar(_ label: String, _ width: CGFloat, _ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.system(size: 11, weight: .bold)).foregroundStyle(t.text)
+            Text(label).font(.kakao(size: 11, weight: .bold)).foregroundStyle(t.text)
             ZStack(alignment: .bottom) {
                 HStack {
                     Rectangle().fill(t.text).frame(width: 1.5, height: 6)
@@ -179,7 +179,7 @@ struct ExploreView: View {
     private func ctrlButton(_ icon: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.kakao(size: 16, weight: .semibold))
                 .foregroundStyle(t.text)
                 .frame(width: 42, height: 42)
                 .background(t.elevated.opacity(0.92), in: Circle())
@@ -193,7 +193,7 @@ struct ExploreView: View {
             withAnimation(.easeOut(duration: 0.18)) { searching.toggle() }
         } label: {
             Image(systemName: searching ? "xmark" : "magnifyingglass")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.kakao(size: 17, weight: .semibold))
                 .foregroundStyle(t.text)
                 .frame(width: 42, height: 42)
                 .background(t.elevated.opacity(0.92), in: Circle())
@@ -220,7 +220,7 @@ struct ExploreView: View {
                             HStack {
                                 Text(m.name).foregroundStyle(t.text)
                                 Spacer()
-                                if let e = m.elev { Text("\(e)m").foregroundStyle(t.muted).font(.system(size: 13)) }
+                                if let e = m.elev { Text("\(e)m").foregroundStyle(t.muted).font(.kakao(size: 13)) }
                             }
                             .padding(.horizontal, 14).padding(.vertical, 11)
                         }
@@ -243,10 +243,10 @@ struct ExploreView: View {
         VStack(spacing: 12) {
             HStack(spacing: 8) {
                 Circle().fill(.red).frame(width: 9, height: 9)
-                Text(climb.course?.title ?? "등반 중").font(.system(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                Text(climb.course?.title ?? "등반 중").font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
                 Spacer()
                 Text(fmtClock(climb.elapsed))
-                    .font(.system(size: 16, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
+                    .font(.kakao(size: 16, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
             }
             HStack(spacing: 0) {
                 hudStat(String(format: "%.2f", climb.distance / 1000), "이동(km)", t)
@@ -257,12 +257,12 @@ struct ExploreView: View {
                 guard let draft = climb.finish() else { climb.stop(); return }
                 Task { climb.saveResult = await auth.saveClimb(draft) }
             } label: {
-                Text("등반 종료").font(.system(size: 16, weight: .semibold))
+                Text("등반 종료").font(.kakao(size: 16, weight: .semibold))
                     .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 13)
                     .background(t.accent, in: RoundedRectangle(cornerRadius: 12))
             }
             if let note = climb.note {
-                Text(note).font(.footnote).foregroundStyle(t.muted).frame(maxWidth: .infinity, alignment: .leading)
+                Text(note).font(.kakao(size: 13)).foregroundStyle(t.muted).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(16)
@@ -277,8 +277,8 @@ struct ExploreView: View {
 
     private func hudStat(_ v: String, _ label: String, _ t: Theme) -> some View {
         VStack(spacing: 3) {
-            Text(v).font(.system(size: 20, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
-            Text(label).font(.system(size: 11)).foregroundStyle(t.muted)
+            Text(v).font(.kakao(size: 20, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
+            Text(label).font(.kakao(size: 11)).foregroundStyle(t.muted)
         }
         .frame(maxWidth: .infinity)
     }
@@ -299,14 +299,14 @@ struct ExploreView: View {
                     // 헤더 — 웹 mi-head: 이름 + 고도 + (우측)관리 알약(탭 시 전화번호 복사)
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(m.name).font(.system(size: 18, weight: .bold)).foregroundStyle(t.text)
+                            Text(m.name).font(.kakao(size: 18, weight: .bold)).foregroundStyle(t.text)
                             if let e = m.elev {
-                                Text("\(e)m").font(.system(size: 13, weight: .bold)).foregroundStyle(t.muted)
+                                Text("\(e)m").font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.muted)
                             }
                             Spacer()
                             if let mgr = info?.manager, !mgr.isEmpty {
                                 Button { withAnimation(.easeOut(duration: 0.12)) { telShown.toggle() } } label: {
-                                    Text("관리 · \(mgr)").font(.system(size: 12, weight: .bold)).foregroundStyle(t.muted)
+                                    Text("관리 · \(mgr)").font(.kakao(size: 12, weight: .bold)).foregroundStyle(t.muted)
                                         .padding(.horizontal, 12).padding(.vertical, 5)
                                         .background(t.elevated, in: Capsule())
                                         .overlay(Capsule().strokeBorder(t.line))
@@ -324,18 +324,18 @@ struct ExploreView: View {
                     if !weather.isEmpty { weatherStrip(m.name, t) }
                     Divider().overlay(t.line).padding(.vertical, 2)
                     HStack(spacing: 8) {
-                        Text("등산로").font(.system(size: 17, weight: .semibold)).foregroundStyle(t.text)
+                        Text("등산로").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
                         if !courses.isEmpty {
-                            Text("\(courses.count)").font(.system(size: 14, weight: .semibold)).foregroundStyle(t.muted)
+                            Text("\(courses.count)").font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.muted)
                         }
                         Spacer()
-                        Text("지도 다운").font(.system(size: 13, weight: .medium))
+                        Text("지도 다운").font(.kakao(size: 13, weight: .medium))
                             .foregroundStyle(t.onAccent)
                             .padding(.horizontal, 12).padding(.vertical, 6)
                             .background(t.accent, in: Capsule())
                     }
                     if courses.isEmpty {
-                        Text("코스 정보를 불러오는 중…").font(.system(size: 13)).foregroundStyle(t.muted)
+                        Text("코스 정보를 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
                     } else {
                         VStack(spacing: 9) {
                             ForEach(courses) { c in courseRow(c, t) }
@@ -346,7 +346,7 @@ struct ExploreView: View {
                         Text("© metaphr · 기저 지도: Protomaps · © OpenStreetMap")
                         Text("등산로는 개략적인 샘플 데이터입니다. 실제 산행 시 공식 지도를 확인하세요.")
                     }
-                    .font(.system(size: 11)).foregroundStyle(t.muted).lineSpacing(2)
+                    .font(.kakao(size: 11)).foregroundStyle(t.muted).lineSpacing(2)
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, 18).padding(.bottom, 16)
@@ -382,7 +382,7 @@ struct ExploreView: View {
             Task { try? await Task.sleep(nanoseconds: 1_200_000_000); telCopied = false }
         } label: {
             Text(telCopied ? "복사됨 ✓" : tel)
-                .font(.system(size: 13, weight: .bold)).foregroundStyle(t.text)
+                .font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text)
                 .padding(.horizontal, 14).padding(.vertical, 8)
                 .background(t.elevated, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(t.line))
@@ -402,7 +402,7 @@ struct ExploreView: View {
             withAnimation(.easeOut(duration: 0.15)) { descExpanded.toggle() }
         } label: {
             (Text(shown).foregroundColor(t.text) + more)
-                .font(.system(size: 13)).lineSpacing(3)
+                .font(.kakao(size: 13)).lineSpacing(3)
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -413,14 +413,14 @@ struct ExploreView: View {
     // 오늘 날씨 — "{산} 부근 오늘 날씨" + 프레임 카드(시간별) + 발표기준 캡션 (weather.js renderStrip).
     private func weatherStrip(_ name: String, _ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("\(name) 부근 오늘 날씨").font(.system(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+            Text("\(name) 부근 오늘 날씨").font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.muted)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(weather) { h in wxChip(h, t) }
                 }
             }
             Text("\(WeatherService.baseLabel) · 가장 가까운 관측지 기준")
-                .font(.system(size: 11)).foregroundStyle(t.muted)
+                .font(.kakao(size: 11)).foregroundStyle(t.muted)
         }
         .padding(.top, 2)
     }
@@ -429,12 +429,12 @@ struct ExploreView: View {
         let s = WeatherService.state(h)
         return VStack(spacing: 3) {
             Text(h.isNow ? "지금" : "\(h.hh)시")
-                .font(.system(size: 11, weight: .semibold)).foregroundStyle(h.isNow ? t.text : t.muted)
-            Image(systemName: s.symbol).font(.system(size: 16)).foregroundStyle(t.text).frame(height: 20)
+                .font(.kakao(size: 11, weight: .semibold)).foregroundStyle(h.isNow ? t.text : t.muted)
+            Image(systemName: s.symbol).font(.kakao(size: 16)).foregroundStyle(t.text).frame(height: 20)
             Text(h.tmp.map { "\(Int($0.rounded()))°" } ?? "–")
-                .font(.system(size: 13, weight: .bold)).foregroundStyle(t.text)
+                .font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text)
             Text(h.pty > 0 ? (h.pop.map { "\($0)%" } ?? " ") : " ")
-                .font(.system(size: 10)).foregroundStyle(t.muted)
+                .font(.kakao(size: 10)).foregroundStyle(t.muted)
         }
         .frame(minWidth: 52)
         .padding(.vertical, 7).padding(.horizontal, 8)
@@ -455,10 +455,10 @@ struct ExploreView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top, spacing: 7) {
                             Text("\(c.no ?? 0)")
-                                .font(.system(size: 11.5, weight: .bold)).foregroundStyle(t.onAccent)
+                                .font(.kakao(size: 11.5, weight: .bold)).foregroundStyle(t.onAccent)
                                 .frame(minWidth: 19, minHeight: 19).padding(.horizontal, 4)
                                 .background(t.accent, in: Capsule())
-                            Text(c.name).font(.system(size: 15, weight: .bold)).foregroundStyle(t.text)
+                            Text(c.name).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
                                 .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 4)
                             difBadge(c, t)
@@ -469,9 +469,9 @@ struct ExploreView: View {
                             if let h = c.time_hr { Text("\(fmtNum(h))h") }
                             if let sf = c.surface, !sf.isEmpty { Text(sf) }
                         }
-                        .font(.system(size: 12)).foregroundStyle(t.muted)
+                        .font(.kakao(size: 12)).foregroundStyle(t.muted)
                         if let d = c.desc, !d.isEmpty {
-                            Text(d).font(.system(size: 12.5)).foregroundStyle(t.muted).lineSpacing(2)
+                            Text(d).font(.kakao(size: 12.5)).foregroundStyle(t.muted).lineSpacing(2)
                         }
                     }
                     if let p = c.profile, p.count > 1 {
@@ -490,7 +490,7 @@ struct ExploreView: View {
     // 난이도 배지 — "보통 ▮▮▯" (라벨 + 3칸 바 미터). 웹 difLabel + dmeter.
     private func difBadge(_ c: Course, _ t: Theme) -> some View {
         HStack(spacing: 5) {
-            Text(c.difLabel).font(.system(size: 11, weight: .bold)).foregroundStyle(t.muted)
+            Text(c.difLabel).font(.kakao(size: 11, weight: .bold)).foregroundStyle(t.muted)
             HStack(spacing: 2) {
                 ForEach(0..<3, id: \.self) { i in
                     RoundedRectangle(cornerRadius: 1).fill(i < c.difLevel ? t.text : t.line)

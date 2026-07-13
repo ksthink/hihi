@@ -26,10 +26,10 @@ struct DeungView: View {
 
     private func header(_ t: Theme) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("등반").font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
+            Text("등반").font(.kakao(size: 30, weight: .bold)).foregroundStyle(t.text)
             if let mtn = climb.mountainName, !mtn.isEmpty {
                 Text("|").foregroundStyle(t.line)
-                Text(mtn).font(.system(size: 16, weight: .medium)).foregroundStyle(t.muted)
+                Text(mtn).font(.kakao(size: 16, weight: .medium)).foregroundStyle(t.muted)
             }
             Spacer()
         }
@@ -40,7 +40,7 @@ struct DeungView: View {
     private func card(_ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             if let c = climb.course {
-                Text(c.title).font(.system(size: 18, weight: .bold)).foregroundStyle(t.text)
+                Text(c.title).font(.kakao(size: 18, weight: .bold)).foregroundStyle(t.text)
 
                 statRow(t, [
                     (c.distance_km.map { String(format: "%.1f", $0) } ?? "–", "거리(km)"),
@@ -66,18 +66,18 @@ struct DeungView: View {
                     climb.start()
                     onStart()
                 } label: {
-                    Text("등반 시작").font(.system(size: 16, weight: .semibold))
+                    Text("등반 시작").font(.kakao(size: 16, weight: .semibold))
                         .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 13)
                         .background(t.accent, in: RoundedRectangle(cornerRadius: 12))
                 }
                 if loginHint {
                     Text("등반 기록을 저장하려면 기록 탭에서 로그인하세요.")
-                        .font(.footnote).foregroundStyle(t.muted)
+                        .font(.kakao(size: 13)).foregroundStyle(t.muted)
                 }
             } else {
-                Text("선택된 코스가 없습니다").font(.system(size: 16, weight: .semibold)).foregroundStyle(t.text)
+                Text("선택된 코스가 없습니다").font(.kakao(size: 16, weight: .semibold)).foregroundStyle(t.text)
                 Text("탐험 탭에서 등산로를 선택하면 여기에 표시됩니다.")
-                    .font(.system(size: 13)).foregroundStyle(t.muted)
+                    .font(.kakao(size: 13)).foregroundStyle(t.muted)
             }
         }
         .padding(18)
@@ -99,8 +99,8 @@ struct DeungView: View {
 
     private func statCell(_ v: String, _ label: String, _ t: Theme) -> some View {
         VStack(spacing: 4) {
-            Text(v).font(.system(size: 19, weight: .bold)).foregroundStyle(t.text)
-            Text(label).font(.system(size: 11)).foregroundStyle(t.muted)
+            Text(v).font(.kakao(size: 19, weight: .bold)).foregroundStyle(t.text)
+            Text(label).font(.kakao(size: 11)).foregroundStyle(t.muted)
         }
         .frame(maxWidth: .infinity)
     }
@@ -115,7 +115,7 @@ struct DeungView: View {
                 }
             }
             .frame(height: 23, alignment: .center)
-            Text(diff ?? "난이도").font(.system(size: 11)).foregroundStyle(t.muted)
+            Text(diff ?? "난이도").font(.kakao(size: 11)).foregroundStyle(t.muted)
         }
     }
 }
