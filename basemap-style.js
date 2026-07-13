@@ -50,13 +50,18 @@ const URBAN_KINDS = {
   "문화·체육": ["museum", "library", "stadium", "arts_centre", "theatre", "sports_centre"],
 };
 
-export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDisplay = null) {
+// baseMode: "terrain"(기본) = 지형 전용 — OSM 벡터 채움/도시POI/건물/경계를 걷어내고
+//   배경 + 음영기복 + 최소 오리엔테이션(물길·이름, 얇은 도로, 지명·사찰 라벨, 등산 편의시설)만.
+//   저데이터·저배터리 취지: 드로우콜을 줄이고 지형(음영+등고선)을 주 정보로 읽게 한다.
+//   "osm" = 종전 전체 basemap (들머리 접근 등 도로 맥락 필요 시 토글).
+export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDisplay = null, baseMode = "terrain") {
   // 카테고리 설정 (정규화 완료 형태). 설정 변경 반영 = buildStyle 재호출(setStyle).
   const P = normPoiDisplay(poiDisplay);
   // 도시 POI(poi-urban) — 켜진 카테고리 중 최저 줌이 레이어 minzoom, 나머지는 필터 게이트
   const urbanZooms = Object.keys(URBAN_KINDS).map((c) => P[c].zoom ?? 99);
   const urbanMin = Math.min(...urbanZooms);
   const dark = theme === "dark";
+  const terrain = baseMode === "terrain";
   // 흑백 가독성 원칙: 색이 없으므로 "명도 계단"이 유일한 분리 수단.
   // 지표 클래스마다 뚜렷한 밝기 단계를 배정 — 라이트: 시가지(밝음) > 풀 > 공원 > 물(어두움).
   // 산지·지형 표현은 hillshade(음영기복)가 전담한다. OSM 숲 폴리곤은 한국에서 경계가
@@ -66,14 +71,28 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         bg: "#000000", earth: "#0d0d0d", grass: "#131313",
         park: "#232323", water: "#303030", roadCasing: "#000000", road: "#424242",
         hw: "#585858", path: "#a3a3a3", building: "#171717", boundary: "#4a4a4a",
-        label: "#d9d9d9", halo: "#000000"
+        label: "#d9d9d9", halo: "#000000",
+        // 지형 전용 도로선(케이싱 없이 단선) — 검정 배경 위 은은한 회색 오리엔테이션
+        troad: "#3a3a3a", troadHw: "#4f4f4f"
       }
     : {
         bg: "#ffffff", earth: "#f4f4f4", grass: "#ececec",
         park: "#e3e3e3", water: "#c9c9c9", roadCasing: "#c2c2c2", road: "#ffffff",
         hw: "#e0e0e0", path: "#3f3f3f", building: "#e4e4e4", boundary: "#b5b5b5",
-        label: "#2b2b2b", halo: "#ffffff"
+        label: "#2b2b2b", halo: "#ffffff",
+        // 지형 전용 도로선(케이싱 없이 단선) — 흰 배경 위 은은한 회색 오리엔테이션
+        troad: "#d0d0d0", troadHw: "#bcbcbc"
       };
+
+  // 지형 전용에서 제거하는 OSM 벡터 레이어 — 채움(earth/landcover/landuse)·건물·경계·
+  // 도시POI·도로 케이싱·부가 라벨. 남기는 것: 음영·물(면+선+이름)·얇은 도로·등산로(paths)·
+  // 편의시설(화장실·식수·주차·안내)·사찰·동네/지명 라벨. (등고선·루트·스팟은 app.js 오버레이)
+  const TERRAIN_DROP = new Set([
+    "earth", "landcover-grass", "landuse-park", "landuse-farm", "roads-casing",
+    "rail", "buildings", "boundaries", "road-names", "poi-urban", "bus-stops",
+    "stations", "admin-labels"
+  ]);
+  const dropTerrain = (arr) => terrain ? arr.filter((l) => !TERRAIN_DROP.has(l.id)) : arr;
 
   return {
     version: 8,
@@ -95,7 +114,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         }
       } : {})
     },
-    layers: [
+    layers: dropTerrain([
       { id: "background", type: "background", paint: { "background-color": C.bg } },
       { id: "earth", type: "fill", source: "protomaps", "source-layer": "earth", paint: { "fill-color": C.earth } },
       {
@@ -148,9 +167,15 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         id: "roads", type: "line", source: "protomaps", "source-layer": "roads",
         filter: ["in", "kind", "highway", "major_road", "medium_road", "minor_road"],
         layout: { "line-cap": "round", "line-join": "round" },
+        // 지형 전용: 케이싱 레이어를 빼므로 단선이 스스로 보여야 함 — 흰 배경에 묻히는
+        // C.road(흰색) 대신 은은한 회색(troad)으로, 폭도 얇게 낮춰 배경 오리엔테이션에 머문다.
         paint: {
-          "line-color": ["match", ["get", "kind"], "highway", C.hw, C.road],
-          "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 16, 5]
+          "line-color": terrain
+            ? ["match", ["get", "kind"], "highway", C.troadHw, C.troad]
+            : ["match", ["get", "kind"], "highway", C.hw, C.road],
+          "line-width": terrain
+            ? ["interpolate", ["linear"], ["zoom"], 10, 0.5, 16, 2.4]
+            : ["interpolate", ["linear"], ["zoom"], 10, 0.8, 16, 5]
         }
       },
       {
@@ -366,6 +391,6 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         // 헤일로를 넉넉히 — 흑백에서 라벨과 선형이 겹칠 때 분리력은 헤일로가 좌우
         paint: { "text-color": C.label, "text-halo-color": C.halo, "text-halo-width": 1.8 }
       }
-    ]
+    ])
   };
 }

@@ -1,18 +1,15 @@
-/* ── 폰트: Kakao Small Sans (Light 300 / Regular 400 / Bold 700) ──
-   로컬 번들(fonts/) — CDN 미의존. iOS 네이티브 이식 시 이 파일들을 앱 번들에 그대로 포함. */
+/* ── UI 폰트: MonaS12 (Regular 400 / Bold 700) — 웨이트 2종 ──
+   로컬 번들(fonts/) — CDN 미의존. iOS 네이티브 이식 시 동일 폰트를 앱 번들에 포함.
+   원본 ttf(Regular 8.9MB)는 한글+라틴+기호 범위로 woff2 서브셋(각 ~140KB) — 저데이터.
+   font-weight 300(light) 요청은 브라우저 폰트 매칭으로 400 face 로 폴백(속성에 따라 자동). */
 @font-face {
-  font-family: "KakaoSmallSans";
-  src: url("fonts/KakaoSmallSans-Light.woff2") format("woff2");
-  font-weight: 300; font-style: normal; font-display: swap;
-}
-@font-face {
-  font-family: "KakaoSmallSans";
-  src: url("fonts/KakaoSmallSans-Regular.woff2") format("woff2");
+  font-family: "MonaS12";
+  src: url("fonts/MonaS12-subset.woff2") format("woff2");
   font-weight: 400; font-style: normal; font-display: swap;
 }
 @font-face {
-  font-family: "KakaoSmallSans";
-  src: url("fonts/KakaoSmallSans-Bold.woff2") format("woff2");
+  font-family: "MonaS12";
+  src: url("fonts/MonaS12-Bold-subset.woff2") format("woff2");
   font-weight: 700; font-style: normal; font-display: swap;
 }
 /* 지도 라벨용(한글): localIdeographFontFamily 가 canvas 렌더에 사용. 자체 호스팅 */
@@ -62,7 +59,7 @@
   --card-badge: rgba(255, 255, 255, 0.14);
 }
 
-html, body { height: 100%; font-family: "KakaoSmallSans", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; font-weight: 400; color: var(--text); }
+html, body { height: 100%; font-family: "MonaS12", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; font-weight: 400; color: var(--text); }
 
 /* ── 데스크톱: 시뮬레이터 배경 (무채색) ─────────────── */
 #frame-bg {
@@ -533,6 +530,7 @@ footer .warn { margin-top: 6px; }
 .mi-desc { font-size: 13px; line-height: 1.6; color: var(--text); margin: 0; word-break: keep-all; }
 .mi-desc.open { cursor: pointer; }
 .mi-more { border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 2px; }
+.mi-sun { margin-left: auto; display: inline-flex; align-items: center; gap: 14px; font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .mi-mgr { position: relative; display: inline-flex; align-items: center; margin-left: auto; }
 .mi-mgr-btn { border: 1px solid var(--line); background: var(--elevated); color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
 .mi-tel { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; border: 1px solid var(--line); background: var(--elevated); color: var(--text); font-family: inherit; font-size: 13px; font-weight: 700; border-radius: 10px; padding: 8px 14px; cursor: pointer; letter-spacing: .3px; white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.24); }

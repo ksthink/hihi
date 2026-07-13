@@ -13,12 +13,13 @@ const BASE = process.env.HIHEIGHT_BASE || "http://localhost:8890";
 const OUT = new URL("./HiHeight/Resources/", import.meta.url);
 mkdirSync(OUT, { recursive: true });
 
-function make(theme) {
+function make(theme, baseMode) {
   const style = buildStyle(
     `${BASE}/pmtiles/kr-base.pmtiles`,
     theme,
     `${BASE}/pmtiles/kr-terrain.pmtiles`,
     null, // poiDisplay 기본값 (스파이크). 본 이식에선 R2 config/poi-display.json 반영.
+    baseMode, // "terrain"(지형 전용) | "osm"(전체 basemap) — 앱 지도 컨트롤 토글이 파일명으로 선택.
   );
   // 글리프: 웹의 "/fonts/{fontstack}/{range}.pbf" 상대경로 → 프록시 절대 URL.
   style.glyphs = `${BASE}/fonts/{fontstack}/{range}.pbf`;
@@ -157,8 +158,13 @@ function make(theme) {
   return JSON.stringify(style, null, 2);
 }
 
+// 테마 2 × 모드 2 = 4벌. 지형 전용은 접미사 없음(기본), OSM 은 "-osm".
+// 앱(ExploreView)이 scheme·baseMode 로 basemap-{theme}[-osm].json 리소스를 고른다.
 for (const theme of ["light", "dark"]) {
-  const file = new URL(`basemap-${theme}.json`, OUT);
-  writeFileSync(file, make(theme));
-  console.log("wrote", file.pathname);
+  for (const mode of ["terrain", "osm"]) {
+    const suffix = mode === "osm" ? "-osm" : "";
+    const file = new URL(`basemap-${theme}${suffix}.json`, OUT);
+    writeFileSync(file, make(theme, mode));
+    console.log("wrote", file.pathname);
+  }
 }

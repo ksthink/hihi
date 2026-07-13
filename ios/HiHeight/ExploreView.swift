@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 // 탐험 탭 — 지도 + 검색 + 바텀시트(산 소개). 웹 index.html #app(탐험) 구성 재현.
 // 코스 목록·스파크라인·날씨·국가지점번호는 후속 슬라이스(M1-S3/M2-S2)에서 카드에 채운다.
@@ -9,6 +8,9 @@ struct ExploreView: View {
     @ObservedObject var auth: AuthStore          // 등반 종료 시 기록 저장
     @Environment(\.colorScheme) private var scheme
     @AppStorage("hiheight-theme") private var themePref = "system"
+    // 기저 모드: 지형 전용(기본) ⇄ OSM 전체 basemap. 웹 baseMode 와 동일 개념.
+    // 스타일 파일명으로 반영 → 토글 시 basemap-{theme}[-osm].json 리소스를 교체 로드.
+    @AppStorage("hiheight-basemode") private var baseMode = "terrain"
 
     @State private var locateTick = 0
     @State private var courseFitTick = 0              // 코스 탭 → 지도 fitBounds
@@ -17,9 +19,6 @@ struct ExploreView: View {
     @State private var query = ""
     @State private var detent: SheetDetent = .peek     // 바텀시트 3단계
     @State private var sheetDrag: CGFloat = 0           // 드래그 실시간 오프셋(+아래 -위)
-    @State private var descExpanded = false
-    @State private var telShown = false
-    @State private var telCopied = false
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
     @State private var weather: [WeatherHour] = []
@@ -45,7 +44,7 @@ struct ExploreView: View {
             let fullH = geo.size.height + geo.safeAreaInsets.top + geo.safeAreaInsets.bottom
             let peek = min(330, max(248, fullH * 0.32))
             ZStack(alignment: .top) {
-                MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
+                MapView(styleResource: "basemap-\(scheme == .dark ? "dark" : "light")\(baseMode == "osm" ? "-osm" : "")",
                         mountain: catalog.selected, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
@@ -63,8 +62,12 @@ struct ExploreView: View {
                         .allowsHitTesting(false)
                 }
 
-                // 우측 지도 컨트롤 — 테마 토글 + 현재위치(나침반 통합). 웹 bottom-right 대응.
+                // 우측 지도 컨트롤 — 지형/OSM 토글 + 테마 토글 + 현재위치(나침반 통합). 웹 bottom-right 대응.
                 VStack(spacing: 10) {
+                    // 지형 전용 ⇄ OSM. 현재 상태를 아이콘으로: 지형=산, OSM=지도.
+                    ctrlButton(baseMode == "osm" ? "map.fill" : "mountain.2.fill", t) {
+                        baseMode = baseMode == "terrain" ? "osm" : "terrain"
+                    }
                     ctrlButton(scheme == .dark ? "sun.max.fill" : "moon.fill", t) {
                         themePref = scheme == .dark ? "light" : "dark"
                     }
@@ -141,7 +144,6 @@ struct ExploreView: View {
             async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
             async let inf = InfoLoader.load(m.id)
             async let wx = WeatherService.fetch(lat: m.center[1], lon: m.center[0])
-            descExpanded = false; telShown = false
             courses = await cs
             info = await inf
             weather = await wx
@@ -327,30 +329,18 @@ struct ExploreView: View {
             if let m = catalog.selected {
               ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    // 헤더 — 웹 mi-head: 이름 + 고도 + (우측)관리 알약(탭 시 전화번호 복사)
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(m.name).font(.kakao(size: 18, weight: .bold)).foregroundStyle(t.text)
-                            if let e = m.elev {
-                                Text("\(e)m").font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.muted)
-                            }
-                            Spacer()
-                            if let mgr = info?.manager, !mgr.isEmpty {
-                                Button { withAnimation(.easeOut(duration: 0.12)) { telShown.toggle() } } label: {
-                                    Text("관리 · \(mgr)").font(.kakao(size: 12, weight: .bold)).foregroundStyle(t.muted)
-                                        .padding(.horizontal, 12).padding(.vertical, 5)
-                                        .background(t.elevated, in: Capsule())
-                                        .overlay(Capsule().strokeBorder(t.line))
-                                }
-                                .buttonStyle(.plain)
-                            }
+                    // 헤더 — 이름 + 고도 + (우측)일출/일몰. 관리 주체·산 설명은 미표시(데이터는 계속 로드)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(m.name).font(.kakao(size: 18, weight: .bold)).foregroundStyle(t.text)
+                        if let e = m.elev {
+                            Text("\(e)m").font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.muted)
                         }
-                        if telShown, let tel = info?.manager_tel, !tel.isEmpty {
-                            HStack { Spacer(); telPill(tel, t) }
+                        Spacer()
+                        if let sun = SunTimes.today(lat: m.center[1], lon: m.center[0]) {
+                            Text("일출 \(sun.rise)   일몰 \(sun.set)")
+                                .font(.kakao(size: 12.5, weight: .bold)).foregroundStyle(t.muted)
+                                .fixedSize()
                         }
-                    }
-                    if let desc = info?.description, !desc.isEmpty {
-                        descView(desc, t)
                     }
                     if !weather.isEmpty { weatherStrip(m.name, t) }
                     Divider().overlay(t.line).padding(.vertical, 2)
@@ -408,42 +398,6 @@ struct ExploreView: View {
                     }
                 }
         )
-    }
-
-    // 관리 전화번호 알약 — 웹 mi-tel (탭하면 클립보드 복사 + "복사됨 ✓").
-    private func telPill(_ tel: String, _ t: Theme) -> some View {
-        Button {
-            UIPasteboard.general.string = tel
-            telCopied = true
-            Task { try? await Task.sleep(nanoseconds: 1_200_000_000); telCopied = false }
-        } label: {
-            Text(telCopied ? "복사됨 ✓" : tel)
-                .font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(t.elevated, in: RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(t.line))
-                .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // 산 설명 + 더 읽기 — 웹 mi-desc/mi-more (100자 초과 시 자르고 인라인 버튼, 탭하면 펼침/접힘).
-    private func descView(_ desc: String, _ t: Theme) -> some View {
-        let long = desc.count > 100
-        let shown = (descExpanded || !long)
-            ? desc
-            : String(desc.prefix(100)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
-        let more = long ? Text(descExpanded ? "  접기" : " 더 읽기").underline().foregroundColor(t.muted) : Text("")
-        return Button {
-            withAnimation(.easeOut(duration: 0.15)) { descExpanded.toggle() }
-        } label: {
-            (Text(shown).foregroundColor(t.text) + more)
-                .font(.kakao(size: 13)).lineSpacing(3)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(.plain)
     }
 
     // 오늘 날씨 — "{산} 부근 오늘 날씨" + 프레임 카드(시간별) + 발표기준 캡션 (weather.js renderStrip).

@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-07-14
+
+지형 전용 기저 모드·정보 카드 정리·UI 폰트 MonaS12 전환·일출/일몰 — 웹·네이티브 동시 반영.
+
+### 생성 / 추가
+- **지형 전용 기저 모드 + OSM 토글**: 저데이터·저배터리 취지로 OSM 벡터 채움·건물·도시POI·경계를 걷어내고 음영기복 + 최소 오리엔테이션(물길·얇은 도로·지명·사찰·편의시설)만 남긴 기저(11 레이어). 기본값 = 지형 전용, 토글로 OSM 전체(39 레이어) 복귀. 웹 `basemap-style.js`(`buildStyle` 5번째 인자 `baseMode`, 지형 레이어 필터 `TERRAIN_DROP`, 케이싱 없는 단선 도로색 `troad`)·`app.js`(`baseMode` 상태·`buildCurrentStyle` 헬퍼·`BaseControl` 토글 버튼·`applyBaseMode`). 네이티브 `gen-style.mjs`(테마×모드 4벌 `basemap-{theme}[-osm].json`)·`ExploreView.swift`(`@AppStorage("hiheight-basemode")`·`styleResource` 조립·지도 컨트롤 토글)
+- **일출·일몰 표시**: 탐험 탭 산 소개 카드 헤더 우측에 `일출 HH:MM  일몰 HH:MM`(로컬 계산·오프라인·네트워크 불필요, Almanac for Computers 알고리즘, KST). 웹 `app.js` `sunTimes()` + `ios/HiHeight/SunTimes.swift`(신규, 동일 로직 포팅)
+- **UI 폰트 MonaS12**: `fonts/MonaS12.ttf`·`MonaS12-Bold.ttf`(원본 2 weight) 도입. 웹은 한글+라틴 서브셋 woff2(`MonaS12-subset.woff2`·`MonaS12-Bold-subset.woff2`, 각 ~140KB), 네이티브는 서브셋 ttf(`Resources/fonts/MonaS12*.ttf`, 8.9MB→1.7MB·3.0MB→1.6MB). 웨이트 속성 매핑(semibold+ → Bold, 그 외 → Regular)
+
+### 수정 / 변경
+- **관리 주체 토글·산 설명 미표시**: 산 소개 카드에서 관리 알약(전화 토글)·산 설명(더 읽기) 렌더 제거(표시만 숨김, `mountain_info` 로딩은 유지 — 재노출 시 렌더만 복구). 웹 `app.js` `renderMountainInfo` 축소, 네이티브 `ExploreView.swift` infoSheet 헤더 정리(`telPill`·`descView`·표시 상태 제거, 미사용 `import UIKit` 정리)
+- **UI 폰트 전면 교체(→MonaS12)**: 웹 `style.css`(`@font-face` MonaS12 2 weight + body `font-family`, `font-weight:300` 요청은 브라우저 폰트 매칭으로 400 폴백), 네이티브 `Font+Kakao.swift`(`.kakao` 매핑 YK Green Forest→MonaS12)·`project.yml`(`UIAppFonts`)
+- **미사용 폰트 정리**: KakaoSmallSans(웹 woff2 3 + 네이티브 ttf 3)·YK Green Forest ttf 3·Mulmaru(잔여 사본 포함) 삭제. `README.md` UI 폰트 표기 MonaS12로 갱신
+
 ## 2026-07-13
 
 iOS 네이티브 앱(`ios/`) 이식 — S1 스파이크부터 4탭 기능·디자인 웹 동등까지. 개발환경 EC2→맥북 이전.

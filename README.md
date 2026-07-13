@@ -170,7 +170,7 @@ bash scripts/setup_admin.sh                    # 최초 1회: .venv + go-pmtiles
 | 오프라인 팩 파일 | **Cloudflare R2** (`packs/<산코드>/`) | egress 무료 · 브라우저 직접 fetch(R2 CORS) |
 | 지도 라벨 글리프 | **리포 내 `fonts/`** (same-origin) | 나눔고딕코딩 라틴 글리프(PBF) |
 | 지도 한글 폰트 | **리포 내 `fonts/`** (`.woff2`) | 나눔고딕코딩 (localIdeographFontFamily) |
-| UI 폰트 | **리포 내 `fonts/`** (`.woff2`) | KakaoSmallSans |
+| UI 폰트 | **리포 내 `fonts/`** (`.woff2`) | MonaS12 (한글+라틴 서브셋, 2 weight) |
 
 **지도 라벨 폰트 구조** (참고)
 - 한글·CJK → `localIdeographFontFamily` 가 기기 canvas 로 렌더 (자체 호스팅 woff2)
@@ -195,7 +195,7 @@ hihi/
 ├── npn.js                국가지점번호 변환 (WGS84 → UTM-K/EPSG:5179)
 │
 ├── fonts/                자체 호스팅 폰트 + 지도 글리프 (§7)
-│   ├── KakaoSmallSans-*.woff2            UI 폰트
+│   ├── MonaS12*-subset.woff2            UI 폰트 (한글+라틴 서브셋)
 │   ├── NanumGothicCoding-Regular.woff2   지도 한글 폰트
 │   └── Nanum Gothic Coding Regular/*.pbf 지도 라틴 글리프
 │

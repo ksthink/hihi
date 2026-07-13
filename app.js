@@ -84,6 +84,14 @@ function trailColors() {
 // 한 단계 낮춘 짙은 회색 (다크 모드에선 검정 배경 위 중간 회색)
 const climbAheadColor = () => (theme === "dark" ? "#969696" : "#666666");
 
+// ── 기저 모드 (지형 전용 / OSM) ──────────────────────
+// 기본은 지형 전용: 음영기복+등고선+루트+스팟에 최소 오리엔테이션만 — 저데이터·저배터리.
+// 들머리 접근 등 도로 맥락이 필요하면 토글로 OSM 전체 basemap 을 켠다.
+const BASEMODE_KEY = "hiheight-basemode";
+let baseMode = localStorage.getItem(BASEMODE_KEY) === "osm" ? "osm" : "terrain";
+// 모든 setStyle 경로의 단일 진입점 — 라이브 모듈 상태(baseUrl·theme·poiDisplay·baseMode)를 캡처.
+const buildCurrentStyle = () => buildStyle(baseUrl, theme, terrainFor(baseUrl), poiDisplay, baseMode);
+
 // ── PMTiles 프로토콜 등록 ────────────────────────────
 const protocol = new Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
@@ -91,7 +99,7 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 // ── 지도 초기화 ──────────────────────────────────────
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle(baseUrl, theme, terrainFor(baseUrl), poiDisplay),
+  style: buildCurrentStyle(),
   center: [126.990, 37.672], // 카탈로그 로드 전 기본 뷰 (첫 산 로드 시 flyTo)
   zoom: 11.3,
   hash: true,
@@ -142,6 +150,36 @@ class ThemeControl {
   onRemove() { this._c.remove(); }
 }
 map.addControl(new ThemeControl(), "bottom-right");
+
+// 지형 전용 / OSM 토글 — 테마 버튼과 동일 프레임, 그 위에 배치.
+// 아이콘: 지형=산(음영 전용), OSM=접힌 지도. 버튼 상태는 setStyle 을 넘어 유지되므로
+// (컨트롤 DOM 은 스타일에 속하지 않음) applyBaseMode 에서 직접 갱신한다.
+const BASE_ICON = {
+  terrain:
+    '<svg class="icn" viewBox="0 0 24 24" fill="currentColor"><path d="M9.2 8.5l3.1 5.3 1.9-3.1L18 18H4l5.2-9.5z" opacity=".3"/><path d="M14.5 4l6.5 14H8L14.5 4zm0 3.9L10.8 16h7.4L14.5 7.9z"/></svg>',
+  osm:
+    '<svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M9 4.5 3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5 9 4.5z"/><path d="M9 4.5v13M15 6.5v13"/></svg>',
+};
+const baseIcon = (m) => BASE_ICON[m === "osm" ? "osm" : "terrain"];
+const baseTitle = (m) => (m === "terrain" ? "지형 전용 — 탭하면 OSM 지도" : "OSM 지도 — 탭하면 지형 전용");
+class BaseControl {
+  onAdd() {
+    const div = document.createElement("div");
+    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "base-toggle";
+    btn.setAttribute("aria-label", "지형/지도 전환");
+    btn.title = baseTitle(baseMode);
+    btn.innerHTML = baseIcon(baseMode);
+    btn.addEventListener("click", () => applyBaseMode(baseMode === "terrain" ? "osm" : "terrain"));
+    div.appendChild(btn);
+    this._c = div;
+    return div;
+  }
+  onRemove() { this._c.remove(); }
+}
+map.addControl(new BaseControl(), "bottom-right");
 
 // ── 지도 POI 아이콘 (흑백 뱃지, 런타임 캔버스 생성) ────
 // 외부 스프라이트/CDN 없이 styleimagemissing 때 즉석 생성 — 오프라인·테마 전환 자동 대응.
@@ -304,7 +342,7 @@ async function loadPoiDisplay() {
     // (테마 토글과 동일 경로: styledata 핸들러가 오버레이 재부착)
     // 초기 로드 전이면 load 이후로 미룸. isStyleLoaded() 는 타일 스트리밍 중에도
     // false 라 판별 근거가 못 됨 — load 발생 플래그(mapLoadFired)를 쓴다.
-    const restyle = () => map.setStyle(buildStyle(baseUrl, theme, terrainFor(baseUrl), poiDisplay));
+    const restyle = () => map.setStyle(buildCurrentStyle());
     if (mapLoadFired) restyle();
     else map.once("load", restyle);
   } catch (_) { /* 캐시/기본값 유지 */ }
@@ -781,7 +819,7 @@ function useBaseFor(park) {
   const target = localRegistered[park] ? "local-" + park : PMTILES_URL;
   if (target !== baseUrl) {
     baseUrl = target;
-    map.setStyle(buildStyle(baseUrl, theme, terrainFor(baseUrl), poiDisplay)); // styledata 가 오버레이 재부착
+    map.setStyle(buildCurrentStyle()); // styledata 가 오버레이 재부착
   }
 }
 
@@ -873,42 +911,53 @@ async function copyText(t) {
     const ok = document.execCommand("copy"); ta.remove(); return ok;
   } catch (_) { return false; }
 }
+// 일출·일몰 (로컬 계산 · 오프라인 · 네트워크 불필요) — Almanac for Computers 알고리즘.
+// 입력 lat/lng(도), tz 기본 KST(+9). 반환 { rise, set } "HH:MM" (극야·백야 등 계산불가면 null).
+// iOS 이식: 동일 알고리즘을 SunTimes.swift 로 포팅(데이터 주도 아님, 순수 계산).
+function sunTimes(lat, lng, tz = 9, date = new Date(Date.now() + tz * 3600000)) {
+  const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+  const sin = (d) => Math.sin(d * D2R), cos = (d) => Math.cos(d * D2R), tan = (d) => Math.tan(d * D2R);
+  const asin = (x) => Math.asin(x) * R2D, acos = (x) => Math.acos(x) * R2D, atan = (x) => Math.atan(x) * R2D;
+  const y = date.getUTCFullYear();
+  const N = Math.floor((Date.UTC(y, date.getUTCMonth(), date.getUTCDate()) - Date.UTC(y, 0, 0)) / 86400000);
+  const zenith = 90.833, lngHour = lng / 15;              // 90.833° = 태양 상단연 + 대기굴절
+  const wrap = (v, m) => ((v % m) + m) % m;
+  function calc(rising) {
+    const t = N + ((rising ? 6 : 18) - lngHour) / 24;
+    const M = 0.9856 * t - 3.289;
+    const L = wrap(M + 1.916 * sin(M) + 0.020 * sin(2 * M) + 282.634, 360);
+    let RA = wrap(atan(0.91764 * tan(L)), 360);
+    RA += Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90;   // RA 를 L 과 같은 사분면으로
+    RA /= 15;
+    const sinDec = 0.39782 * sin(L), cosDec = cos(asin(sinDec));
+    const cosH = (cos(zenith) - sinDec * sin(lat)) / (cosDec * cos(lat));
+    if (cosH > 1 || cosH < -1) return null;               // 그 날 해가 안 뜸/안 짐
+    let H = (rising ? 360 - acos(cosH) : acos(cosH)) / 15;
+    const T = H + RA - 0.06571 * t - 6.622;
+    return wrap(wrap(T - lngHour, 24) + tz, 24);
+  }
+  const fmt = (h) => {
+    const m = wrap(Math.round(h * 60), 1440);
+    return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  };
+  const r = calc(true), s = calc(false);
+  return (r == null || s == null) ? null : { rise: fmt(r), set: fmt(s) };
+}
+
 function renderMountainInfo(sec, park, info) {
   const cfg = PARKS[park] || {};
   const name = cfg.label || (info && info.name) || "";
   const elev = (info && info.elev != null) ? info.elev : cfg.elev;
-  const desc = ((info && info.description) || "").trim();
-  const mgr = info && info.manager;
-  const tel = info && info.manager_tel;
-  if (!name || (!desc && !mgr && elev == null)) { sec.hidden = true; sec.innerHTML = ""; return; }
-  const LIMIT = 100;
-  const long = desc.length > LIMIT;
-  let expanded = false, telShown = false;
-  function draw() {
-    const shown = (!long || expanded) ? desc : desc.slice(0, LIMIT).trim() + "…";
-    sec.innerHTML =
-      `<div class="mi-head"><span class="mi-name">${esc(name)}</span>` +
-      (elev != null ? `<span class="mi-elev">${Math.round(elev)}m</span>` : "") +
-      (mgr ? `<span class="mi-mgr"><button class="mi-mgr-btn" type="button">관리 · ${esc(mgr)}</button>` +
-        (telShown && tel ? `<button class="mi-tel" type="button">${esc(tel)}</button>` : "") + `</span>` : "") +
-      `</div>` +
-      (desc ? `<p class="mi-desc${expanded ? " open" : ""}">${esc(shown)}` +
-        (long && !expanded ? ` <button class="mi-more" type="button">더 읽기</button>` : "") + `</p>` : "");
-    sec.hidden = false;
-    const more = sec.querySelector(".mi-more");
-    if (more) more.onclick = (e) => { e.stopPropagation(); expanded = true; draw(); };
-    const descEl = sec.querySelector(".mi-desc");
-    if (descEl && long) descEl.onclick = () => { if (expanded) { expanded = false; draw(); } }; // 본문 누르면 접힘
-    const mgrBtn = sec.querySelector(".mi-mgr-btn");
-    if (mgrBtn) mgrBtn.onclick = () => { telShown = !telShown; draw(); };
-    const telEl = sec.querySelector(".mi-tel");
-    if (telEl) telEl.onclick = async () => {
-      const ok = await copyText(tel);
-      telEl.textContent = ok ? "복사됨 ✓" : tel;
-      if (ok) setTimeout(() => { const e = sec.querySelector(".mi-tel"); if (e) e.textContent = tel; }, 1200);
-    };
-  }
-  draw();
+  // 이름·고도 + (우측)일출/일몰. 관리 주체·산 설명은 미표시(mountain_info 로딩은 유지).
+  if (!name) { sec.hidden = true; sec.innerHTML = ""; return; }
+  const c = cfg.center;
+  const sun = c ? sunTimes(c[1], c[0]) : null;
+  sec.innerHTML =
+    `<div class="mi-head"><span class="mi-name">${esc(name)}</span>` +
+    (elev != null ? `<span class="mi-elev">${Math.round(elev)}m</span>` : "") +
+    (sun ? `<span class="mi-sun"><span>일출 ${sun.rise}</span><span>일몰 ${sun.set}</span></span>` : "") +
+    `</div>`;
+  sec.hidden = false;
 }
 
 // ── 날씨 (기상청 단기예보 · 오프라인 스냅샷) ──────────
@@ -2016,7 +2065,16 @@ function applyTheme(t) {
   theme = t;
   localStorage.setItem(THEME_KEY, t);
   document.documentElement.dataset.theme = t;
-  map.setStyle(buildStyle(baseUrl, t, terrainFor(baseUrl), poiDisplay)); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
+  map.setStyle(buildCurrentStyle()); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
+}
+
+// ── 기저 모드 토글 (지형 전용 ⇄ OSM) ─────────────────
+function applyBaseMode(m) {
+  baseMode = m;
+  localStorage.setItem(BASEMODE_KEY, m);
+  const btn = document.getElementById("base-toggle");
+  if (btn) { btn.innerHTML = baseIcon(m); btn.title = baseTitle(m); }
+  map.setStyle(buildCurrentStyle()); // styledata 핸들러가 오버레이 재부착 (로컬 팩 유지)
 }
 
 // ── 바텀시트 드래그/탭 ───────────────────────────────
