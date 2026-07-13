@@ -412,34 +412,34 @@ struct ExploreView: View {
 
     // 오늘 날씨 — "{산} 부근 오늘 날씨" + 프레임 카드(시간별) + 발표기준 캡션 (weather.js renderStrip).
     private func weatherStrip(_ name: String, _ t: Theme) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("\(name) 부근 오늘 날씨").font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("\(name) 부근 오늘 날씨").font(.kakao(size: 12, weight: .semibold)).foregroundStyle(t.muted)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     ForEach(weather) { h in wxChip(h, t) }
                 }
             }
             Text("\(WeatherService.baseLabel) · 가장 가까운 관측지 기준")
-                .font(.kakao(size: 11)).foregroundStyle(t.muted)
+                .font(.kakao(size: 10)).foregroundStyle(t.muted)
         }
         .padding(.top, 2)
     }
 
     private func wxChip(_ h: WeatherHour, _ t: Theme) -> some View {
         let s = WeatherService.state(h)
-        return VStack(spacing: 3) {
+        return VStack(spacing: 2) {
             Text(h.isNow ? "지금" : "\(h.hh)시")
-                .font(.kakao(size: 11, weight: .semibold)).foregroundStyle(h.isNow ? t.text : t.muted)
-            Image(systemName: s.symbol).font(.kakao(size: 16)).foregroundStyle(t.text).frame(height: 20)
+                .font(.kakao(size: 10, weight: .semibold)).foregroundStyle(h.isNow ? t.text : t.muted)
+            Image(systemName: s.symbol).font(.kakao(size: 13)).foregroundStyle(t.text).frame(height: 16)
             Text(h.tmp.map { "\(Int($0.rounded()))°" } ?? "–")
-                .font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text)
+                .font(.kakao(size: 12, weight: .bold)).foregroundStyle(t.text)
             Text(h.pty > 0 ? (h.pop.map { "\($0)%" } ?? " ") : " ")
-                .font(.kakao(size: 10)).foregroundStyle(t.muted)
+                .font(.kakao(size: 9)).foregroundStyle(t.muted)
         }
-        .frame(minWidth: 52)
-        .padding(.vertical, 7).padding(.horizontal, 8)
-        .background(t.bg, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(h.isNow ? t.text : t.line))
+        .frame(minWidth: 42)
+        .padding(.vertical, 5).padding(.horizontal, 6)
+        .background(t.bg, in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(h.isNow ? t.text : t.line))
     }
 
     // 등산로 카드 — 웹 trail-item(프레임 + 좌측 강조선). 이름·난이도 배지·거리/시간·고도 프로파일.
