@@ -5,25 +5,34 @@ import SwiftUI
 struct ContentView: View {
     @Environment(\.colorScheme) private var scheme
     @StateObject private var catalog = CatalogStore()
+    @State private var tab = 0
 
     init() { Self.styleTabBar() }
 
     var body: some View {
-        TabView {
+        TabView(selection: $tab) {
             ExploreView(catalog: catalog)
-                .tabItem { Label("탐험", systemImage: "safari") }
+                .tabItem { Label("탐험", systemImage: "safari") }.tag(0)
 
-            PlaceholderView(title: "추천", subtitle: "하이하잇 PICK · 공식 추천")
-                .tabItem { Label("추천", systemImage: "star") }
+            RecoView(catalog: catalog, onOpen: openCuration)
+                .tabItem { Label("추천", systemImage: "star") }.tag(1)
 
             PlaceholderView(title: "등반", subtitle: "코스를 골라 산행을 시작하세요")
-                .tabItem { Label("등반", systemImage: "mountain.2") }
+                .tabItem { Label("등반", systemImage: "mountain.2") }.tag(2)
 
             PlaceholderView(title: "기록", subtitle: "나의 산행 이력")
-                .tabItem { Label("기록", systemImage: "clock") }
+                .tabItem { Label("기록", systemImage: "clock") }.tag(3)
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .task { await catalog.load() }
+    }
+
+    // 큐레이션 슬라이드 탭 → 해당 산 선택 후 탐험 탭으로 이동.
+    private func openCuration(_ code: String) {
+        if let m = catalog.mountains.first(where: { $0.id == code }) {
+            catalog.selected = m
+        }
+        tab = 0
     }
 
     // 흑백 탭바 — 선택=accent, 비선택=muted, 배경=surface + 상단 헤어라인.

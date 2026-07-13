@@ -4,6 +4,9 @@ import Foundation
 // 본 이식 배포 시 R2 커스텀 도메인(IOS.md §8-1)으로 교체 예정.
 enum Config {
     static let proxyBase = "http://localhost:8890"
+    // R2 공개 엔드포인트 — config/큐레이션 이미지 직결(웹과 동일). 배포 시 커스텀 도메인(§8-1)으로 교체.
+    static let r2Public = "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev"
+    static var curationsURL: URL? { URL(string: "\(r2Public)/config/curations.json") }
 
     // Supabase — publishable 키는 RLS 로 보호되어 클라이언트 노출 안전(§11).
     static let supabaseURL = "https://durnojryhhsajnlwvdzt.supabase.co"
