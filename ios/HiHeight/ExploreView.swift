@@ -135,6 +135,10 @@ struct ExploreView: View {
             climb.mountainName = m.name
             climb.mountainCode = m.id
             climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
+            if climb.fitRequested {                   // 추천 등 외부 진입 → 코스 범위로 프레이밍
+                climb.fitRequested = false
+                if climb.course?.bbox != nil { courseFitTick += 1; expanded = false }
+            }
         }
     }
 

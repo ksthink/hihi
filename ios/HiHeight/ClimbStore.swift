@@ -21,6 +21,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var mountainName: String?
     @Published var mountainCode: String?  // climb_records.mountain_id 용
     @Published var saveResult: String?    // 종료 후 저장 결과 배너
+    @Published var fitRequested = false   // 추천/외부 진입 시 코스 로드 후 지도 fitBounds 요청
     @Published var recordTrack: [[Double]]?  // 기록 루트 보기 — 지도에 표시할 트랙(없으면 nil)
 
     // 트래킹 세션 상태 (HUD 표시용)

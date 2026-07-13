@@ -37,6 +37,7 @@ struct ContentView: View {
             catalog.selected = m
         }
         climb.recordTrack = nil
+        climb.fitRequested = true       // 코스 로드 후 지도를 코스 범위로 프레이밍
         tab = 0
     }
 

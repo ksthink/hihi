@@ -159,7 +159,8 @@ struct MapView: UIViewRepresentable {
             let bounds = MLNCoordinateBounds(
                 sw: CLLocationCoordinate2D(latitude: b[1], longitude: b[0]),
                 ne: CLLocationCoordinate2D(latitude: b[3], longitude: b[2]))
-            let pad = UIEdgeInsets(top: 90, left: 40, bottom: 300, right: 40)
+            // 가시 영역(시트 위) 에 코스 전체를 꽉 차게: 상단=상단 오버레이 아래, 하단=시트 위.
+            let pad = UIEdgeInsets(top: 96, left: 24, bottom: 306, right: 24)
             mv.setVisibleCoordinateBounds(bounds, edgePadding: pad, animated: true, completionHandler: nil)
         }
 
