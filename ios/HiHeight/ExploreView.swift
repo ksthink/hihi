@@ -11,6 +11,7 @@ struct ExploreView: View {
     @State private var expanded = false
     @State private var courses: [Course] = []
     @State private var selectedCourse: Course?
+    @State private var info: MountainInfo?
 
     private var results: [Mountain] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -54,12 +55,14 @@ struct ExploreView: View {
             }
         }
         .task(id: catalog.selected?.id) {
-            if let code = catalog.selected?.id {
-                courses = await PackLoader.courses(code)
-            } else {
-                courses = []
+            guard let code = catalog.selected?.id else {
+                courses = []; info = nil; selectedCourse = nil; return
             }
-            selectedCourse = courses.first   // 단일 코스는 자동 선택 → 시종점 즉시 표시
+            async let cs = PackLoader.courses(code)   // 팩(프록시)·산정보(Supabase) 병렬
+            async let inf = InfoLoader.load(code)
+            courses = await cs
+            info = await inf
+            selectedCourse = courses.first            // 단일 코스 자동 선택 → 시종점 즉시 표시
         }
     }
 
@@ -136,6 +139,16 @@ struct ExploreView: View {
                     }
                     if let r = m.region {
                         Text(r).font(.system(size: 14)).foregroundStyle(t.muted)
+                    }
+                    if let mgr = info?.manager, !mgr.isEmpty {
+                        Text("관리 · \(mgr)").font(.system(size: 13, weight: .medium)).foregroundStyle(t.muted)
+                    }
+                    if let desc = info?.description, !desc.isEmpty {
+                        Text(desc)
+                            .font(.system(size: 13)).foregroundStyle(t.muted)
+                            .lineSpacing(3)
+                            .lineLimit(expanded ? nil : 2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Divider().overlay(t.line).padding(.vertical, 2)
                     HStack(spacing: 8) {
