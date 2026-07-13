@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var auth = AuthStore()
     @StateObject private var climb = ClimbStore()
     @State private var tab = 0
+    @State private var showSplash = true                            // 인트로 스플래시
     @AppStorage("hiheight-theme") private var themePref = "system"   // system·light·dark (지도 컨트롤 토글)
 
     private let tabs: [(icon: String, label: String)] = [
@@ -27,6 +28,12 @@ struct ContentView: View {
         .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomNav }
         .task { await catalog.load() }
+        .overlay {                                                  // 인트로 스플래시 (앱 시작 시)
+            if showSplash {
+                SplashView(onFinished: { showSplash = false })
+                    .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
+            }
+        }
     }
 
     // 웹 하단 네비 — 평평·불투명 전폭 바(상단 헤어라인), 아이콘+라벨, 선택 강조. 글래스 효과 없음.
