@@ -1,17 +1,11 @@
 import SwiftUI
 
-// 앱 UI 폰트 — 웹과 동일한 KakaoSmallSans(3 weight: Light 300 / Regular 400 / Bold 700).
-// 시스템 폰트(.system) 대체. Kakao 에 없는 중간 굵기는 웹(400/700만 사용)처럼 근접값 매핑:
-//   semibold·heavy·black → Bold, medium·regular → Regular, light·thin → Light.
-// 지도 라벨은 별도(Nanum Gothic Coding 글리프)라 여기서 다루지 않는다.
+// 앱 UI 폰트 — Mulmaru(단일 웨이트) 전면 적용. 모든 UI 텍스트가 이 헬퍼를 통한다.
+// 단일 face 라 요청 굵기(bold 등)는 시스템 합성(faux)으로 근사한다.
+// (함수명 kakao 는 89개 호출부 호환 위해 유지 — 실제 폰트는 Mulmaru.)
+// 지도 라벨은 별도(글리프 파이프라인)라 여기서 다루지 않는다.
 extension Font {
     static func kakao(size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        let name: String
-        switch weight {
-        case .ultraLight, .thin, .light: name = "KakaoSmallSans-Light"
-        case .semibold, .bold, .heavy, .black: name = "KakaoSmallSans-Bold"
-        default: name = "KakaoSmallSans-Regular"
-        }
-        return .custom(name, size: size)
+        .custom("Mulmaru", size: size).weight(weight)
     }
 }

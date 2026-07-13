@@ -50,6 +50,7 @@ targets:
           - KakaoSmallSans-Light.ttf
           - KakaoSmallSans-Regular.ttf
           - KakaoSmallSans-Bold.ttf
+          - Mulmaru.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         # 스파이크: 시뮬레이터가 맥의 admin_server(http://localhost:8890) 프록시로
