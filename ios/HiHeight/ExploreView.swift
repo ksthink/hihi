@@ -20,8 +20,13 @@ struct ExploreView: View {
     @State private var telCopied = false
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
-    @State private var npn: String?
     @State private var weather: [WeatherHour] = []
+
+    // 국가지점번호 — 등반 중(GPS 위치 기준)에만 표시. 탐험(지도) 상태에선 숨김.
+    private var npnCode: String? {
+        guard climb.tracking, let c = climb.currentCoord else { return nil }
+        return NPN.code(lat: c.latitude, lon: c.longitude)
+    }
 
     private var results: [Mountain] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -38,7 +43,6 @@ struct ExploreView: View {
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
                         locateTick: locateTick,
-                        onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) },
                         onScaleChanged: { metersPerPoint = $0 })
                     .ignoresSafeArea()
 
@@ -77,7 +81,7 @@ struct ExploreView: View {
                                 .padding(.top, 6).padding(.trailing, 4)
                         }
                     }
-                    if let npn {
+                    if let npn = npnCode {
                         HStack(spacing: 5) {
                             Image(systemName: "mappin.and.ellipse").font(.system(size: 10))
                             Text("국가지점번호").foregroundStyle(t.muted)

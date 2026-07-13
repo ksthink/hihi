@@ -29,6 +29,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var distance = 0.0         // 이동 거리(m)
     @Published var track: [[Double]] = [] // [lng, lat, 고도(m·없으면 -1), unix초]
     @Published var note: String?         // 위치 접근 실패 등 안내
+    @Published var currentCoord: CLLocationCoordinate2D?  // 최신 GPS 위치(국가지점번호용)
 
     var pointCount: Int { track.count }
 
@@ -68,6 +69,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         manager.stopUpdatingLocation()
         timer?.invalidate(); timer = nil
         tracking = false
+        currentCoord = nil
         let captured = track
         track = []          // 라이브 climb-track 소스 비우기(웹 applyClimbRoute 종료 동작)
         return captured
@@ -87,6 +89,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     func locationManager(_ m: CLLocationManager, didUpdateLocations locs: [CLLocation]) {
         guard tracking, let loc = locs.last else { return }
         if note != nil { note = nil }               // 위치 수신 성공 → 이전 일시 오류 안내 해제
+        currentCoord = loc.coordinate               // 국가지점번호는 매 위치마다 갱신(5m 게이트 이전)
         // 잡음 제거: 직전 점에서 5m 미만 이동은 무시(app.js:1413)
         if let last {
             let d = loc.distance(from: last)
