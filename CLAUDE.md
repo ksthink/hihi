@@ -6,7 +6,7 @@ MapLibre GL JS + PMTiles 기반 **대한민국 등산 웹앱**. 흑백(라이트
 ## 개발 로드맵 (중요)
 - **웹에서 ~80%까지** 현재 형태로 설계·개발한다.
 - **이후는 맥북 로컬에서 iOS 네이티브로 완성**한다 (권장: MapLibre Native iOS + SwiftUI).
-- iOS 이식 타당성/사전조건 상세: `~/.claude/plans/moonlit-rolling-tulip.md`.
+- iOS 이식 계획서(단일 기준): **`IOS.md`** (v2, 2026-07-13 — 구 `~/.claude/plans/moonlit-rolling-tulip.md` 대체).
 
 ## 필수 규칙 — iOS 네이티브 이식을 항상 염두에 둘 것
 웹 개발 요청을 처리할 때 **항상 iOS 네이티브 앱 이식을 전제로** 판단한다.
