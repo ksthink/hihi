@@ -15,7 +15,8 @@ struct ExploreView: View {
     @State private var metersPerPoint: Double = 0     // 커스텀 스케일바 축척
     @State private var searching = false
     @State private var query = ""
-    @State private var expanded = false
+    @State private var detent: SheetDetent = .peek     // 바텀시트 3단계
+    @State private var sheetDrag: CGFloat = 0           // 드래그 실시간 오프셋(+아래 -위)
     @State private var descExpanded = false
     @State private var telShown = false
     @State private var telCopied = false
@@ -149,7 +150,7 @@ struct ExploreView: View {
             climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
             if climb.fitRequested {                   // 추천 등 외부 진입 → 코스 범위로 프레이밍
                 climb.fitRequested = false
-                if climb.course?.bbox != nil { courseFitTick += 1; expanded = false }
+                if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }
             }
         }
     }
@@ -304,9 +305,23 @@ struct ExploreView: View {
         String(format: "%d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60)
     }
 
-    // MARK: 바텀시트 (산 소개) — peek 는 기기별 비율(상위에서 계산)
+    // 바텀시트 3단계 (웹 2단계 → Apple 지도식 peek·medium·large)
+    enum SheetDetent: CaseIterable { case peek, medium, large }
+
+    // MARK: 바텀시트 (산 소개) — peek 는 기기별 비율(상위에서 계산), medium·large 는 maxH 비율.
+    // 드래그를 실시간 추종(sheetDrag)하고, 놓을 때 속도(예상 종점) 반영해 가장 가까운 단계로 스냅.
     private func infoSheet(_ t: Theme, maxH: CGFloat, peek: CGFloat) -> some View {
-        let full = maxH * 0.62
+        let mediumH = maxH * 0.52
+        let largeH = maxH * 0.88
+        func heightFor(_ d: SheetDetent) -> CGFloat {
+            switch d { case .peek: return peek; case .medium: return mediumH; case .large: return largeH }
+        }
+        let base = heightFor(detent)
+        // 실시간 높이 — 위로 끌면(sheetDrag<0) 커지고, 경계 밖은 살짝 저항(러버밴딩).
+        let live = min(largeH + 36, max(peek - 36, base - sheetDrag))
+        func nearest(_ h: CGFloat) -> SheetDetent {
+            SheetDetent.allCases.min { abs(heightFor($0) - h) < abs(heightFor($1) - h) }!
+        }
         return VStack(spacing: 0) {
             Capsule().fill(t.line).frame(width: 38, height: 5).padding(.top, 8).padding(.bottom, 10)
             if let m = catalog.selected {
@@ -373,7 +388,7 @@ struct ExploreView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: expanded ? full : peek, alignment: .top)
+        .frame(height: live, alignment: .top)
         .background(t.elevated)
         .clipShape(.rect(topLeadingRadius: 18, topTrailingRadius: 18))
         .overlay(alignment: .top) {
@@ -381,10 +396,15 @@ struct ExploreView: View {
         }
         .shadow(color: .black.opacity(0.10), radius: 12, y: -3)
         .gesture(
-            DragGesture(minimumDistance: 8)
+            DragGesture(minimumDistance: 6)
+                .onChanged { v in sheetDrag = v.translation.height }              // 실시간 추종
                 .onEnded { v in
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                        expanded = v.translation.height < -30 ? true : (v.translation.height > 30 ? false : expanded)
+                    // 예상 종점(속도 반영) 높이 → 가장 가까운 단계로 스냅.
+                    let projected = base - v.predictedEndTranslation.height
+                    let target = nearest(projected)
+                    withAnimation(.spring(response: 0.34, dampingFraction: 0.85)) {
+                        detent = target
+                        sheetDrag = 0
                     }
                 }
         )
@@ -466,7 +486,7 @@ struct ExploreView: View {
             withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
             climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
             courseFitTick += 1                         // 지도를 코스 범위로 이동
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { expanded = false }  // 시트 낮춰 지도 노출
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = .peek }  // 시트 낮춰 지도 노출
         } label: {
             HStack(spacing: 0) {
                 Rectangle().fill(t.accent).frame(width: 3)     // 좌측 강조선 (border-left)
