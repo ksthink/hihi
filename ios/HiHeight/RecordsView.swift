@@ -36,29 +36,49 @@ struct RecordsView: View {
     }
 
     // MARK: 로그인됨 — 합계 + 목록
-    // List(UICollectionView) self-sizing 재귀 레이아웃 루프 회피를 위해 ScrollView+LazyVStack 사용.
-    // 스와이프 삭제는 웹 .ri-del 처럼 커스텀 드래그로 구현(RecordCardRow).
+    // 스와이프 삭제는 네이티브 List.swipeActions (ScrollView + 커스텀 드래그는 세로 스크롤과 충돌해
+    // 실기기에서 스와이프가 잘 안 열림). 달력은 비지연 Grid 로 바꿔 List self-sizing 루프를 피함.
     private func authedList(_ t: Theme) -> some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
+        List {
+            Group {
                 authBar(t)                            // 웹 .auth-in — elevated 카드(이메일 + 로그아웃 알약)
+                if let msg = auth.message {           // 삭제 실패 등 안내
+                    Text(msg).font(.kakao(size: 13)).foregroundStyle(t.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 summary(t)
                 RecCalendar(dayKeys: recordDayKeys)   // 산행 달력 — 기록 있는 날 점 표시
-                if auth.records.isEmpty {
-                    Text("아직 등반 기록이 없습니다.").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 4)
-                } else {
-                    ForEach(auth.records) { r in       // rec-list gap 10
-                        RecordCardRow(theme: t,
-                                      onTap: { if r.hasTrack { onShowRoute(r) } },
-                                      onDelete: { pendingDelete = r }) {
-                            recordRow(r, t)
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+
+            if auth.records.isEmpty {
+                Text("아직 등반 기록이 없습니다.").font(.kakao(size: 13)).foregroundStyle(t.muted)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+                    .listRowSeparator(.hidden).listRowBackground(Color.clear)
+            } else {
+                ForEach(auth.records) { r in           // 웹 rec-item — elevated 카드(gap 10)
+                    recordRow(r, t)
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 10, trailing: 20))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .contentShape(Rectangle())
+                        .onTapGesture { if r.hasTrack { onShowRoute(r) } }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) { pendingDelete = r } label: {
+                                Label("삭제", systemImage: "trash")
+                            }
                         }
-                    }
                 }
             }
-            .padding(.horizontal, 20).padding(.top, 6).padding(.bottom, 24)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .background(t.bg)
     }
 
@@ -183,64 +203,12 @@ struct RecordsView: View {
     }
 }
 
-// 기록 카드 + 스와이프 삭제 — 웹 .rec-item/.ri-body/.ri-del 이식.
-// 왼쪽으로 밀면 뒤의 빨간 삭제 버튼(90pt) 노출, 놓으면 절반 기준 스냅. 탭 시 열려있으면 닫고 아니면 onTap.
-struct RecordCardRow<Content: View>: View {
-    let theme: Theme
-    let onTap: () -> Void
-    let onDelete: () -> Void
-    @ViewBuilder let content: () -> Content
-    @State private var offset: CGFloat = 0
-    @State private var dragStart: CGFloat? = nil     // 드래그 시작 시점의 정지 오프셋
-    private let delW: CGFloat = 90
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            Button(action: onDelete) {                       // 웹 .ri-del (#b3261e)
-                Text("삭제").font(.kakao(size: 13, weight: .bold)).foregroundStyle(.white)
-                    .frame(width: delW).frame(maxHeight: .infinity)
-                    .background(Color(hex: 0xb3261e))
-            }
-            .buttonStyle(.plain)
-            .opacity(offset < -2 ? 1 : 0)
-
-            content()
-                .padding(.horizontal, 16).padding(.vertical, 14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(theme.elevated)
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(theme.line))
-                .offset(x: offset)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if offset != 0 { withAnimation(.easeOut(duration: 0.18)) { offset = 0 } }
-                    else { onTap() }
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 12)
-                        .onChanged { v in
-                            guard abs(v.translation.width) > abs(v.translation.height) else { return }
-                            let start = dragStart ?? offset
-                            if dragStart == nil { dragStart = offset }
-                            offset = min(0, max(-delW, start + v.translation.width))
-                        }
-                        .onEnded { v in
-                            let end = min(0, max(-delW, (dragStart ?? offset) + v.translation.width))
-                            withAnimation(.easeOut(duration: 0.18)) { offset = end < -delW / 2 ? -delW : 0 }
-                            dragStart = nil
-                        }
-                )
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-    }
-}
-
 // 산행 달력 — 웹 renderRecCalendar(app.js:1556) 이식. ‹ › 월 이동, 오늘 강조, 기록 있는 날 점.
 struct RecCalendar: View {
     let dayKeys: Set<String>          // "y-m-d"(로컬)
     @Environment(\.colorScheme) private var scheme
     @State private var offset = 0     // 표시 월 = 이번 달 + offset
     private let cal = Calendar.current
-    private let cols = Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -259,28 +227,23 @@ struct RecCalendar: View {
                 Spacer()
                 navButton("chevron.right", t) { offset += 1 }
             }
-            LazyVGrid(columns: cols, spacing: 4) {
-                ForEach(["일","월","화","수","목","금","토"], id: \.self) { w in
-                    Text(w).font(.kakao(size: 10)).foregroundStyle(t.muted)
+            // 요일 헤더 + 주 단위 행 — LazyVGrid 대신 고정 VStack/HStack.
+            // (List self-sizing 재귀 루프를 피하려 Lazy 대신 비지연 레이아웃 사용.)
+            let cells: [Int?] = Array(repeating: nil, count: lead) + (1...days).map { $0 }
+            let weeks = stride(from: 0, to: cells.count, by: 7).map { s in
+                Array(cells[s..<min(s + 7, cells.count)])
+            }
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    ForEach(["일","월","화","수","목","금","토"], id: \.self) { w in
+                        Text(w).font(.kakao(size: 10)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
+                    }
                 }
-                // 앞 빈칸(nil) + 날짜 — 단일 배열/인덱스 id 로 ForEach id 충돌 방지.
-                let cells: [Int?] = Array(repeating: nil, count: lead) + (1...days).map { $0 }
-                ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
-                    if let d = day {
-                        let isToday = tc.year == y && tc.month == m && tc.day == d
-                        let hasRec = dayKeys.contains("\(y)-\(m)-\(d)")
-                        VStack(spacing: 2) {
-                            Text("\(d)")
-                                .font(.kakao(size: 12, weight: isToday ? .heavy : .regular))
-                                .foregroundStyle(t.text)
-                                .frame(width: 24, height: 24)
-                                // 웹 .rc-d.today::before — 채움 아닌 테두리 링
-                                .overlay { if isToday { Circle().strokeBorder(t.line, lineWidth: 1) } }
-                            Circle().fill(hasRec ? t.text : .clear).frame(width: 4, height: 4)
+                ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                    HStack(spacing: 4) {
+                        ForEach(0..<7, id: \.self) { i in
+                            dayCell(i < week.count ? week[i] : nil, y, m, tc, t)
                         }
-                        .frame(height: 30)
-                    } else {
-                        Color.clear.frame(height: 30)
                     }
                 }
             }
@@ -288,6 +251,26 @@ struct RecCalendar: View {
         .padding(14)
         .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
+    }
+
+    // 날짜 셀 — 오늘(테두리 링·굵게) + 기록일(점). 빈칸이면 투명.
+    @ViewBuilder
+    private func dayCell(_ day: Int?, _ y: Int, _ m: Int, _ tc: DateComponents, _ t: Theme) -> some View {
+        if let d = day {
+            let isToday = tc.year == y && tc.month == m && tc.day == d
+            let hasRec = dayKeys.contains("\(y)-\(m)-\(d)")
+            VStack(spacing: 2) {
+                Text("\(d)")
+                    .font(.kakao(size: 12, weight: isToday ? .heavy : .regular))
+                    .foregroundStyle(t.text)
+                    .frame(width: 24, height: 24)
+                    .overlay { if isToday { Circle().strokeBorder(t.line, lineWidth: 1) } }   // 웹 .rc-d.today::before
+                Circle().fill(hasRec ? t.text : .clear).frame(width: 4, height: 4)
+            }
+            .frame(maxWidth: .infinity).frame(height: 30)
+        } else {
+            Color.clear.frame(maxWidth: .infinity).frame(height: 30)
+        }
     }
 
     private func startOfMonth(_ date: Date) -> Date {

@@ -73,12 +73,22 @@ final class AuthStore: ObservableObject {
         }
     }
 
-    // 기록 삭제 (RLS: 본인 기록만). 성공 시 목록 갱신.
+    // 기록 삭제 (RLS: 본인 기록만). 낙관적 제거 후 서버 삭제.
+    // .select() 로 삭제된 행을 돌려받아 0행(RLS 불일치·이미 삭제)이면 복원 + 안내.
     func deleteRecord(_ id: String) async {
+        let backup = records
+        records.removeAll { $0.id == id }        // 낙관적 제거 (즉시 반영)
         do {
-            try await client.from("climb_records").delete().eq("id", value: id).execute()
-            await loadRecords()
+            let deleted: [ClimbRecord] = try await client.from("climb_records")
+                .delete().eq("id", value: id).select().execute().value
+            if deleted.isEmpty {
+                records = backup
+                message = "삭제하지 못했습니다 — 로그인 상태를 확인해 주세요."
+            } else {
+                message = nil
+            }
         } catch {
+            records = backup                     // 실패 시 복원
             message = "삭제 실패: \((error as NSError).localizedDescription)"
         }
     }
