@@ -59,9 +59,14 @@ struct MapView: UIViewRepresentable {
         }
 
         private func applyOverlay(_ m: Mountain, on mv: MLNMapView) {
-            guard let style = mv.style,
-                  let src = style.source(withIdentifier: "contours") as? MLNShapeSource,
-                  let url = Config.contoursURL(m.id) else { return }
+            guard let style = mv.style else { return }
+            swap(style, "contours", Config.contoursURL(m.id))
+            swap(style, "trails", Config.routesURL(m.id))
+        }
+
+        // 스타일 JSON 의 geojson 소스 데이터 URL 만 교체(레이어·표현식 유지).
+        private func swap(_ style: MLNStyle, _ id: String, _ url: URL?) {
+            guard let url, let src = style.source(withIdentifier: id) as? MLNShapeSource else { return }
             if src.url != url { src.url = url }
         }
 

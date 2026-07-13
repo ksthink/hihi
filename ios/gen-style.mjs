@@ -55,6 +55,27 @@ function make(theme) {
       paint: { "text-color": cc.label, "text-halo-color": cc.halo, "text-halo-width": 1.4 } },
   );
 
+  // ── 등산로(코스) 오버레이 — app.js:492-513 스펙 그대로 (casing + line, 난이도별 굵기) ──
+  const tc = theme === "dark"
+    ? { line: "#ffffff", casing: "#000000" }
+    : { line: "#111111", casing: "#ffffff" };
+  const widthExpr = ["interpolate", ["linear"], ["zoom"],
+    11, ["match", ["get", "difficulty"], "초급", 1.6, "중급", 2.4, "고급", 3.4, 2.2],
+    16, ["match", ["get", "difficulty"], "초급", 3.5, "중급", 5, "고급", 7, 4.5]];
+  style.sources.trails = {
+    type: "geojson",
+    data: `${BASE}/data/packs/${PACK}/routes.geojson`,
+  };
+  style.layers.push(
+    { id: "trail-casing", type: "line", source: "trails",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.casing,
+               "line-width": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 10] } },
+    { id: "trail-line", type: "line", source: "trails",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.line, "line-width": widthExpr } },
+  );
+
   return JSON.stringify(style, null, 2);
 }
 

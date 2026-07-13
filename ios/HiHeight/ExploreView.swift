@@ -9,6 +9,7 @@ struct ExploreView: View {
     @State private var searching = false
     @State private var query = ""
     @State private var expanded = false
+    @State private var courses: [Course] = []
 
     private var results: [Mountain] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -49,6 +50,13 @@ struct ExploreView: View {
                     infoSheet(t, maxH: geo.size.height)
                 }
                 .ignoresSafeArea(.keyboard)
+            }
+        }
+        .task(id: catalog.selected?.id) {
+            if let code = catalog.selected?.id {
+                courses = await PackLoader.courses(code)
+            } else {
+                courses = []
             }
         }
     }
@@ -105,8 +113,8 @@ struct ExploreView: View {
 
     // MARK: 바텀시트 (산 소개)
     private func infoSheet(_ t: Theme, maxH: CGFloat) -> some View {
-        let peek: CGFloat = 168
-        let full = maxH * 0.5
+        let peek: CGFloat = 268
+        let full = maxH * 0.62
         return VStack(spacing: 0) {
             Capsule().fill(t.line).frame(width: 38, height: 5).padding(.top, 8).padding(.bottom, 10)
             if let m = catalog.selected {
@@ -128,16 +136,26 @@ struct ExploreView: View {
                         Text(r).font(.system(size: 14)).foregroundStyle(t.muted)
                     }
                     Divider().overlay(t.line).padding(.vertical, 2)
-                    HStack {
+                    HStack(spacing: 8) {
                         Text("등산로").font(.system(size: 17, weight: .semibold)).foregroundStyle(t.text)
+                        if !courses.isEmpty {
+                            Text("\(courses.count)").font(.system(size: 14, weight: .semibold)).foregroundStyle(t.muted)
+                        }
                         Spacer()
                         Text("지도 다운").font(.system(size: 13, weight: .medium))
                             .foregroundStyle(t.onAccent)
                             .padding(.horizontal, 12).padding(.vertical, 6)
                             .background(t.accent, in: Capsule())
                     }
-                    Text("코스 목록·난이도·고도 스파크라인은 다음 슬라이스에서 채워집니다.")
-                        .font(.system(size: 13)).foregroundStyle(t.muted)
+                    if courses.isEmpty {
+                        Text("코스 정보를 불러오는 중…").font(.system(size: 13)).foregroundStyle(t.muted)
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(courses) { c in courseRow(c, t) }
+                            }
+                        }
+                    }
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 18)
@@ -162,5 +180,27 @@ struct ExploreView: View {
                     }
                 }
         )
+    }
+
+    // 코스 1행 — 번호 배지 + 이름 + 난이도·거리·시간·상승 (웹 trail-list 대응).
+    private func courseRow(_ c: Course, _ t: Theme) -> some View {
+        HStack(spacing: 11) {
+            Text("\(c.no ?? 0)")
+                .font(.system(size: 13, weight: .bold)).foregroundStyle(t.onAccent)
+                .frame(width: 25, height: 25).background(t.accent, in: Circle())
+            VStack(alignment: .leading, spacing: 3) {
+                Text(c.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(t.text)
+                HStack(spacing: 9) {
+                    if let d = c.difficulty { Text(d) }
+                    if let km = c.distance_km { Text(String(format: "%.1fkm", km)) }
+                    if let h = c.time_hr { Text(String(format: "%.1f시간", h)) }
+                    if let a = c.ascent { Text("↑\(a)m") }
+                }
+                .font(.system(size: 12)).foregroundStyle(t.muted)
+            }
+            Spacer()
+        }
+        .padding(.vertical, 9)
+        .overlay(alignment: .bottom) { Rectangle().fill(t.line).frame(height: 0.5) }
     }
 }

@@ -13,4 +13,7 @@ enum Config {
     static func contoursURL(_ code: String) -> URL? {
         URL(string: "\(proxyBase)/data/packs/\(code)/contours.geojson")
     }
+    static func routesURL(_ code: String) -> URL? {
+        URL(string: "\(proxyBase)/data/packs/\(code)/routes.geojson")
+    }
 }
