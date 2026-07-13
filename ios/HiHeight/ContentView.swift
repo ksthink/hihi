@@ -22,7 +22,7 @@ struct ContentView: View {
             DeungView(climb: climb, auth: auth, onStart: { tab = 0 })
                 .tabItem { Label("등반", systemImage: "mountain.2") }.tag(2)
 
-            RecordsView(auth: auth, catalog: catalog)
+            RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute)
                 .tabItem { Label("기록", systemImage: "clock") }.tag(3)
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
@@ -34,6 +34,16 @@ struct ContentView: View {
         if let m = catalog.mountains.first(where: { $0.id == code }) {
             catalog.selected = m
         }
+        climb.recordTrack = nil
+        tab = 0
+    }
+
+    // 기록 루트 탭 → 해당 산 선택 + 트랙을 지도에 표시하고 탐험 탭으로 이동.
+    private func showRoute(_ r: ClimbRecord) {
+        if let code = r.mountain_id, let m = catalog.mountains.first(where: { $0.id == code }) {
+            catalog.selected = m
+        }
+        climb.recordTrack = r.trackPoints
         tab = 0
     }
 

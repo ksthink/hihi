@@ -1,33 +1,86 @@
 import SwiftUI
 
-// 기록 탭 — 계정(이메일 인증) + climb_records 합계·목록 (웹 기록 뷰 대응).
-// 달력·루트 보기·스와이프 삭제는 후속 슬라이스.
+// 기록 탭 — 계정 + climb_records 합계·목록. 트랙 있는 기록은 탭하면 지도에 루트 표시,
+// 왼쪽 스와이프로 삭제(List.swipeActions — 웹의 수동 포인터 스와이프를 네이티브로 대체).
 struct RecordsView: View {
     @ObservedObject var auth: AuthStore
     @ObservedObject var catalog: CatalogStore
+    var onShowRoute: (ClimbRecord) -> Void = { _ in }
     @Environment(\.colorScheme) private var scheme
     @State private var email = ""
     @State private var pass = ""
+    @State private var pendingDelete: ClimbRecord?
 
     var body: some View {
         let t = Theme(scheme: scheme)
         ZStack {
             t.bg.ignoresSafeArea()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text("기록").font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
-                    if auth.email == nil {
+            if auth.email == nil {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text("기록").font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
                         authForm(t)
-                    } else {
-                        authedHeader(t)
-                        summary(t)
-                        recordList(t)
                     }
+                    .padding(20)
                 }
-                .padding(20)
+            } else {
+                authedList(t)
             }
         }
         .task { await auth.refresh() }
+        .confirmationDialog("이 기록을 삭제할까요? 되돌릴 수 없습니다.",
+                            isPresented: Binding(get: { pendingDelete != nil },
+                                                 set: { if !$0 { pendingDelete = nil } }),
+                            titleVisibility: .visible) {
+            Button("삭제", role: .destructive) {
+                if let r = pendingDelete { Task { await auth.deleteRecord(r.id) } }
+                pendingDelete = nil
+            }
+            Button("취소", role: .cancel) { pendingDelete = nil }
+        }
+    }
+
+    // MARK: 로그인됨 — 합계 + 목록(List)
+    private func authedList(_ t: Theme) -> some View {
+        List {
+            Group {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("기록").font(.system(size: 30, weight: .bold)).foregroundStyle(t.text)
+                    Spacer()
+                    Button { Task { await auth.signOut() } } label: {
+                        Text("로그아웃").font(.system(size: 13)).foregroundStyle(t.muted)
+                    }
+                }
+                Text(auth.email ?? "").font(.system(size: 13)).foregroundStyle(t.muted)
+                summary(t)
+            }
+            .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(t.bg)
+
+            if auth.records.isEmpty {
+                Text("아직 등반 기록이 없습니다.").font(.system(size: 13)).foregroundStyle(t.muted)
+                    .listRowInsets(EdgeInsets(top: 10, leading: 20, bottom: 4, trailing: 20))
+                    .listRowSeparator(.hidden).listRowBackground(t.bg)
+            } else {
+                ForEach(auth.records) { r in
+                    recordRow(r, t)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(t.bg)
+                        .contentShape(Rectangle())
+                        .onTapGesture { if r.hasTrack { onShowRoute(r) } }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { pendingDelete = r } label: {
+                                Label("삭제", systemImage: "trash")
+                            }
+                        }
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(t.bg)
     }
 
     // MARK: 비로그인 — 이메일 인증
@@ -59,17 +112,6 @@ struct RecordsView: View {
         }
     }
 
-    private func authedHeader(_ t: Theme) -> some View {
-        HStack {
-            Text(auth.email ?? "").font(.system(size: 14, weight: .medium)).foregroundStyle(t.text)
-            Spacer()
-            Button { Task { await auth.signOut() } } label: {
-                Text("로그아웃").font(.system(size: 13)).foregroundStyle(t.muted)
-            }
-        }
-        .padding(.bottom, 2)
-    }
-
     private func summary(_ t: Theme) -> some View {
         HStack(spacing: 0) {
             stat("\(auth.totalCount)", "총 산행", t)
@@ -78,6 +120,7 @@ struct RecordsView: View {
         }
         .padding(.vertical, 14)
         .background(t.surface, in: RoundedRectangle(cornerRadius: 14))
+        .padding(.top, 6)
     }
 
     private func stat(_ v: String, _ label: String, _ t: Theme) -> some View {
@@ -88,18 +131,6 @@ struct RecordsView: View {
         .frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder
-    private func recordList(_ t: Theme) -> some View {
-        if auth.records.isEmpty {
-            Text("아직 등반 기록이 없습니다.").font(.system(size: 13)).foregroundStyle(t.muted)
-                .padding(.top, 8)
-        } else {
-            VStack(spacing: 0) {
-                ForEach(auth.records) { r in recordRow(r, t) }
-            }
-        }
-    }
-
     private func recordRow(_ r: ClimbRecord, _ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title(r)).font(.system(size: 15, weight: .semibold)).foregroundStyle(t.text)
@@ -107,6 +138,9 @@ struct RecordsView: View {
                 if let km = r.distance_km { Text(String(format: "%.1fkm", km)) }
                 if let d = r.duration_s { Text(durationLabel(d)) }
                 if let a = r.ascent_m { Text("↑\(a)m") }
+                if r.hasTrack {
+                    Text("루트 ›").foregroundStyle(t.text)
+                }
                 Spacer()
                 if let dt = r.startedDate { Text(dateLabel(dt)) }
             }

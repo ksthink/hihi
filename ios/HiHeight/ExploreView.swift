@@ -29,6 +29,7 @@ struct ExploreView: View {
                 MapView(styleResource: scheme == .dark ? "basemap-dark" : "basemap-light",
                         mountain: catalog.selected, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
+                        recordTrack: climb.recordTrack,
                         onCenterChanged: { c in npn = NPN.code(lat: c.latitude, lon: c.longitude) })
                     .ignoresSafeArea()
 
@@ -127,6 +128,7 @@ struct ExploreView: View {
                     ForEach(results) { m in
                         Button {
                             catalog.selected = m
+                            climb.recordTrack = nil       // 산 변경 → 기록 루트 지움
                             withAnimation(.easeOut(duration: 0.18)) { searching = false }
                             query = ""
                         } label: {

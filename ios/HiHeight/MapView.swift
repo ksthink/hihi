@@ -10,6 +10,7 @@ struct MapView: UIViewRepresentable {
     var selectedCourse: Course? = nil
     var climbTrack: [[Double]] = []      // 등반 중 지나온 GPS 트랙 [lng,lat,...]
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
+    var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -30,6 +31,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.applyCourse(selectedCourse, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
+        context.coordinator.setRecordTrack(recordTrack, on: mv)
         mv.showsUserLocation = tracking
         let mode: MLNUserTrackingMode = tracking ? .follow : .none
         if mv.userTrackingMode != mode { mv.setUserTrackingMode(mode, animated: true, completionHandler: nil) }
@@ -45,6 +47,7 @@ struct MapView: UIViewRepresentable {
         private var cameraDone: String?     // 카메라를 맞춘 산코드 (중복 이동 방지)
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
         private var trackCount = -1         // 마지막 반영한 트랙 점 개수 (중복 갱신 방지)
+        private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
 
         func apply(mountain m: Mountain?, on mv: MLNMapView) {
@@ -128,6 +131,45 @@ struct MapView: UIViewRepresentable {
             return try? JSONSerialization.data(withJSONObject: fc)
         }
 
+        // 기록 루트 — rec-track 소스에 주입하고 트랙 범위로 카메라 이동(트랙이 바뀔 때만).
+        func setRecordTrack(_ track: [[Double]]?, on mv: MLNMapView) {
+            guard mv.style != nil else { return }
+            let key = Self.key(track)
+            if key == recTrackKey { return }
+            recTrackKey = key
+            applyRecordTrack(track, on: mv)
+            if let track, track.count >= 2 { fit(track, on: mv) }
+        }
+
+        private static func key(_ t: [[Double]]?) -> String {
+            guard let t, let f = t.first, let l = t.last else { return "" }
+            return "\(t.count):\(f[0]),\(f[1])-\(l[0]),\(l[1])"
+        }
+
+        private func applyRecordTrack(_ track: [[Double]]?, on mv: MLNMapView) {
+            guard let style = mv.style,
+                  let src = style.source(withIdentifier: "rec-track") as? MLNShapeSource else { return }
+            guard let track, track.count >= 2,
+                  let data = Self.trackGeoJSON(track),
+                  let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
+                src.shape = nil; return
+            }
+            src.shape = shape
+        }
+
+        private func fit(_ track: [[Double]], on mv: MLNMapView) {
+            var minX = 180.0, minY = 90.0, maxX = -180.0, maxY = -90.0
+            for p in track {
+                minX = min(minX, p[0]); maxX = max(maxX, p[0])
+                minY = min(minY, p[1]); maxY = max(maxY, p[1])
+            }
+            let bounds = MLNCoordinateBounds(
+                sw: CLLocationCoordinate2D(latitude: minY, longitude: minX),
+                ne: CLLocationCoordinate2D(latitude: maxY, longitude: maxX))
+            let pad = UIEdgeInsets(top: 90, left: 40, bottom: 320, right: 40)
+            mv.setVisibleCoordinateBounds(bounds, edgePadding: pad, animated: true, completionHandler: nil)
+        }
+
         private static func endsGeoJSON(start: [Double], end: [Double]) -> Data? {
             let fc: [String: Any] = ["type": "FeatureCollection", "features": [
                 ["type": "Feature", "properties": ["kind": "start", "label": "출발"],
@@ -142,7 +184,7 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
-            trackCount = -1                      // 스타일 재로드 시 트랙 재주입 강제
+            trackCount = -1; recTrackKey = ""    // 스타일 재로드 시 트랙 재주입 강제
         }
 
         // 지도 이동 종료마다 중심 좌표 통지 → 국가지점번호 갱신.

@@ -1,6 +1,6 @@
 import Foundation
 
-// climb_records 1행 (Supabase). 트랙은 목록/합계엔 불필요해 제외(루트 보기 슬라이스에서 별도 조회).
+// climb_records 1행 (Supabase). track jsonb 는 루트 보기용으로 함께 로드한다.
 struct ClimbRecord: Decodable, Identifiable {
     let id: String
     let mountain_id: String?
@@ -9,6 +9,17 @@ struct ClimbRecord: Decodable, Identifiable {
     let distance_km: Double?
     let ascent_m: Int?
     let duration_s: Int?
+    let track: RecTrack?
+
+    // track.points: 신형 [lng,lat,고도|null,unix] / 구형 [lng,lat,unix] — 앞 2개만 좌표.
+    struct RecTrack: Decodable { let points: [[Double?]]? }
+    var trackPoints: [[Double]] {
+        (track?.points ?? []).compactMap { p in
+            guard p.count >= 2, let lng = p[0], let lat = p[1] else { return nil }
+            return [lng, lat]
+        }
+    }
+    var hasTrack: Bool { trackPoints.count >= 2 }
 
     var startedDate: Date? {
         started_at.flatMap { ISO8601DateFormatter().date(from: $0) }

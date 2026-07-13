@@ -122,6 +122,18 @@ function make(theme) {
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
   );
 
+  // ── 기록 루트 보기 — 저장된 기록 트랙(점선). app.js:554-566. ──
+  // 빈 FC 로 두고, 기록 탭에서 루트를 탭하면 MapView 가 source.shape 로 채운다.
+  style.sources["rec-track"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  style.layers.push(
+    { id: "rec-track-casing", type: "line", source: "rec-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.casing, "line-width": 6 } },
+    { id: "rec-track", type: "line", source: "rec-track",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.line, "line-width": 2.6, "line-dasharray": [0.1, 1.8] } },
+  );
+
   // ── 등반 중 라이브 트랙(지나온 곳) — app.js:566-578. ──
   // 빈 FC 로 두고, 등반 세션의 GPS 갱신마다 MapView 가 source.shape 로 채운다(본선색).
   style.sources["climb-track"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };

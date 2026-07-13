@@ -21,6 +21,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var mountainName: String?
     @Published var mountainCode: String?  // climb_records.mountain_id 용
     @Published var saveResult: String?    // 종료 후 저장 결과 배너
+    @Published var recordTrack: [[Double]]?  // 기록 루트 보기 — 지도에 표시할 트랙(없으면 nil)
 
     // 트래킹 세션 상태 (HUD 표시용)
     @Published var tracking = false
@@ -48,6 +49,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     func start() {
         guard let _ = course, !tracking else { return }
         startedAt = Date(); track = []; distance = 0; elapsed = 0; last = nil; note = nil
+        recordTrack = nil          // 등반 시작 → 기록 루트 표시 지움
         tracking = true
 
         // 경과 타이머 (1초)
@@ -60,13 +62,15 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         manager.startUpdatingLocation()
     }
 
-    // 트랙 반환. 세션 종료·리셋.
+    // 트랙 반환. 세션 종료·리셋(라이브 트랙 지움 — 종료 후 지도에서 사라지게).
     @discardableResult
     func stop() -> [[Double]] {
         manager.stopUpdatingLocation()
         timer?.invalidate(); timer = nil
         tracking = false
-        return track
+        let captured = track
+        track = []          // 라이브 climb-track 소스 비우기(웹 applyClimbRoute 종료 동작)
+        return captured
     }
 
     // 종료 + 저장용 드래프트 산출(웹 saveClimb 입력). 세션이 없으면 nil.

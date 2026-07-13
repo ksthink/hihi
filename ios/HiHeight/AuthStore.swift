@@ -65,11 +65,21 @@ final class AuthStore: ObservableObject {
     func loadRecords() async {
         do {
             records = try await client.from("climb_records")
-                .select("id,mountain_id,course_name,started_at,distance_km,ascent_m,duration_s")
+                .select("id,mountain_id,course_name,started_at,distance_km,ascent_m,duration_s,track")
                 .order("started_at", ascending: false)
                 .execute().value
         } catch {
             records = []
+        }
+    }
+
+    // 기록 삭제 (RLS: 본인 기록만). 성공 시 목록 갱신.
+    func deleteRecord(_ id: String) async {
+        do {
+            try await client.from("climb_records").delete().eq("id", value: id).execute()
+            await loadRecords()
+        } catch {
+            message = "삭제 실패: \((error as NSError).localizedDescription)"
         }
     }
 
