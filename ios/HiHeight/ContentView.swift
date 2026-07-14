@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var auth = AuthStore()
     @StateObject private var climb = ClimbStore()
     @State private var tab = 0
+    @State private var searching = false                            // 탐험 검색 모드 — 켜지면 하단 네비바 숨김
     @State private var showSplash = true                            // 인트로 스플래시
     @AppStorage("hiheight-theme") private var themePref = "system"   // system·light·dark (지도 컨트롤 토글)
 
@@ -19,14 +20,14 @@ struct ContentView: View {
         // 네이티브 탭바(iOS 26 글래스 플로팅) 숨기고 웹식 평평·불투명 하단 네비를 직접 그린다.
         // safeAreaInset 으로 공간을 확보해 각 탭 콘텐츠(지도 시트 포함)가 네비 위에 놓인다.
         TabView(selection: $tab) {
-            ExploreView(catalog: catalog, climb: climb, auth: auth).tag(0).toolbar(.hidden, for: .tabBar)
+            ExploreView(catalog: catalog, climb: climb, auth: auth, searching: $searching).tag(0).toolbar(.hidden, for: .tabBar)
             RecoView(catalog: catalog, onOpen: openCuration).tag(1).toolbar(.hidden, for: .tabBar)
             DeungView(climb: climb, auth: auth, catalog: catalog, onStart: { tab = 0 }).tag(2).toolbar(.hidden, for: .tabBar)
             RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute).tag(3).toolbar(.hidden, for: .tabBar)
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
-        .safeAreaInset(edge: .bottom, spacing: 0) { bottomNav }
+        .safeAreaInset(edge: .bottom, spacing: 0) { if !searching { bottomNav } }   // 검색 중엔 네비바 숨김
         .task { await catalog.load() }
         .overlay {                                                  // 인트로 스플래시 (앱 시작 시)
             if showSplash {

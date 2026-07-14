@@ -16,7 +16,7 @@ struct ExploreView: View {
     @State private var locateTick = 0
     @State private var courseFitTick = 0              // 코스 탭 → 지도 fitBounds
     @State private var metersPerPoint: Double = 0     // 커스텀 스케일바 축척
-    @State private var searching = false
+    @Binding var searching: Bool                     // 검색 모드 — ContentView 가 하단 네비바 숨김에 사용
     @State private var query = ""
     @FocusState private var searchFocused: Bool     // 펼침 시 입력창 자동 포커스
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -57,8 +57,8 @@ struct ExploreView: View {
                         onScaleChanged: { metersPerPoint = $0 })
                     .ignoresSafeArea()
 
-                // 스케일바 (좌하단, 시트 위) — 웹 ScaleControl 식 단일 눈금 바
-                if let (label, width) = scaleInfo(metersPerPoint) {
+                // 스케일바 (좌하단, 시트 위) — 웹 ScaleControl 식 단일 눈금 바. 검색 중엔 숨김.
+                if !searching, let (label, width) = scaleInfo(metersPerPoint) {
                     scaleBar(label, width, t)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         .padding(.leading, 16)
@@ -80,6 +80,7 @@ struct ExploreView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
                 .padding(.bottom, climb.tracking ? 240 : peek + 92)   // ⓘ 저작권 버튼 위로
+                .opacity(searching ? 0 : 1)                           // 검색 중엔 숨김
                 .allowsHitTesting(!searching)
 
                 // 저작권 ⓘ — 탭하면 옆으로 펼쳐져 어트리뷰션 노출(웹 MapLibre 식, 팝업 대체)
@@ -87,6 +88,7 @@ struct ExploreView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     .padding(.trailing, 14)
                     .padding(.bottom, climb.tracking ? 200 : peek + 40)
+                    .opacity(searching ? 0 : 1)                       // 검색 중엔 숨김
                     .allowsHitTesting(!searching)
 
                 // 상단: 검색 버튼(좌) + 산이름 | 코스명(우상단) + 국가지점번호 — 웹 title-block/npn-box
@@ -147,6 +149,7 @@ struct ExploreView: View {
                 }
                 .ignoresSafeArea(.keyboard)
             }
+            .ignoresSafeArea(.keyboard)   // 검색 키보드가 지도·컨트롤을 위로 밀지 않도록
         }
         .task(id: catalog.selected?.id) {
             guard let m = catalog.selected else {

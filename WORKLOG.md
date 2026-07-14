@@ -7,18 +7,26 @@
 ## 2026-07-14
 
 지형 전용 기저 모드·정보 카드 정리·UI 폰트 MonaS12 전환·일출/일몰 — 웹·네이티브 동시 반영.
+이어 코스 시종점 보물지도 기호·탐험 검색 UX 우측 확장·지도 컨트롤 웹 아이콘 동등화·어트리뷰션 옆펼침·검색 중 하단 UI 숨김(키보드 밀림 해결) 반영.
 
 ### 생성 / 추가
 - **지형 전용 기저 모드 + OSM 토글**: 저데이터·저배터리 취지로 OSM 벡터 채움·건물·도시POI·경계를 걷어내고 음영기복 + 최소 오리엔테이션(물길·얇은 도로·지명·사찰·편의시설)만 남긴 기저(11 레이어). 기본값 = 지형 전용, 토글로 OSM 전체(39 레이어) 복귀. 웹 `basemap-style.js`(`buildStyle` 5번째 인자 `baseMode`, 지형 레이어 필터 `TERRAIN_DROP`, 케이싱 없는 단선 도로색 `troad`)·`app.js`(`baseMode` 상태·`buildCurrentStyle` 헬퍼·`BaseControl` 토글 버튼·`applyBaseMode`). 네이티브 `gen-style.mjs`(테마×모드 4벌 `basemap-{theme}[-osm].json`)·`ExploreView.swift`(`@AppStorage("hiheight-basemode")`·`styleResource` 조립·지도 컨트롤 토글)
 - **일출·일몰 표시**: 탐험 탭 산 소개 카드 헤더 우측에 `일출 HH:MM  일몰 HH:MM`(로컬 계산·오프라인·네트워크 불필요, Almanac for Computers 알고리즘, KST). 웹 `app.js` `sunTimes()` + `ios/HiHeight/SunTimes.swift`(신규, 동일 로직 포팅)
 - **UI 폰트 MonaS12**: `fonts/MonaS12.ttf`·`MonaS12-Bold.ttf`(원본 2 weight) 도입. 웹은 한글+라틴 서브셋 woff2(`MonaS12-subset.woff2`·`MonaS12-Bold-subset.woff2`, 각 ~140KB), 네이티브는 서브셋 ttf(`Resources/fonts/MonaS12*.ttf`, 8.9MB→1.7MB·3.0MB→1.6MB). 웨이트 속성 매핑(semibold+ → Bold, 그 외 → Regular)
 - **지도 폰트도 MonaS12**: fontnik(SDF)로 `fonts/MonaS12 Regular/`·`fonts/MonaS12 Bold/` 글리프 PBF 각 256파일(전 BMP, 한글 포함) 생성 — 웹은 라틴, 네이티브는 한글까지 이 PBF 로 렌더
+- **지도 컨트롤 웹 아이콘(네이티브)**: 웹 컨트롤 아이콘 SVG(지형 △·OSM 접힌 지도·달·해)와 MapLibre geolocate ◎ 를 Chrome 헤드리스로 정확히 래스터 → `ios/HiHeight/Resources/ctrl-{terrain,osm,moon,sun,locate}.png`(template 틴트). SF Symbol 근사 대신 웹과 픽셀 동등
 
 ### 수정 / 변경
 - **관리 주체 토글·산 설명 미표시**: 산 소개 카드에서 관리 알약(전화 토글)·산 설명(더 읽기) 렌더 제거(표시만 숨김, `mountain_info` 로딩은 유지 — 재노출 시 렌더만 복구). 웹 `app.js` `renderMountainInfo` 축소, 네이티브 `ExploreView.swift` infoSheet 헤더 정리(`telPill`·`descView`·표시 상태 제거, 미사용 `import UIKit` 정리)
 - **UI 폰트 전면 교체(→MonaS12)**: 웹 `style.css`(`@font-face` MonaS12 2 weight + body `font-family`, `font-weight:300` 요청은 브라우저 폰트 매칭으로 400 폴백), 네이티브 `Font+Kakao.swift`(`.kakao` 매핑 YK Green Forest→MonaS12)·`project.yml`(`UIAppFonts`)
 - **미사용 폰트 정리**: KakaoSmallSans(웹 woff2 3 + 네이티브 ttf 3)·YK Green Forest ttf 3·Mulmaru(잔여 사본 포함) 삭제. `README.md` UI 폰트 표기 MonaS12로 갱신
 - **지도 라벨 MonaS12 전환 + Nanum 완전 제거**: 웹 `localIdeographFontFamily`·`text-font`·코스 배지 캔버스 폰트 → MonaS12(`app.js`), 지도 스타일 `text-font` → MonaS12(`basemap-style.js`·`gen-style.mjs`). 나눔고딕코딩 PBF 2폴더(512)·woff2·`style.css @font-face` 삭제. **주의**: `MonaS12.ttf`(Regular)의 COLR/CPAL 컬러 테이블이 MapLibre Native CoreText SDF 렌더를 크래시시켜(`EXC_BREAKPOINT`) 제거 후 서브셋 재생성. 폰트 라이선스 표기는 확인 필요(README ⚠️)
+- **코스 시종점 마커 → 보물지도 기호**: 출발/도착 텍스트 라벨을 시작 ○(빈 링)·끝 굵은 X("X marks the spot")로. 웹 `app.js`·네이티브 `gen-style.mjs`(circle 링 + `text-font` MonaS12 Bold "X")·`MapView.swift`(시종점 label 제거). ※ 사용자 제공 `svg/o.svg`·`x.svg` 를 SDF 아이콘화하는 방안을 시도했으나 MapLibre Native 가 작은 링 구멍을 메꿔(커버리지 기반 재-SDF) 되돌림
+- **탐험 검색 UX 우측 확장**: 버튼 아래 드롭다운 → 버튼 클릭 시 입력창이 우측으로 확장(알약형 바)되고 입력 시 결과 목록. 폼 컨트롤이라 `font-family:inherit` 안 먹던 검색 폰트를 MonaS12 로 명시. 웹 `index.html`·`style.css`·`app.js`(`#search.open` 클래스 토글), 네이티브 `ExploreView.swift`(`searchBar`/`searchResults`, `@FocusState`)
+- **지도 컨트롤 아이콘 웹 동등화(네이티브)**: 지형 ⛰→△·현재위치 ➤→◎·테마 달/해를 웹 아이콘 이미지로 통일(크기 통일), 나침반 버튼 제외(웹 기준), 버튼 프레임 42→36. `ExploreView.swift`(`ctrlImageButton`, SF `ctrlButton` 제거)
+- **어트리뷰션 ⓘ 커스텀(네이티브)**: MapLibre 팝업 대신 2배 크기 + 탭 시 좌측으로 펼쳐 표기(`Protomaps © OpenStreetMap · © Copernicus DEM`). `MapView.swift`(기본 ⓘ `showsAttributionButton=false`)·`ExploreView.swift`(`attributionControl`)
+- **검색 중 하단 UI 숨김·키보드 밀림 해결(네이티브)**: 실기기 검색 시 소프트 키보드가 하단 네비바·범례·컨트롤을 위로 밀던 문제 — 검색 모드에서 이들 숨김(`ContentView` 네비바 `safeAreaInset` 비움·`ExploreView` 범례/컨트롤/ⓘ) + ZStack `ignoresSafeArea(.keyboard)`. 검색 상태를 `@Binding` 으로 상향. 검색 종료 시 복원
+- **빌드 함정 기록**: `gen-style.mjs` 재생성 후 증분 빌드가 번들 리소스(`basemap-*.json`)를 재복사하지 않아 스타일 변경이 기기에 반영 안 되는 문제 확인 → 리소스 변경 시 **clean 빌드** 필요
 
 ## 2026-07-13
 
