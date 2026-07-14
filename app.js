@@ -1104,8 +1104,8 @@ function selectMountain(park) {
 
 // ── 산 검색 (좌상단 돋보기) + 자동완성 ───────────────
 (function setupSearch() {
+  const box = document.getElementById("search");
   const btn = document.getElementById("search-btn");
-  const panel = document.getElementById("search-panel");
   const input = document.getElementById("search-input");
   const results = document.getElementById("search-results");
   let composing = false;
@@ -1152,10 +1152,11 @@ function selectMountain(park) {
     const m = catalogList().find((x) => x.name === q) || matches(q)[0];
     if (m) { selectMountain(m.park); close(); }
   }
-  function open() { panel.hidden = false; results.innerHTML = ""; input.focus(); }
-  function close() { panel.hidden = true; input.value = ""; }
+  function open() { box.classList.add("open"); results.innerHTML = ""; input.focus(); }
+  function close() { box.classList.remove("open"); input.value = ""; results.innerHTML = ""; }
+  const isOpen = () => box.classList.contains("open");
 
-  btn.addEventListener("click", (e) => { e.stopPropagation(); panel.hidden ? open() : close(); });
+  btn.addEventListener("click", (e) => { e.stopPropagation(); isOpen() ? close() : open(); });
   input.addEventListener("compositionstart", () => { composing = true; });
   input.addEventListener("compositionend", () => {
     composing = false;
@@ -1168,9 +1169,12 @@ function selectMountain(park) {
     const del = e.inputType && e.inputType.startsWith("delete");
     if (!del) autocomplete();
   });
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); pick(); } });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); pick(); }
+    else if (e.key === "Escape") { e.preventDefault(); close(); btn.focus(); }
+  });
   document.addEventListener("click", (e) => {
-    if (!panel.hidden && !document.getElementById("search").contains(e.target)) close();
+    if (isOpen() && !box.contains(e.target)) close();
   });
 })();
 

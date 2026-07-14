@@ -110,15 +110,19 @@ html, body { height: 100%; font-family: "MonaS12", -apple-system, "Apple SD Goth
 #theme-toggle { display: flex; align-items: center; justify-content: center; color: #333; }
 #theme-toggle .icn { width: 18px; height: 18px; }
 
-/* 산 검색 (예전 테마 토글 자리, 좌상단) */
+/* 산 검색 (예전 테마 토글 자리, 좌상단) — 버튼에서 우측으로 확장되는 입력 바 */
 .search { position: absolute; top: 60px; left: 14px; z-index: 36; }
-.search-btn { width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer; background: var(--panel); backdrop-filter: blur(10px); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.2); display: flex; align-items: center; justify-content: center; }
+/* 접힘=원형 버튼 크기(34px), 펼침=우측으로 확장(232px). overflow 로 입력창을 감춰 슬라이드 */
+.search-bar { display: flex; align-items: center; height: 34px; width: 34px; background: var(--panel); backdrop-filter: blur(10px); border-radius: 17px; box-shadow: 0 2px 8px rgba(0,0,0,.2); overflow: hidden; transition: width .18s cubic-bezier(.2,.8,.2,1); }
+#search.open .search-bar { width: 232px; }
+.search-btn { flex: 0 0 34px; width: 34px; height: 34px; border: none; background: transparent; padding: 0; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
 .search-btn svg { width: 18px; height: 18px; }
-.search-panel { position: absolute; top: 40px; left: 0; width: 240px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.28); padding: 8px; }
-.search-panel[hidden] { display: none; }
-#search-input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px; outline: none; }
-#search-input:focus { border-color: var(--accent); }
-.search-results { list-style: none; margin-top: 6px; max-height: 220px; overflow-y: auto; }
+#search-input { flex: 1 1 auto; min-width: 0; border: none; background: transparent; outline: none; color: var(--text); font-family: "MonaS12", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; font-size: 14px; font-weight: 400; padding: 0 12px 0 2px; opacity: 0; transition: opacity .14s ease .03s; }
+#search.open #search-input { opacity: 1; }
+#search-input::placeholder { color: var(--muted); }
+/* 결과 목록 — 입력 후 관련 산이 있을 때만(바 아래로 드롭) */
+.search-results { list-style: none; margin-top: 8px; width: 232px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.28); padding: 6px; max-height: 260px; overflow-y: auto; font-family: "MonaS12", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; display: none; }
+#search.open .search-results:not(:empty) { display: block; }
 .search-results li { padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--text); display: flex; flex-direction: column; gap: 2px; }
 .search-results li:active, .search-results li.active { background: var(--surface); }
 .search-results .sr-name { display: block; }

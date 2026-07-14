@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit   // 지도 컨트롤 커스텀 아이콘(UIImage template)
 
 // 탐험 탭 — 지도 + 검색 + 바텀시트(산 소개). 웹 index.html #app(탐험) 구성 재현.
 // 코스 목록·스파크라인·날씨·국가지점번호는 후속 슬라이스(M1-S3/M2-S2)에서 카드에 채운다.
@@ -17,6 +18,9 @@ struct ExploreView: View {
     @State private var metersPerPoint: Double = 0     // 커스텀 스케일바 축척
     @State private var searching = false
     @State private var query = ""
+    @FocusState private var searchFocused: Bool     // 펼침 시 입력창 자동 포커스
+    private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+    @State private var attrExpanded = false          // 저작권 ⓘ — 탭 시 옆으로 펼침(팝업 대체)
     @State private var detent: SheetDetent = .peek     // 바텀시트 3단계
     @State private var sheetDrag: CGFloat = 0           // 드래그 실시간 오프셋(+아래 -위)
     @State private var courses: [Course] = []
@@ -62,28 +66,35 @@ struct ExploreView: View {
                         .allowsHitTesting(false)
                 }
 
-                // 우측 지도 컨트롤 — 지형/OSM 토글 + 테마 토글 + 현재위치(나침반 통합). 웹 bottom-right 대응.
+                // 우측 지도 컨트롤 — 지형/OSM 토글 + 테마 토글 + 현재위치. 웹 아이콘과 동일.
                 VStack(spacing: 10) {
-                    // 지형 전용 ⇄ OSM. 현재 상태를 아이콘으로: 지형=산, OSM=지도.
-                    ctrlButton(baseMode == "osm" ? "map.fill" : "mountain.2.fill", t) {
+                    // 지형 전용 ⇄ OSM. 현재 상태를 아이콘으로: 지형=△, OSM=접힌 지도(웹 동일).
+                    ctrlImageButton(baseMode == "osm" ? "ctrl-osm" : "ctrl-terrain", t) {
                         baseMode = baseMode == "terrain" ? "osm" : "terrain"
                     }
-                    ctrlButton(scheme == .dark ? "sun.max.fill" : "moon.fill", t) {
+                    ctrlImageButton(scheme == .dark ? "ctrl-sun" : "ctrl-moon", t) {   // 웹 달/해 아이콘(크기 통일)
                         themePref = scheme == .dark ? "light" : "dark"
                     }
-                    ctrlButton("location.fill", t) { locateTick += 1 }
+                    ctrlImageButton("ctrl-locate", t) { locateTick += 1 }   // ◎ 현재위치(웹 geolocate 아이콘)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
                 .padding(.bottom, climb.tracking ? 240 : peek + 92)   // ⓘ 저작권 버튼 위로
                 .allowsHitTesting(!searching)
 
+                // 저작권 ⓘ — 탭하면 옆으로 펼쳐져 어트리뷰션 노출(웹 MapLibre 식, 팝업 대체)
+                attributionControl(t)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(.trailing, 14)
+                    .padding(.bottom, climb.tracking ? 200 : peek + 40)
+                    .allowsHitTesting(!searching)
+
                 // 상단: 검색 버튼(좌) + 산이름 | 코스명(우상단) + 국가지점번호 — 웹 title-block/npn-box
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack(alignment: .top) {
-                        searchButton(t)
+                        searchBar(t)
                         Spacer()
-                        if let m = catalog.selected {
+                        if let m = catalog.selected, !searching {   // 검색 중엔 산이름 숨김(확장 공간 확보)
                             overlayBox(t) {
                                 HStack(alignment: .firstTextBaseline, spacing: 7) {
                                     Text(m.name).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
@@ -96,6 +107,9 @@ struct ExploreView: View {
                             }
                             .padding(.top, 6)
                         }
+                    }
+                    if searching && hasQuery {                      // 입력 후 관련 산만 (웹과 동일)
+                        HStack { searchResults(t); Spacer() }
                     }
                     if let npn = npnCode {
                         overlayBox(t) {
@@ -119,8 +133,6 @@ struct ExploreView: View {
                     }
                 }
                 .padding(.horizontal, 14).padding(.top, 8)
-
-                if searching { searchPanel(t) }
 
                 // 바텀시트 — 등반 중엔 HUD 로 대체(웹: 등반 중 시트 숨김)
                 VStack(spacing: 0) {
@@ -195,67 +207,99 @@ struct ExploreView: View {
         return (label, width)
     }
 
-    // 우측 지도 컨트롤 버튼 (검색 버튼과 동일 프레임)
-    private func ctrlButton(_ icon: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
+    // 우측 지도 컨트롤 버튼 — 웹과 동일한 커스텀 아이콘(번들 PNG, template 틴트).
+    // 프레임 36 / 아이콘 20 (웹 컨트롤 비율에 맞춰 아이콘이 프레임을 적당히 채우도록).
+    private func ctrlImageButton(_ image: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
-            Image(systemName: icon)
-                .font(.kakao(size: 16, weight: .semibold))
+            Image(uiImage: (UIImage(named: image) ?? UIImage()).withRenderingMode(.alwaysTemplate))
+                .resizable().scaledToFit()
+                .frame(width: 20, height: 20)
                 .foregroundStyle(t.text)
-                .frame(width: 42, height: 42)
+                .frame(width: 36, height: 36)
                 .background(t.elevated.opacity(0.92), in: Circle())
                 .overlay(Circle().strokeBorder(t.line))
         }
     }
 
-    // MARK: 검색
-    private func searchButton(_ t: Theme) -> some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.18)) { searching.toggle() }
-        } label: {
-            Image(systemName: searching ? "xmark" : "magnifyingglass")
-                .font(.kakao(size: 17, weight: .semibold))
-                .foregroundStyle(t.text)
-                .frame(width: 42, height: 42)
-                .background(t.elevated.opacity(0.92), in: Circle())
-                .overlay(Circle().strokeBorder(t.line))
+    // 저작권 ⓘ — 접힘=작은 원형 ⓘ, 탭하면 좌측으로 펼쳐져 어트리뷰션 텍스트 노출(팝업 대체).
+    private func attributionControl(_ t: Theme) -> some View {
+        HStack(spacing: 0) {
+            if attrExpanded {
+                Text("Protomaps © OpenStreetMap · © Copernicus DEM")
+                    .font(.kakao(size: 10))
+                    .foregroundStyle(t.muted)
+                    .lineLimit(1).fixedSize()
+                    .padding(.leading, 12).padding(.trailing, 2)
+                    .transition(.opacity)
+            }
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) { attrExpanded.toggle() }
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(t.muted)
+                    .frame(width: 30, height: 30)
+            }
         }
+        .background(t.elevated.opacity(0.92), in: Capsule())
+        .overlay(Capsule().strokeBorder(t.line))
     }
 
-    private func searchPanel(_ t: Theme) -> some View {
-        VStack(spacing: 0) {
-            TextField("산 이름 검색", text: $query)
-                .textFieldStyle(.plain)
-                .padding(12)
-                .background(t.elevated)
-            Divider().overlay(t.line)
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(results) { m in
-                        Button {
-                            catalog.selected = m
-                            climb.recordTrack = nil       // 산 변경 → 기록 루트 지움
-                            withAnimation(.easeOut(duration: 0.18)) { searching = false }
-                            query = ""
-                        } label: {
-                            HStack {
-                                Text(m.name).foregroundStyle(t.text)
-                                Spacer()
-                                if let e = m.elev { Text("\(e)m").foregroundStyle(t.muted).font(.kakao(size: 13)) }
-                            }
-                            .padding(.horizontal, 14).padding(.vertical, 11)
+    // MARK: 검색 — 버튼 클릭 시 입력창이 우측으로 확장(웹과 동일). 접힘=원형, 펼침=알약형 바.
+    private func searchBar(_ t: Theme) -> some View {
+        HStack(spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.18)) { searching.toggle() }
+                if searching { searchFocused = true } else { query = "" }
+            } label: {
+                Image(systemName: searching ? "xmark" : "magnifyingglass")
+                    .font(.kakao(size: 17, weight: .semibold))
+                    .foregroundStyle(t.text)
+                    .frame(width: 42, height: 42)
+            }
+            if searching {
+                TextField("산 이름 검색", text: $query)
+                    .textFieldStyle(.plain)
+                    .font(.kakao(size: 15))
+                    .foregroundStyle(t.text)
+                    .focused($searchFocused)
+                    .submitLabel(.search)
+                    .frame(width: 182)
+                    .padding(.trailing, 12)
+                    .transition(.opacity)
+            }
+        }
+        .background(t.elevated.opacity(0.92), in: Capsule())
+        .overlay(Capsule().strokeBorder(t.line))
+    }
+
+    // 결과 목록 — 바 아래로. 입력 후 관련 산이 있을 때만 표시(호출부에서 게이트).
+    private func searchResults(_ t: Theme) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(results) { m in
+                    Button {
+                        catalog.selected = m
+                        climb.recordTrack = nil       // 산 변경 → 기록 루트 지움
+                        withAnimation(.easeOut(duration: 0.18)) { searching = false }
+                        query = ""
+                    } label: {
+                        HStack {
+                            Text(m.name).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
+                            Spacer()
+                            if let e = m.elev { Text("\(e)m").foregroundStyle(t.muted).font(.kakao(size: 13)) }
                         }
-                        Divider().overlay(t.line)
+                        .padding(.horizontal, 14).padding(.vertical, 11)
                     }
+                    Divider().overlay(t.line)
                 }
             }
-            .frame(maxHeight: 260)
         }
+        .frame(width: 236, height: min(CGFloat(results.count) * 43, 260))  // 내용만큼(웹처럼) + 상한
         .background(t.elevated)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
         .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-        .padding(.horizontal, 14)
-        .padding(.top, 58)
     }
 
     // MARK: 등반 중 HUD (웹 #climb-hud) — 경과·이동거리·GPS 지점 + 종료

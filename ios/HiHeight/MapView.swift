@@ -27,9 +27,7 @@ struct MapView: UIViewRepresentable {
         // 시트가 하단을 덮으므로 시트 위로 올린다(y 여백).
         mv.showsLogoView = false
         mv.showsScale = false                            // 웹식 단일 눈금 스케일바를 SwiftUI 로 직접 그림
-        mv.showsAttributionButton = true
-        mv.attributionButtonPosition = .bottomRight
-        mv.attributionButtonMargins = CGPoint(x: 12, y: 300)
+        mv.showsAttributionButton = false                // 팝업 대신 SwiftUI 커스텀 어트리뷰션(옆으로 펼침) 사용
         mv.showsCompassView = false                      // 나침반은 위치 버튼에 통합
         context.coordinator.dark = styleResource.contains("dark")
         applyStyle(mv)
@@ -41,7 +39,6 @@ struct MapView: UIViewRepresentable {
         context.coordinator.bottomInset = bottomInset
         applyStyle(mv)                                   // 테마 전환 시 스타일 교체
         mv.scaleBarShouldShowDarkStyles = !context.coordinator.dark   // 밝은 지도→어두운 스케일바
-        mv.attributionButtonMargins = CGPoint(x: 12, y: bottomInset)  // 저작권 ⓘ 를 시트 위로(기기별)
         context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.onScaleChanged = onScaleChanged
         context.coordinator.apply(mountain: mountain, on: mv)
