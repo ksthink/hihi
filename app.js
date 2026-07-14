@@ -481,9 +481,9 @@ function courseEndsData() {
   if (!first?.length || !last?.length) return EMPTY_FC;
   return { type: "FeatureCollection", features: [
     { type: "Feature", geometry: { type: "Point", coordinates: first[0] },
-      properties: { kind: "start", label: "출발" } },
+      properties: { kind: "start" } },
     { type: "Feature", geometry: { type: "Point", coordinates: last[last.length - 1] },
-      properties: { kind: "end", label: "도착" } },
+      properties: { kind: "end" } },
   ] };
 }
 
@@ -569,23 +569,26 @@ function ensureOverlays() {
     });
     // 시점·종점 마커 — 코스 선택 시에만 (applyTrailFilter 가 주입)
     map.addSource("course-ends", { type: "geojson", data: courseEndsData() });
+    // 보물지도 기호 — 시작:속 빈 동그라미(○), 끝:굵은 X("X marks the spot")
     map.addLayer({
       id: "course-ends-dots", type: "circle", source: "course-ends",
+      filter: ["==", ["get", "kind"], "start"],
       paint: {
-        "circle-radius": 5,
-        "circle-color": ["case", ["==", ["get", "kind"], "start"], c.line, c.casing],
-        "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], c.casing, c.line],
-        "circle-stroke-width": 2
+        "circle-radius": 6,
+        "circle-color": c.casing,             // 속 빈 링(배경색 채움)
+        "circle-stroke-color": c.line,
+        "circle-stroke-width": 2.5
       }
     });
     map.addLayer({
-      id: "course-ends-labels", type: "symbol", source: "course-ends",
+      id: "course-ends-x", type: "symbol", source: "course-ends",
+      filter: ["==", ["get", "kind"], "end"],
       layout: {
-        "text-field": ["get", "label"], "text-font": ["MonaS12 Bold"],
-        "text-size": 9.5, "text-offset": [0, 1.1], "text-anchor": "top",
-        "text-allow-overlap": true
+        "text-field": "X", "text-font": ["MonaS12 Bold"],
+        "text-size": 18, "text-anchor": "center",
+        "text-allow-overlap": true, "text-ignore-placement": true
       },
-      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.6 }
+      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 2 }
     });
 
     // 저장된 산행 기록 트랙 (기록 탭에서 선택 시 setData) — 점선 라운드로 코스 선과 구분

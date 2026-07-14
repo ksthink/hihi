@@ -119,16 +119,20 @@ function make(theme, baseMode) {
   // ── 시종점(course-ends) — 선택 코스 지오메트리 첫/끝 점 (app.js:533-550). ──
   // 데이터는 런타임 파생이라 빈 FC 로 두고, 코스 선택 시 MapView 가 source.shape 로 채운다.
   style.sources["course-ends"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  // 보물지도 기호 — 시작:속 빈 동그라미(○), 끝:굵은 X("X marks the spot")
   style.layers.push(
     { id: "course-ends-dots", type: "circle", source: "course-ends",
-      paint: { "circle-radius": 5.5,
-               "circle-color": ["case", ["==", ["get", "kind"], "start"], tc.line, tc.casing],
-               "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], tc.casing, tc.line],
-               "circle-stroke-width": 2 } },
-    { id: "course-ends-labels", type: "symbol", source: "course-ends",
-      layout: { "text-field": ["get", "label"], "text-font": ["MonaS12 Regular"],
-                "text-size": 12, "text-offset": [0, 1.1], "text-anchor": "top" },
-      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
+      filter: ["==", ["get", "kind"], "start"],
+      paint: { "circle-radius": 6.5,
+               "circle-color": tc.casing,            // 속 빈 링(배경색 채움)
+               "circle-stroke-color": tc.line,
+               "circle-stroke-width": 2.5 } },
+    { id: "course-ends-x", type: "symbol", source: "course-ends",
+      filter: ["==", ["get", "kind"], "end"],
+      layout: { "text-field": "X", "text-font": ["MonaS12 Bold"],
+                "text-size": 20, "text-anchor": "center",
+                "text-allow-overlap": true, "text-ignore-placement": true },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 2 } },
   );
 
   // ── 기록 루트 보기 — 저장된 기록 트랙(점선). app.js:554-566. ──

@@ -247,9 +247,9 @@ struct MapView: UIViewRepresentable {
 
         private static func endsGeoJSON(start: [Double], end: [Double]) -> Data? {
             let fc: [String: Any] = ["type": "FeatureCollection", "features": [
-                ["type": "Feature", "properties": ["kind": "start", "label": "출발"],
+                ["type": "Feature", "properties": ["kind": "start"],
                  "geometry": ["type": "Point", "coordinates": start]],
-                ["type": "Feature", "properties": ["kind": "end", "label": "도착"],
+                ["type": "Feature", "properties": ["kind": "end"],
                  "geometry": ["type": "Point", "coordinates": end]],
             ]]
             return try? JSONSerialization.data(withJSONObject: fc)
