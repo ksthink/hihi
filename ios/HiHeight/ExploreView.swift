@@ -49,12 +49,15 @@ struct ExploreView: View {
             let peek = min(330, max(248, fullH * 0.32))
             ZStack(alignment: .top) {
                 MapView(styleResource: "basemap-\(scheme == .dark ? "dark" : "light")\(baseMode == "osm" ? "-osm" : "")",
-                        mountain: catalog.selected, selectedCourse: climb.course,
+                        mountain: catalog.selected, courses: courses, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
                         locateTick: locateTick, fitCourseTick: courseFitTick,
                         bottomInset: peek + 40,
-                        onScaleChanged: { metersPerPoint = $0 })
+                        onScaleChanged: { metersPerPoint = $0 },
+                        onCourseTapped: { name in                       // 지도에서 등산로/배지 탭 → 코스 선택 + 목록 노출·스크롤
+                            if let c = courses.first(where: { $0.name == name }) { selectCourse(c, revealList: true) }
+                        })
                     .ignoresSafeArea()
 
                 // 스케일바 (좌하단, 시트 위) — 웹 ScaleControl 식 단일 눈금 바. 검색 중엔 숨김.
@@ -374,6 +377,7 @@ struct ExploreView: View {
         return VStack(spacing: 0) {
             Capsule().fill(t.line).frame(width: 38, height: 5).padding(.top, 8).padding(.bottom, 10)
             if let m = catalog.selected {
+              ScrollViewReader { proxy in
               ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     // 헤더 — 이름 + 고도 + (우측)일출/일몰. 관리 주체·산 설명은 미표시(데이터는 계속 로드)
@@ -406,7 +410,7 @@ struct ExploreView: View {
                         Text("코스 정보를 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
                     } else {
                         VStack(spacing: 9) {
-                            ForEach(courses) { c in courseRow(c, t) }
+                            ForEach(courses) { c in courseRow(c, t).id(c.id) }
                         }
                     }
                     // 출처 표기 + 샘플 데이터 고지 (웹 footer)
@@ -418,6 +422,10 @@ struct ExploreView: View {
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, 18).padding(.bottom, 16)
+              }
+              .onChange(of: climb.course?.id) { newID in       // 선택 코스 바뀌면 목록을 그 코스로 스크롤
+                  if let newID { withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(newID, anchor: .center) } }
+              }
               }
             } else {
                 Text("산을 불러오는 중…").foregroundStyle(t.muted).padding()
@@ -481,14 +489,18 @@ struct ExploreView: View {
 
     // 등산로 카드 — 웹 trail-item(프레임 + 좌측 강조선). 이름·난이도 배지·거리/시간·고도 프로파일.
     // 탭 → 선택(시종점 표시). 선택 시 accent 링 강조.
+    // 코스 선택(목록 탭·지도 탭 공통): 선택 반영 + 지도 코스 범위로 fitBounds.
+    // revealList=true(지도 탭)면 시트를 올려 목록을 노출(선택 코스로 자동 스크롤됨), 아니면(목록 탭) 낮춰 지도 노출.
+    private func selectCourse(_ c: Course, revealList: Bool = false) {
+        withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
+        climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
+        courseFitTick += 1                         // 지도를 코스 범위로 이동
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = revealList ? .medium : .peek }
+    }
+
     private func courseRow(_ c: Course, _ t: Theme) -> some View {
         let sel = climb.course?.id == c.id
-        return Button {
-            withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
-            climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
-            courseFitTick += 1                         // 지도를 코스 범위로 이동
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = .peek }  // 시트 낮춰 지도 노출
-        } label: {
+        return Button { selectCourse(c) } label: {
             HStack(spacing: 0) {
                 Rectangle().fill(t.accent).frame(width: 3)     // 좌측 강조선 (border-left)
                 HStack(spacing: 12) {

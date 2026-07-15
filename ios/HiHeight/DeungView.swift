@@ -33,13 +33,7 @@ struct DeungView: View {
     private func header(_ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text("등반").font(.kakao(size: 26, weight: .bold)).foregroundStyle(t.text)
-                if let mtn = climb.mountainName, !mtn.isEmpty {
-                    Text("|").font(.kakao(size: 22)).foregroundStyle(t.muted).padding(.horizontal, 9)
-                    Text(mtn).font(.kakao(size: 20, weight: .bold)).foregroundStyle(t.bg)   // .mtn-badge
-                        .padding(.vertical, 2).padding(.horizontal, 12)
-                        .background(t.text, in: RoundedRectangle(cornerRadius: 9))
-                }
+                Text("등반").font(.kakao(size: 26, weight: .bold)).foregroundStyle(t.text)   // 산이름 배지 제거(코스 카드로 이동)
                 Spacer(minLength: 0)
             }
             Text("코스를 골라 산행을 시작하세요").font(.kakao(size: 13)).foregroundStyle(t.muted)
@@ -54,10 +48,22 @@ struct DeungView: View {
     private func card(_ t: Theme) -> some View {
         let c = climb.course
         return VStack(spacing: 14) {
-            // 코스명 (없으면 안내)
-            Text(c?.name ?? "선택된 코스가 없습니다")
-                .font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
-                .frame(maxWidth: .infinity)
+            // 제목 — 산이름(볼드) | 코스명. 코스 없으면 안내.
+            Group {
+                if let c {
+                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                        if let mtn = climb.mountainName, !mtn.isEmpty {
+                            Text(mtn).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
+                            Text("|").font(.kakao(size: 15)).foregroundStyle(t.muted)
+                        }
+                        Text(c.name).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.text)
+                    }
+                    .lineLimit(1)
+                } else {
+                    Text("선택된 코스가 없습니다").font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
+                }
+            }
+            .frame(maxWidth: .infinity)
 
             // 통계 2행 (거리/예상/난이도 · 최고/누적상승/최저) — 미선택 시 "–"
             VStack(spacing: 8) {

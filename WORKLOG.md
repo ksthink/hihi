@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-07-15
+
+탐험/등반 날씨 미표시 원인 규명·수정 + 지도 코스 선택 UX 웹 동등화(선택 강조·탭 선택·번호 배지) + 등반 탭 제목/카드 정리 — 네이티브.
+
+### 생성 / 추가
+- **지도 코스 선택 강조·상호작용(웹 applyTrailFilter/focusTrail 이식)**: 선택 코스=검정(`trail-hl` 런타임 필터), 미선택=회색(`trail-line` faded 런타임 색), 선택 배지 반전(`badge-N`↔`badge-N-sel`). 지도에서 등산로/배지 **탭 → 코스 선택**(`UITapGestureRecognizer`+`visibleFeatures`, 얇은 선 탭용 `trail-hit` 넓은 투명선). `MapView.swift`(`applyTrailSelection`·`handleTap`·`onCourseTapped`), `gen-style.mjs`(`trail-hl`·`trail-hit`), `ExploreView.selectCourse`(목록·지도 탭 공통 헬퍼)
+- **번호 배지 코스당 1개·직립**: `symbol-placement:line-center`(코스 갈래마다 중복·라인 방향 회전) → **코스 중점 포인트 소스**(`course-nos`)로 전환. 코스 midpoint(가장 긴 하위선의 반거리 지점, 웹 lineMidpoint)를 `Course.mid`로 계산하고 `MapView.setCourseNos`가 런타임 주입. `Course.swift`·`gen-style.mjs`
+- **바텀시트 목록 자동 스크롤**: 지도에서 코스 선택 시 시트를 올려(medium) 선택 코스로 스크롤(`ScrollViewReader`+`onChange(climb.course?.id)`). `ExploreView.swift`
+
+### 수정 / 변경
+- **날씨 미표시 — 근본원인=맥 LAN IP 변경**: 맥 WiFi IP 가 `192.168.0.143`→`172.28.59.10` 으로 바뀌었는데 `Config.proxyBase` 가 옛 IP 하드코딩이라 날씨 프록시(URLSession) 요청만 낡은 주소로 멈춤(코스·등고선은 R2 클라우드라 무관 → "이것만 되고 저것만 안 됨"의 정체). **시뮬레이터=`localhost`(IP 변경 무관)/실기기=현재 LAN IP** 로 `#if targetEnvironment(simulator)` 분기. 진단 중 `-999 cancelled`/hang 로그로 좁힘. (`Config.swift` 는 머신별 IP라 커밋 제외)
+- **등반 탭 제목·카드**: 상단 제목에서 산이름 배지 제거(제목 "등반"만), 코스 카드 상단을 코스명 → **"산이름 | 코스명"**(산이름 볼드). `DeungView.swift`
+- **빌드 함정(반복 확인)**: 시뮬레이터 증분 빌드가 리소스/코드 변경을 스테일하게 유지 → **앱 삭제(uninstall) 후 재설치**·필요 시 clean 빌드로 확실히 반영. 스타일 재생성은 sim=localhost / device=LAN IP 로 각각
+
 ## 2026-07-14
 
 지형 전용 기저 모드·정보 카드 정리·UI 폰트 MonaS12 전환·일출/일몰 — 웹·네이티브 동시 반영.

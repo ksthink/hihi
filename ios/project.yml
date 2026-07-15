@@ -51,8 +51,8 @@ targets:
           - MonaS12-Bold.ttf     # Bold
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        # 스파이크: 시뮬레이터가 맥의 admin_server(http://localhost:8890) 프록시로
-        # PMTiles·글리프를 받는다. ATS 가 http 를 막으므로 로컬 네트워킹 예외 허용.
+        # 개발용: 맥 admin_server(시뮬레이터=localhost / 실기기=LAN IP, 8890) 프록시로
+        # PMTiles·글리프·날씨 API 를 받는다. ATS 가 http 를 막으므로 로컬 네트워킹 예외 허용.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         # 등반 트래킹(M5) — 산행 중 현재 위치·이동 경로 기록.

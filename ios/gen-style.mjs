@@ -58,8 +58,8 @@ function make(theme, baseMode) {
 
   // ── 등산로(코스) 오버레이 — app.js:492-513 스펙 그대로 (casing + line, 난이도별 굵기) ──
   const tc = theme === "dark"
-    ? { line: "#ffffff", casing: "#000000" }
-    : { line: "#111111", casing: "#ffffff" };
+    ? { line: "#ffffff", casing: "#000000", faded: "#5c5c5c" }
+    : { line: "#111111", casing: "#ffffff", faded: "#b8b8b8" };
   const widthExpr = ["interpolate", ["linear"], ["zoom"],
     11, ["match", ["get", "difficulty"], "초급", 1.6, "중급", 2.4, "고급", 3.4, 2.2],
     16, ["match", ["get", "difficulty"], "초급", 3.5, "중급", 5, "고급", 7, 4.5]];
@@ -67,19 +67,30 @@ function make(theme, baseMode) {
     type: "geojson",
     data: `${BASE}/data/packs/${PACK}/routes.geojson`,
   };
+  // 코스 번호 배지 위치 — 코스당 중점 1개(웹 courseNoFC 대응). MapView 가 런타임에 채운다(course.mid).
+  style.sources["course-nos"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
   style.layers.push(
     { id: "trail-casing", type: "line", source: "trails",
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": tc.casing,
                "line-width": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 10] } },
+    // 미선택 코스 선(선택 시 MapView 가 faded 회색으로, 미선택 상태면 tc.line 검정). app.js:542
     { id: "trail-line", type: "line", source: "trails",
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": tc.line, "line-width": widthExpr } },
-    // 코스 번호 배지 — 라인 중앙에 항상 표시 (app.js:522 course-no-badges).
-    // 아이콘 badge-N 은 MapView 가 런타임 UIImage 로 등록(makeBadge).
-    { id: "course-no-badges", type: "symbol", source: "trails", minzoom: 10.5,
+    // 선택 코스 강조(검정) — 회색 선 위에 얹음. 필터는 런타임(MapView.applyTrailSelection)이 선택 코스명으로. app.js:547
+    { id: "trail-hl", type: "line", source: "trails",
+      filter: ["==", ["get", "name"], "__none__"],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.line, "line-width": widthExpr } },
+    // 탭 히트 확장 — 얇은 선을 손가락으로 맞추기 위한 넓은 투명선. app.js:554
+    { id: "trail-hit", type: "line", source: "trails",
+      paint: { "line-color": "#000000", "line-opacity": 0.001,
+               "line-width": ["interpolate", ["linear"], ["zoom"], 11, 16, 16, 28] } },
+    // 코스 번호 배지 — course-nos 포인트 소스(코스당 1개, 직립). 웹 course-no-badges 대응. app.js:563
+    // 아이콘 badge-N(미선택)/badge-N-sel(선택)은 MapView 가 런타임 UIImage 로 등록·교체.
+    { id: "course-no-badges", type: "symbol", source: "course-nos", minzoom: 10.5,
       layout: {
-        "symbol-placement": "line-center",
         "icon-image": ["concat", "badge-", ["to-string", ["coalesce", ["get", "no"], 1]]],
         "icon-allow-overlap": true, "icon-ignore-placement": true,
       } },

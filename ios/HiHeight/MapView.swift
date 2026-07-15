@@ -7,6 +7,7 @@ import MapLibre
 struct MapView: UIViewRepresentable {
     let styleResource: String
     let mountain: Mountain?
+    var courses: [Course] = []           // 번호 배지 위치(course.mid) 주입용 — 코스당 1개
     var selectedCourse: Course? = nil
     var climbTrack: [[Double]] = []      // 등반 중 지나온 GPS 트랙 [lng,lat,...]
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
@@ -16,6 +17,7 @@ struct MapView: UIViewRepresentable {
     var bottomInset: CGFloat = 306       // 시트가 가리는 하단 높이(기기별) — fitBounds·저작권 배치
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
     var onScaleChanged: ((Double) -> Void)? = nil    // 지도 이동 시 축척(m/point) 통지 → 커스텀 스케일바
+    var onCourseTapped: ((String) -> Void)? = nil    // 지도에서 등산로/배지 탭 → 코스명 통지(웹 selectByName)
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -29,6 +31,9 @@ struct MapView: UIViewRepresentable {
         mv.showsScale = false                            // 웹식 단일 눈금 스케일바를 SwiftUI 로 직접 그림
         mv.showsAttributionButton = false                // 팝업 대신 SwiftUI 커스텀 어트리뷰션(옆으로 펼침) 사용
         mv.showsCompassView = false                      // 나침반은 위치 버튼에 통합
+        // 등산로/배지 탭 → 코스 선택(웹 trail-hit·course-no-badges 클릭 대응)
+        mv.addGestureRecognizer(UITapGestureRecognizer(
+            target: context.coordinator, action: #selector(Coordinator.handleTap(_:))))
         context.coordinator.dark = styleResource.contains("dark")
         applyStyle(mv)
         return mv
@@ -41,8 +46,11 @@ struct MapView: UIViewRepresentable {
         mv.scaleBarShouldShowDarkStyles = !context.coordinator.dark   // 밝은 지도→어두운 스케일바
         context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.onScaleChanged = onScaleChanged
+        context.coordinator.onCourseTapped = onCourseTapped
         context.coordinator.apply(mountain: mountain, on: mv)
+        context.coordinator.setCourseNos(courses, on: mv)                       // 번호 배지 위치(코스당 1개)
         context.coordinator.applyCourse(selectedCourse, on: mv)
+        context.coordinator.applyTrailSelection(selectedCourse?.name, on: mv)   // 선택 코스 강조(검정/회색·배지)
         context.coordinator.fitCourse(fitCourseTick, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
         context.coordinator.setRecordTrack(recordTrack, on: mv)
@@ -87,25 +95,62 @@ struct MapView: UIViewRepresentable {
             if follow { mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil) }
         }
 
-        // 코스 번호 배지 이미지(badge-N) 등록 — 웹 makeBadge 캔버스 대응(런타임 UIImage).
-        // 스타일 로드/테마 전환마다 재등록. course-no-badges 레이어(gen-style)가 참조.
+        // 코스 번호 배지 이미지 등록 — 웹 makeBadge 대응. 미선택=badge-N, 선택=badge-N-sel(반전).
+        // 스타일 로드/테마 전환마다 재등록. course-no-badges 레이어가 런타임 표현식으로 선택 코스만 -sel 로.
         func registerBadges(on style: MLNStyle) {
-            for n in 1...12 { style.setImage(makeBadge(n), forName: "badge-\(n)") }
+            for n in 1...12 {
+                style.setImage(makeBadge(n, sel: false), forName: "badge-\(n)")
+                style.setImage(makeBadge(n, sel: true), forName: "badge-\(n)-sel")
+            }
         }
-        private func makeBadge(_ n: Int) -> UIImage {
+        // 웹 makeBadge: 미선택=흰 원+검은 숫자, 선택=검은 원+흰 숫자. 지도색과 원색이 비슷할 때만 테두리.
+        private func makeBadge(_ n: Int, sel: Bool) -> UIImage {
             let size = CGSize(width: 26, height: 26)
             let fmt = UIGraphicsImageRendererFormat.default(); fmt.scale = 2
-            let bg = dark ? UIColor(white: 0.949, alpha: 1) : UIColor(white: 0.067, alpha: 1)  // f2 / 11
-            let fg: UIColor = dark ? .black : .white
+            let dark11 = UIColor(white: 0.067, alpha: 1)
+            let fill: UIColor = sel ? dark11 : .white
+            let fg: UIColor = sel ? .white : dark11
+            let needBorder = sel ? dark : !dark        // 라이트맵×흰원 / 다크맵×검은원 일 때만
             return UIGraphicsImageRenderer(size: size, format: fmt).image { _ in
-                bg.setFill()
-                UIBezierPath(ovalIn: CGRect(origin: .zero, size: size).insetBy(dx: 1.5, dy: 1.5)).fill()
+                let circle = UIBezierPath(ovalIn: CGRect(origin: .zero, size: size).insetBy(dx: 2, dy: 2))
+                fill.setFill(); circle.fill()
+                if needBorder { fg.setStroke(); circle.lineWidth = 1.5; circle.stroke() }
                 let s = "\(n)"
                 let attrs: [NSAttributedString.Key: Any] = [
                     .font: UIFont.systemFont(ofSize: 14, weight: .bold), .foregroundColor: fg]
                 let ts = s.size(withAttributes: attrs)
                 s.draw(at: CGPoint(x: (size.width - ts.width) / 2, y: (size.height - ts.height) / 2), withAttributes: attrs)
             }
+        }
+
+        // 등산로 선택 반영(웹 applyTrailFilter): 선택 코스=검정(trail-hl), 나머지=회색(trail-line faded),
+        // 미선택 상태면 전체 검정. 선택 코스 배지는 badge-N-sel(반전)로. 스타일 로드·선택 변경마다 호출.
+        func applyTrailSelection(_ name: String?, on mv: MLNMapView) {
+            guard let style = mv.style else { return }
+            let line = dark ? UIColor.white : UIColor(white: 0.067, alpha: 1)
+            let faded = dark ? UIColor(white: 0.36, alpha: 1) : UIColor(white: 0.722, alpha: 1)  // 5c / b8
+            if let tl = style.layer(withIdentifier: "trail-line") as? MLNLineStyleLayer {
+                tl.lineColor = NSExpression(forConstantValue: name != nil ? faded : line)
+            }
+            if let hl = style.layer(withIdentifier: "trail-hl") as? MLNLineStyleLayer {
+                hl.predicate = NSPredicate(format: "name == %@", name ?? "__none__")
+            }
+            if let bl = style.layer(withIdentifier: "course-no-badges") as? MLNSymbolStyleLayer {
+                bl.iconImageName = NSExpression(mglJSONObject: [
+                    "concat", "badge-",
+                    ["to-string", ["coalesce", ["get", "no"], 1]],
+                    ["case", ["==", ["get", "name"], name ?? "__none__"], "-sel", ""],
+                ])
+            }
+        }
+
+        // 지도에서 등산로/배지 탭 → 해당 코스 선택 통지(웹 trail-hit/course-no-badges 클릭 → selectByName).
+        var onCourseTapped: ((String) -> Void)?
+        @objc func handleTap(_ g: UITapGestureRecognizer) {
+            guard let mv = g.view as? MLNMapView else { return }
+            let feats = mv.visibleFeatures(at: g.location(in: mv),
+                                           styleLayerIdentifiers: ["trail-hit", "course-no-badges"])
+            if let name = feats.first?.attribute(forKey: "name") as? String { onCourseTapped?(name) }
         }
 
         func apply(mountain m: Mountain?, on mv: MLNMapView) {
@@ -149,6 +194,26 @@ struct MapView: UIViewRepresentable {
         func applyCourse(_ c: Course?, on mv: MLNMapView) {
             desiredCourse = c
             if mv.style != nil { setCourseEnds(c, on: mv) }
+        }
+
+        // 코스 번호 배지 위치(course-nos) 주입 — 코스당 중점 1개(웹 courseNoFC). 산 전환 시에만 갱신.
+        private var desiredCourses: [Course] = []
+        private var courseNosKey = ""
+        func setCourseNos(_ courses: [Course], on mv: MLNMapView) {
+            desiredCourses = courses
+            guard let style = mv.style,
+                  let src = style.source(withIdentifier: "course-nos") as? MLNShapeSource else { return }
+            let key = courses.map { "\($0.no ?? 0):\($0.name)" }.joined(separator: "|")
+            guard key != courseNosKey else { return }
+            courseNosKey = key
+            let feats: [MLNPointFeature] = courses.compactMap { c in
+                guard let m = c.mid, m.count == 2 else { return nil }
+                let f = MLNPointFeature()
+                f.coordinate = CLLocationCoordinate2D(latitude: m[1], longitude: m[0])
+                f.attributes = ["no": c.no ?? 1, "name": c.name]
+                return f
+            }
+            src.shape = MLNShapeCollectionFeature(shapes: feats)
         }
 
         // 코스 탭 → 코스 전체 범위로 카메라 이동(웹 focusTrail fitBounds). 틱 변화 시에만.
@@ -257,6 +322,9 @@ struct MapView: UIViewRepresentable {
             registerBadges(on: style)            // 코스 번호 배지 이미지(테마색) 등록
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
+            courseNosKey = ""                    // 스타일 재로드 시 배지 위치 재주입 강제
+            setCourseNos(desiredCourses, on: mapView)
+            applyTrailSelection(desiredCourse?.name, on: mapView)   // 선택 코스 강조 재적용(스타일 재로드)
             trackCount = -1; recTrackKey = ""    // 스타일 재로드 시 트랙 재주입 강제
         }
 
