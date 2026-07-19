@@ -8,6 +8,17 @@
 
 맥 프록시 의존 완전 제거 — 타일·팩·날씨·글리프를 클라우드 직결/앱 번들로 이전(전부 HTTPS). 실기기 검증. iOS README 재작성.
 이어 **지도 다운로드(오프라인 팩) 기능 신규 구현** — 다운로드→폰 로컬 설치→비행기 모드 렌더(S2 정석). 실기기 검증.
+이어 **오프라인 팩 다듬기(삭제·저장된 지도 목록·온오프 하이브리드) + 탐험 바텀시트 개선 + 기록 탭 프로필 수정** 추가. 실기기 검증.
+
+### 생성 / 추가 (다듬기·프로필)
+- **네트워크 모니터(`NetworkMonitor.swift` 신규)**: `NWPathMonitor` → `isOnline`. 오프라인 팩 하이브리드 — 온라인이면 원격 전국 base(자유 팬), 오프라인이면 다운로드된 로컬 팩 base 로 렌더 전환(`ExploreView` offlineBaseURL 게이팅). 오버레이 geojson 은 설치 시 항상 로컬.
+- **등반 탭 "저장된 지도" 목록(`DeungView.savedMaps`)**: 다운로드된 팩(`PackStore.downloaded` × 카탈로그) 목록. 탭→해당 산 선택 후 탐험 탭(`ContentView.onOpenMap`), 휴지통→삭제. 웹 renderSavedMaps 대응.
+- **프로필 수정(`ProfileEditView.swift` 신규)**: 닉네임(Supabase `profiles`) + 아바타 이미지(PhotosPicker). 이미지 없으면 기본(person.circle). "기본 이미지로"·저장·로그아웃. 아바타는 **기기 로컬**(`avatar-<uid>.jpg`), 닉네임은 서버 동기화.
+
+### 수정 / 변경 (다듬기·프로필)
+- **`AuthStore.swift`**: `nickname`(profiles 조회/upsert)·`avatar`(로컬 파일) 상태 + `loadProfile`/`saveProfile`(닉네임 upsert + 아바타 로컬 저장/삭제) + `removeSavedPack`(saved_packs 삭제). 로그인/refresh 시 `loadProfile`, 로그아웃 시 초기화. `import UIKit`.
+- **`RecordsView.swift`**: 계정 바를 이메일 단독 → **아바타 + 닉네임 + 이메일 + 수정** 으로. 탭→프로필 수정 시트(로그아웃도 시트로 이동).
+- **`ExploreView.swift` 바텀시트 개선**: ① 경계 밖 **점진적 러버밴딩**(로그 감쇠)로 하드 클램프 제거, ② 스냅 스프링 → `interactiveSpring`(부드럽게), ③ ScrollView 가 드래그를 먹던 문제 → **`simultaneousGesture`** + 손잡이 히트영역 전폭 밴드로 확대(본문 어디서나 드래그, large 에선 상단 손잡이만 시트 이동·본문 스크롤), ④ **손잡이 탭 토글**(접힘↔완전 펼침 large), ⑤ peek 초기 상태 **상단 잘림 수정**(코스 자동 스크롤은 large 에서만·접으면 맨 위로 리셋), ⑥ **긴 코스명 레이아웃** — 난이도 배지를 코스명 옆 → **고도 스파이크 위(우측 열)** 로 이동해 이름이 좌측 전체 사용.
 
 ### 생성 / 추가 (오프라인 팩)
 - **다운로드·로컬 설치(`PackStore.swift` 신규)**: 껍데기였던 "지도 다운" 버튼(동작 없는 Text)을 실제 기능으로. 산별 `packs/<코드>/{base.pmtiles + routes/spots/contours.geojson}` 를 `Application Support/packs/<코드>/` 에 설치(웹 IndexedDB → 네이티브 파일시스템, 웹 주석의 예고대로). base.pmtiles 는 `URLSessionDownloadTask` 델리게이트로 바이트 진행률(0→0.9), geojson 은 나머지(routes 필수). `@MainActor` 클래스 + `nonisolated` 델리게이트 → `Task { @MainActor }` hop. 경로조회(root/packDir/localFile/isDownloaded)는 `nonisolated`(MapView 가 소스로 사용).

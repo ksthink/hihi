@@ -27,6 +27,8 @@ struct ExploreView: View {
     @State private var info: MountainInfo?
     @State private var weather: [WeatherHour] = []
     @StateObject private var packs = PackStore.shared    // 오프라인 팩 다운로드/설치 상태
+    @StateObject private var net = NetworkMonitor.shared  // 온라인/오프라인 — 하이브리드 base 전환
+    @State private var deletePackTarget: Mountain?        // 저장된 지도 삭제 확인 대상
 
     // 국가지점번호 — 등반 중(GPS 위치 기준)에만 표시. 탐험(지도) 상태에선 숨김.
     private var npnCode: String? {
@@ -53,9 +55,11 @@ struct ExploreView: View {
                         mountain: catalog.selected, courses: courses, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
-                        // 팩이 설치된 산은 로컬 base.pmtiles 로 오프라인 렌더(오버레이도 로컬)
+                        // 하이브리드: 온라인=원격 전국 base(자유 팬), 오프라인=로컬 팩 base.
+                        // (오버레이 geojson 은 설치 시 항상 로컬 — MapView.applyOverlay.)
                         offlineBaseURL: catalog.selected.flatMap {
-                            packs.downloaded.contains($0.id) ? packs.localFile($0.id, "base.pmtiles") : nil },
+                            (!net.isOnline && packs.downloaded.contains($0.id))
+                                ? packs.localFile($0.id, "base.pmtiles") : nil },
                         locateTick: locateTick, fitCourseTick: courseFitTick,
                         bottomInset: peek + 40,
                         onScaleChanged: { metersPerPoint = $0 },
@@ -373,13 +377,27 @@ struct ExploreView: View {
             switch d { case .peek: return peek; case .medium: return mediumH; case .large: return largeH }
         }
         let base = heightFor(detent)
-        // 실시간 높이 — 위로 끌면(sheetDrag<0) 커지고, 경계 밖은 살짝 저항(러버밴딩).
-        let live = min(largeH + 36, max(peek - 36, base - sheetDrag))
+        // 실시간 높이 — 위로 끌면(sheetDrag<0) 커지고, 경계 밖은 점진적 저항(러버밴딩).
+        // 하드 클램프(툭 멈춤) 대신 로그성 감쇠로 끝까지 부드럽게 늘어난다.
+        func resist(_ d: CGFloat) -> CGFloat { 26 * log10(1 + max(0, d) / 26) }
+        let raw = base - sheetDrag
+        let live: CGFloat = raw < peek   ? peek - resist(peek - raw)
+                          : raw > largeH ? largeH + resist(raw - largeH)
+                          : raw
         func nearest(_ h: CGFloat) -> SheetDetent {
             SheetDetent.allCases.min { abs(heightFor($0) - h) < abs(heightFor($1) - h) }!
         }
         return VStack(spacing: 0) {
-            Capsule().fill(t.line).frame(width: 38, height: 5).padding(.top, 8).padding(.bottom, 10)
+            // 드래그 손잡이 — 전폭 밴드로 히트영역을 크게. 탭하면 올림/내림 토글(드래그와 병행).
+            Capsule().fill(t.line).frame(width: 40, height: 5)
+                .frame(maxWidth: .infinity).frame(height: 26)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.interactiveSpring(response: 0.42, dampingFraction: 0.88, blendDuration: 0.25)) {
+                        detent = detent == .peek ? .large : .peek    // 접힘→완전 펼침 / 펼침→접힘
+                    }
+                }
+                .padding(.top, 4).padding(.bottom, 6)
             if let m = catalog.selected {
               ScrollViewReader { proxy in
               ScrollView {
@@ -429,9 +447,18 @@ struct ExploreView: View {
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, 18).padding(.bottom, 16)
+                .id("sheetTop")
               }
-              .onChange(of: climb.course?.id) { newID in       // 선택 코스 바뀌면 목록을 그 코스로 스크롤
-                  if let newID { withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(newID, anchor: .center) } }
+              // peek·medium 에선 스크롤을 꺼서 시트 전체가 드래그 영역(단계 전환 확실) —
+              // large 로 펼쳤을 때만 목록 스크롤. 스크롤이 꺼지면 드래그가 시트 제스처로 전달된다.
+              .scrollDisabled(detent != .large)
+              .onChange(of: climb.course?.id) { newID in       // 펼친(large) 상태에서만 선택 코스로 스크롤(peek 상단 잘림 방지)
+                  if detent == .large, let newID {
+                      withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(newID, anchor: .center) }
+                  }
+              }
+              .onChange(of: detent) { d in                     // 접으면 목록을 맨 위로 되돌려 헤더가 보이게
+                  if d == .peek { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("sheetTop", anchor: .top) } }
               }
               }
             } else {
@@ -447,14 +474,21 @@ struct ExploreView: View {
             RoundedRectangle(cornerRadius: 18).strokeBorder(t.line).mask(Rectangle().padding(.bottom, -20))
         }
         .shadow(color: .black.opacity(0.10), radius: 12, y: -3)
-        .gesture(
+        // simultaneousGesture — ScrollView 와 무관하게 시트 드래그가 항상 인식된다(본문 어디서든).
+        // large(펼침)에선 상단 손잡이(~44pt)에서 시작한 드래그만 시트 이동, 그 외는 목록 스크롤에 양보.
+        .simultaneousGesture(
             DragGesture(minimumDistance: 6)
-                .onChanged { v in sheetDrag = v.translation.height }              // 실시간 추종
+                .onChanged { v in
+                    if detent == .large && v.startLocation.y > 44 { return }
+                    sheetDrag = v.translation.height                              // 실시간 추종
+                }
                 .onEnded { v in
+                    if detent == .large && v.startLocation.y > 44 { return }
                     // 예상 종점(속도 반영) 높이 → 가장 가까운 단계로 스냅.
                     let projected = base - v.predictedEndTranslation.height
                     let target = nearest(projected)
-                    withAnimation(.spring(response: 0.34, dampingFraction: 0.85)) {
+                    // 놓을 때 속도를 이어받아 부드럽게 정착 — 살짝 낮은 강성 + 높은 감쇠(오버슈트 최소).
+                    withAnimation(.interactiveSpring(response: 0.42, dampingFraction: 0.88, blendDuration: 0.25)) {
                         detent = target
                         sheetDrag = 0
                     }
@@ -512,9 +546,18 @@ struct ExploreView: View {
             Text("받는 중 \(Int(packs.progress * 100))%")
                 .font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.muted)
         } else if packs.downloaded.contains(m.id) {
-            Text("다운됨 ✓").font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(t.muted, in: Capsule())
+            Button { deletePackTarget = m } label: {
+                Text("다운됨 ✓").font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(t.muted, in: Capsule())
+            }
+            .confirmationDialog("오프라인 지도 삭제", isPresented: Binding(
+                get: { deletePackTarget?.id == m.id }, set: { if !$0 { deletePackTarget = nil } }),
+                titleVisibility: .visible) {
+                Button("삭제", role: .destructive) {
+                    packs.delete(m.id); Task { await auth.removeSavedPack(m.id) }
+                }
+            } message: { Text("\(m.name)의 저장된 지도를 삭제합니다.") }
         } else {
             Button {
                 Task { if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) } }
@@ -532,7 +575,7 @@ struct ExploreView: View {
         return Button { selectCourse(c) } label: {
             HStack(spacing: 0) {
                 Rectangle().fill(t.accent).frame(width: 3)     // 좌측 강조선 (border-left)
-                HStack(spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top, spacing: 7) {
                             Text("\(c.no ?? 0)")
@@ -541,8 +584,7 @@ struct ExploreView: View {
                                 .background(t.accent, in: Capsule())
                             Text(c.name).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 4)
-                            difBadge(c, t)
+                            Spacer(minLength: 0)
                         }
                         HStack(spacing: 10) {
                             if let pk = c.peak, !pk.isEmpty { Text(pk) }
@@ -555,8 +597,12 @@ struct ExploreView: View {
                             Text(d).font(.kakao(size: 12.5)).foregroundStyle(t.muted).lineSpacing(2)
                         }
                     }
-                    if let p = c.profile, p.count > 1 {
-                        ProfileView(points: p, color: t.text).frame(width: 90, height: 44)
+                    // 우측 열 — 난이도(상단) + 고도 스파이크(하단). 긴 코스명이 이름 영역을 온전히 쓰게.
+                    VStack(alignment: .trailing, spacing: 6) {
+                        difBadge(c, t)
+                        if let p = c.profile, p.count > 1 {
+                            ProfileView(points: p, color: t.text).frame(width: 90, height: 44)
+                        }
                     }
                 }
                 .padding(.vertical, 12).padding(.horizontal, 14)

@@ -10,6 +10,7 @@ struct RecordsView: View {
     @State private var email = ""
     @State private var pass = ""
     @State private var pendingDelete: ClimbRecord?
+    @State private var showProfileEdit = false
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -33,6 +34,7 @@ struct RecordsView: View {
             }
             Button("취소", role: .cancel) { pendingDelete = nil }
         }
+        .sheet(isPresented: $showProfileEdit) { ProfileEditView(auth: auth) }
     }
 
     // MARK: 로그인됨 — 합계 + 목록
@@ -113,21 +115,40 @@ struct RecordsView: View {
 
     // 웹 .auth-in — elevated 카드: 이메일(14 bold) + 로그아웃 알약(테두리·surface)
     private func authBar(_ t: Theme) -> some View {
-        HStack(spacing: 12) {
-            Text(auth.email ?? "").font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
-                .lineLimit(1).truncationMode(.tail)
-            Spacer(minLength: 8)
-            Button { Task { await auth.signOut() } } label: {
-                Text("로그아웃").font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
-                    .padding(.horizontal, 16).padding(.vertical, 8)
-                    .background(t.surface, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
+        // 아바타 + 닉네임(없으면 안내) + 이메일 + 수정. 탭하면 프로필 수정 시트(닉네임·이미지·로그아웃).
+        Button { showProfileEdit = true } label: {
+            HStack(spacing: 12) {
+                avatarView(44, t)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(auth.nickname?.isEmpty == false ? auth.nickname! : "닉네임 설정")
+                        .font(.kakao(size: 15, weight: .bold))
+                        .foregroundStyle(auth.nickname?.isEmpty == false ? t.text : t.muted).lineLimit(1)
+                    Text(auth.email ?? "").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                        .lineLimit(1).truncationMode(.tail)
+                }
+                Spacer(minLength: 8)
+                Text("수정").font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.text)
+                    .padding(.horizontal, 14).padding(.vertical, 7)
+                    .background(t.surface, in: Capsule())
+                    .overlay(Capsule().strokeBorder(t.line))
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
-        .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
+        .buttonStyle(.plain)
+    }
+
+    // 프로필 아바타 — 로컬 이미지 있으면 원형, 없으면 기본(person.circle).
+    private func avatarView(_ size: CGFloat, _ t: Theme) -> some View {
+        Group {
+            if let img = auth.avatar {
+                Image(uiImage: img).resizable().scaledToFill()
+            } else {
+                Image(systemName: "person.circle.fill").resizable().scaledToFit().foregroundStyle(t.line)
+            }
+        }
+        .frame(width: size, height: size).clipShape(Circle())
     }
 
     // 웹 .rec-summary — elevated 카드(border), 값 22 bold + 라벨 11 muted

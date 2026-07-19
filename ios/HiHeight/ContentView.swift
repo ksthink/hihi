@@ -22,7 +22,9 @@ struct ContentView: View {
         TabView(selection: $tab) {
             ExploreView(catalog: catalog, climb: climb, auth: auth, searching: $searching).tag(0).toolbar(.hidden, for: .tabBar)
             RecoView(catalog: catalog, onOpen: openCuration).tag(1).toolbar(.hidden, for: .tabBar)
-            DeungView(climb: climb, auth: auth, catalog: catalog, onStart: { tab = 0 }).tag(2).toolbar(.hidden, for: .tabBar)
+            DeungView(climb: climb, auth: auth, catalog: catalog, onStart: { tab = 0 },
+                      onOpenMap: { m in catalog.selected = m; climb.recordTrack = nil; tab = 0 })
+                .tag(2).toolbar(.hidden, for: .tabBar)
             RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute).tag(3).toolbar(.hidden, for: .tabBar)
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))

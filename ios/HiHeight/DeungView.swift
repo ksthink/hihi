@@ -9,9 +9,12 @@ struct DeungView: View {
     @ObservedObject var auth: AuthStore
     @ObservedObject var catalog: CatalogStore
     var onStart: () -> Void = {}            // 등반 시작 → 지도(탐험) 탭으로 전환
+    var onOpenMap: (Mountain) -> Void = { _ in }   // 저장된 지도 탭 → 해당 산 선택 후 탐험 탭
     @Environment(\.colorScheme) private var scheme
     @State private var loginHint = false
     @State private var weather: [WeatherHour] = []   // 선택된 산 시간대별 예보
+    @StateObject private var packs = PackStore.shared    // 저장된 오프라인 지도 목록
+    @State private var deletePackTarget: Mountain?       // 삭제 확인 대상
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -19,6 +22,7 @@ struct DeungView: View {
             header(t)                       // 상단 고정
             ScrollView {
                 card(t).padding(20)
+                savedMaps(t)
             }
         }
         .background(t.bg)
@@ -116,6 +120,41 @@ struct DeungView: View {
         .frame(maxWidth: .infinity)
         .background(t.elevated, in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(t.line))
+    }
+
+    // 저장된 지도 — 다운로드된 오프라인 팩 목록(웹 renderSavedMaps). 탭=탐험에서 열기, 휴지통=삭제.
+    @ViewBuilder private func savedMaps(_ t: Theme) -> some View {
+        let saved = catalog.mountains.filter { packs.downloaded.contains($0.id) }
+        if !saved.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("저장된 지도").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
+                ForEach(saved) { m in
+                    HStack(spacing: 12) {
+                        Image(systemName: "map").font(.system(size: 15)).foregroundStyle(t.muted)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(m.name).font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                            Text("오프라인 사용 가능").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                        }
+                        Spacer()
+                        Button { deletePackTarget = m } label: {
+                            Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(t.muted)
+                                .padding(6).contentShape(Rectangle())
+                        }
+                    }
+                    .padding(12)
+                    .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
+                    .contentShape(Rectangle())
+                    .onTapGesture { onOpenMap(m) }
+                }
+            }
+            .padding(.horizontal, 20).padding(.bottom, 20)
+            .confirmationDialog("오프라인 지도 삭제", isPresented: Binding(
+                get: { deletePackTarget != nil }, set: { if !$0 { deletePackTarget = nil } }),
+                titleVisibility: .visible, presenting: deletePackTarget) { m in
+                Button("삭제", role: .destructive) { packs.delete(m.id); Task { await auth.removeSavedPack(m.id) } }
+            } message: { m in Text("\(m.name)의 저장된 지도를 삭제합니다.") }
+        }
     }
 
     // 통계 셀 — 값(15 bold 또는 난이도 미터) + 라벨(10 muted). 웹 climb-stats > div.

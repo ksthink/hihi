@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Supabase
 
 // 세션 저장소 — supabase-swift 기본값은 Keychain 인데, 서명 없는 시뮬레이터 앱은
@@ -21,6 +22,8 @@ final class AuthStore: ObservableObject {
         options: SupabaseClientOptions(auth: .init(storage: UserDefaultsLocalStorage())))
 
     @Published var email: String?          // 로그인 사용자 이메일(nil=비로그인)
+    @Published var nickname: String?       // 프로필 닉네임(Supabase profiles) — nil=미설정
+    @Published var avatar: UIImage?        // 프로필 이미지(기기 로컬 저장) — nil=기본 이미지
     @Published var records: [ClimbRecord] = []
     @Published var message: String?
     @Published var busy = false
@@ -31,6 +34,7 @@ final class AuthStore: ObservableObject {
         if let session = try? await client.auth.session {
             email = session.user.email
             await loadRecords()
+            await loadProfile()
         } else {
             email = nil
         }
@@ -42,6 +46,7 @@ final class AuthStore: ObservableObject {
             let session = try await self.client.auth.signIn(email: e, password: p)
             self.email = session.user.email
             await self.loadRecords()
+            await self.loadProfile()
         }
     }
 
@@ -51,6 +56,7 @@ final class AuthStore: ObservableObject {
             if let session = res.session {          // 이메일 확인 꺼짐 → 즉시 로그인
                 self.email = session.user.email
                 await self.loadRecords()
+                await self.loadProfile()
             } else {                                 // 확인 메일 발송됨
                 self.message = "확인 메일을 확인한 뒤 로그인하세요."
             }
@@ -59,7 +65,44 @@ final class AuthStore: ObservableObject {
 
     func signOut() async {
         try? await client.auth.signOut()
-        email = nil; records = []; message = nil
+        email = nil; records = []; message = nil; nickname = nil; avatar = nil
+    }
+
+    // 프로필 로드 — 닉네임은 Supabase profiles, 아바타는 기기 로컬 파일(계정별).
+    private var avatarURL: URL? {
+        guard let uid = client.auth.currentUser?.id.uuidString.lowercased() else { return nil }
+        let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("avatar-\(uid).jpg")
+    }
+    func loadProfile() async {
+        struct Row: Decodable { let nickname: String? }
+        if let uid = client.auth.currentUser?.id.uuidString.lowercased() {
+            let rows: [Row] = (try? await client.from("profiles")
+                .select("nickname").eq("user_id", value: uid).execute().value) ?? []
+            nickname = rows.first?.nickname
+        }
+        if let u = avatarURL, let data = try? Data(contentsOf: u) { avatar = UIImage(data: data) }
+        else { avatar = nil }
+    }
+    // 프로필 저장 — 닉네임 upsert(profiles) + 아바타 기기 로컬 저장/삭제.
+    @discardableResult
+    func saveProfile(nickname newNick: String, image: UIImage?, clearImage: Bool) async -> Bool {
+        guard let uid = client.auth.currentUser?.id.uuidString.lowercased() else { return false }
+        struct P: Encodable { let user_id: String; let nickname: String? }
+        let nick = newNick.trimmingCharacters(in: .whitespaces)
+        do {
+            try await client.from("profiles").upsert(P(user_id: uid, nickname: nick.isEmpty ? nil : nick)).execute()
+            nickname = nick.isEmpty ? nil : nick
+        } catch {
+            message = "프로필 저장 실패: \((error as NSError).localizedDescription)"; return false
+        }
+        if clearImage {
+            if let u = avatarURL { try? FileManager.default.removeItem(at: u) }
+            avatar = nil
+        } else if let image, let u = avatarURL, let data = image.jpegData(compressionQuality: 0.85) {
+            try? data.write(to: u); avatar = image
+        }
+        return true
     }
 
     func loadRecords() async {
@@ -101,6 +144,12 @@ final class AuthStore: ObservableObject {
         _ = try? await client.from("saved_packs")
             .upsert(SavedPack(user_id: uid.uuidString.lowercased(), mountain_id: mountainId, pack_version: 1))
             .execute()
+    }
+
+    // 저장된 팩을 계정에서 제거(saved_packs delete, 웹 동일). 로컬 파일 삭제는 PackStore 가 담당.
+    func removeSavedPack(_ mountainId: String) async {
+        guard client.auth.currentUser != nil else { return }
+        _ = try? await client.from("saved_packs").delete().eq("mountain_id", value: mountainId).execute()
     }
 
     // MARK: 등반 기록 저장 (웹 saveClimb 이식) — 종료 시 climb_records 삽입 후 목록 갱신.
