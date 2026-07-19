@@ -29,6 +29,7 @@ struct ExploreView: View {
     @StateObject private var packs = PackStore.shared    // 오프라인 팩 다운로드/설치 상태
     @StateObject private var net = NetworkMonitor.shared  // 온라인/오프라인 — 하이브리드 base 전환
     @State private var deletePackTarget: Mountain?        // 저장된 지도 삭제 확인 대상
+    @State private var dlLoginHint = false                // 지도 다운 — 비로그인 시 로그인 안내
 
     // 국가지점번호 — 등반 중(GPS 위치 기준)에만 표시. 탐험(지도) 상태에선 숨김.
     private var npnCode: String? {
@@ -431,6 +432,10 @@ struct ExploreView: View {
                             Text(packs.status).font(.kakao(size: 11)).foregroundStyle(t.muted)
                         }.padding(.top, 2)
                     }
+                    if dlLoginHint && auth.email == nil {        // 지도 다운 — 로그인 안내
+                        Text("지도를 저장하려면 기록 탭에서 로그인하세요.")
+                            .font(.kakao(size: 11)).foregroundStyle(t.muted)
+                    }
                     if courses.isEmpty {
                         Text("코스 정보를 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
                     } else {
@@ -540,7 +545,7 @@ struct ExploreView: View {
     }
 
     // 지도 다운 버튼 — 상태별: 미다운=다운로드 시작, 진행 중=퍼센트, 완료=다운됨 배지.
-    // 다운로드는 로컬 파일 설치가 목적이라 로그인 불필요(로그인 시 saved_packs 동기화만 추가).
+    // 다운로드는 로그인 필수(계정 saved_packs 기준 관리, 웹 동일) — 비로그인 시 로그인 안내.
     @ViewBuilder private func downloadButton(_ m: Mountain, _ t: Theme) -> some View {
         if packs.downloadingCode == m.id {
             Text("받는 중 \(Int(packs.progress * 100))%")
@@ -560,6 +565,8 @@ struct ExploreView: View {
             } message: { Text("\(m.name)의 저장된 지도를 삭제합니다.") }
         } else {
             Button {
+                if auth.email == nil { dlLoginHint = true; return }   // 로그인 필수
+                dlLoginHint = false
                 Task { if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) } }
             } label: {
                 Text("지도 다운").font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)

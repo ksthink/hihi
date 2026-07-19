@@ -182,6 +182,17 @@ function make(theme, baseMode) {
       paint: { "line-color": tc.line, "line-width": 3.4 } },
   );
 
+  // ── 등반 중 현재 위치 마커 — 내장 유저 dot 대신 style 레이어(줌 시 트랙과 완벽 동기). ──
+  // MapView 가 트랙 마지막 점을 climb-pos 소스에 주입한다(내장 dot 은 등반 중 숨김).
+  style.sources["climb-pos"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  style.layers.push(
+    { id: "climb-pos-ring", type: "circle", source: "climb-pos",
+      paint: { "circle-radius": 8.5, "circle-color": tc.casing,
+               "circle-stroke-color": tc.line, "circle-stroke-width": 2.5 } },
+    { id: "climb-pos-dot", type: "circle", source: "climb-pos",
+      paint: { "circle-radius": 4.5, "circle-color": tc.line } },
+  );
+
   return JSON.stringify(style, null, 2);
 }
 

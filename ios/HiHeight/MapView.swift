@@ -1,6 +1,12 @@
 import SwiftUI
 import MapLibre
 
+// 등반 중 내장 유저 dot 을 숨긴다 — 현재 위치는 climb-pos style 레이어로 그려 줌 시 루트와 완벽 동기.
+// (내장 dot 은 주석 뷰라 줌 애니메이션 중 한 프레임 늦게 재배치돼 루트 선과 엇갈림.)
+final class EmptyUserDot: MLNUserLocationAnnotationView {
+    override func update() { /* 아무것도 그리지 않음 */ }
+}
+
 // MLNMapView SwiftUI 브리지 — 카탈로그가 고른 산으로 카메라 이동 + 등고선 오버레이 소스 전환.
 // 오버레이 레이어는 스타일 JSON 에 GL 표현식으로 정의(gen-style.mjs)돼 있고,
 // 산이 바뀌면 소스 URL 만 교체한다(MLNShapeSource.url 가변) → NSExpression 불필요.
@@ -96,6 +102,7 @@ struct MapView: UIViewRepresentable {
         private var lastLocate = 0
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
         private var wasTracking = false     // 등반 시작 전이(자동 추적 켬) 감지
+        var tracking = false                // 등반 중 — viewFor 가 참조(내장 dot 숨김)
         var dark = false                    // 현재 테마 (코스 번호 배지 색)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
         var onScaleChanged: ((Double) -> Void)?
@@ -106,6 +113,8 @@ struct MapView: UIViewRepresentable {
         //  · 2번(정북 추적 중): followWithHeading — 기기 나침반 방향으로 지도 회전(빔 아이콘 자동).
         //  · 3번(나침반 중): 다시 정북 추적으로 복귀(지도 회전 정북 복원).
         func applyUserState(tracking: Bool, locateTick: Int, on mv: MLNMapView) {
+            let changed = tracking != wasTracking
+            self.tracking = tracking            // viewFor 가 참조(등반 중 내장 dot 숨김)
             // 등반 시작 시 자동으로 현위치 정북 추적 켬(한 번만).
             if tracking && !wasTracking {
                 locateOn = true
@@ -113,6 +122,12 @@ struct MapView: UIViewRepresentable {
                 mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
             }
             wasTracking = tracking
+            // 트래킹 전환 시 유저 위치 주석 뷰 새로고침 — 등반 시작=숨김(EmptyUserDot), 종료=기본 dot 복귀.
+            if changed && mv.showsUserLocation {
+                mv.showsUserLocation = false
+                mv.showsUserLocation = true
+                if tracking { mv.setUserTrackingMode(.follow, animated: false, completionHandler: nil) }
+            }
 
             // 위치 버튼 탭 — 현재 추적 모드에 따라 순환.
             if locateTick != lastLocate {
@@ -140,6 +155,12 @@ struct MapView: UIViewRepresentable {
             }
 
             if !tracking && !locateOn { mv.showsUserLocation = false }
+        }
+
+        // 등반 중에는 내장 유저 dot 을 숨긴다(현재 위치는 climb-pos style 레이어로 렌더). 그 외엔 기본 dot.
+        func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
+            if annotation is MLNUserLocation, tracking { return EmptyUserDot() }
+            return nil
         }
 
         // 코스 번호 배지 이미지 등록 — 웹 makeBadge 대응. 미선택=badge-N, 선택=badge-N-sel(반전).
@@ -297,6 +318,19 @@ struct MapView: UIViewRepresentable {
             if track.count == trackCount { return }
             trackCount = track.count
             applyTrack(track, on: mv)
+            setClimbPos(track, on: mv)
+        }
+
+        // 현재 위치 마커(climb-pos) — 등반 중 트랙 마지막 점. 내장 dot 대신 style 레이어라 줌 시 루트와 동기.
+        private func setClimbPos(_ track: [[Double]], on mv: MLNMapView) {
+            guard let src = mv.style?.source(withIdentifier: "climb-pos") as? MLNShapeSource else { return }
+            if tracking, let p = track.last, p.count >= 2 {
+                let f = MLNPointFeature()
+                f.coordinate = CLLocationCoordinate2D(latitude: p[1], longitude: p[0])
+                src.shape = f
+            } else {
+                src.shape = nil
+            }
         }
 
         private func applyTrack(_ track: [[Double]], on mv: MLNMapView) {

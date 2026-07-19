@@ -89,6 +89,9 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     // MARK: CLLocationManagerDelegate (main 스레드 전달 — manager 를 main 에서 생성)
     func locationManager(_ m: CLLocationManager, didUpdateLocations locs: [CLLocation]) {
         guard tracking, let loc = locs.last else { return }
+        // 정확도 게이트 — 무효(-1)/부정확(>50m) 고정은 무시(포인터 튐·트랙 오염 방지).
+        // 나쁜 고정 시엔 마지막 양호 위치를 유지(엉뚱한 곳으로 점프하지 않게).
+        if loc.horizontalAccuracy < 0 || loc.horizontalAccuracy > 50 { return }
         if note != nil { note = nil }               // 위치 수신 성공 → 이전 일시 오류 안내 해제
         currentCoord = loc.coordinate               // 국가지점번호는 매 위치마다 갱신(5m 게이트 이전)
         // 잡음 제거: 직전 점에서 5m 미만 이동은 무시(app.js:1413)
