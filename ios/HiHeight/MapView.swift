@@ -71,28 +71,51 @@ struct MapView: UIViewRepresentable {
         var bottomInset: CGFloat = 306      // 시트가 가리는 하단 높이 (fitBounds 하단 여백)
         private var lastLocate = 0
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
+        private var wasTracking = false     // 등반 시작 전이(자동 추적 켬) 감지
         var dark = false                    // 현재 테마 (코스 번호 배지 색)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
         var onScaleChanged: ((Double) -> Void)?
 
         // 현재위치 점 표시 + 추적 카메라(등반 중 tracking, 또는 위치 버튼 locateTick).
-        // 위치 버튼은 나침반도 통합 — 탭 시 정북(direction=0)·수평(pitch=0)으로 복원.
+        // 위치 버튼은 나침반도 통합 — 누를 때마다 정북 추적 ⇄ 나침반(헤딩) 추적을 순환한다.
+        //  · 1번(꺼짐/사용자 이동 후): 현위치 중심 + 정북(North Up) 추적, 수평 복원.
+        //  · 2번(정북 추적 중): followWithHeading — 기기 나침반 방향으로 지도 회전(빔 아이콘 자동).
+        //  · 3번(나침반 중): 다시 정북 추적으로 복귀(지도 회전 정북 복원).
         func applyUserState(tracking: Bool, locateTick: Int, on mv: MLNMapView) {
-            var follow = false
+            // 등반 시작 시 자동으로 현위치 정북 추적 켬(한 번만).
+            if tracking && !wasTracking {
+                locateOn = true
+                mv.showsUserLocation = true
+                mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+            }
+            wasTracking = tracking
+
+            // 위치 버튼 탭 — 현재 추적 모드에 따라 순환.
             if locateTick != lastLocate {
-                lastLocate = locateTick; locateOn = true; follow = true
-                mv.direction = 0                                  // 나침반 통합: 정북
-                if mv.camera.pitch != 0 {                         // 수평 복원
-                    let c = mv.camera; c.pitch = 0; mv.setCamera(c, animated: true)
+                lastLocate = locateTick
+                locateOn = true
+                mv.showsUserLocation = true
+                switch mv.userTrackingMode {
+                case .follow:
+                    // 정북 추적 → 나침반(헤딩) 추적: 시선 방향으로 지도가 회전.
+                    mv.setUserTrackingMode(.followWithHeading, animated: true, completionHandler: nil)
+                case .followWithHeading:
+                    // 나침반 → 정북 추적으로 복귀(모드 전환 시 지도 회전 정북 복원).
+                    mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+                default:
+                    // 꺼짐/사용자가 지도를 옮긴 상태 → 현위치 중심 + 정북 추적, 수평 복원.
+                    if mv.camera.pitch != 0 { let c = mv.camera; c.pitch = 0; mv.setCamera(c, animated: true) }
+                    mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
                 }
             }
-            if tracking { locateOn = false }            // 등반 종료 후 geolocate 상태와 분리
-            mv.showsUserLocation = tracking || locateOn
-            if tracking, mv.userTrackingMode != .follow { follow = true }
-            if !tracking && !locateOn, mv.userTrackingMode != .none {
-                mv.setUserTrackingMode(.none, animated: false, completionHandler: nil)
+
+            // 등반 중엔 현위치 추적을 유지하되, 사용자가 고른 나침반 모드는 존중.
+            // (사용자가 지도를 옮겨 .none 으로 떨어지면 다음 GPS 갱신에 정북 추적 복귀.)
+            if tracking && mv.userTrackingMode == .none {
+                mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
             }
-            if follow { mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil) }
+
+            if !tracking && !locateOn { mv.showsUserLocation = false }
         }
 
         // 코스 번호 배지 이미지 등록 — 웹 makeBadge 대응. 미선택=badge-N, 선택=badge-N-sel(반전).
