@@ -1,65 +1,72 @@
-# ios/ — 하이하잇 iOS 네이티브 (S1 스파이크)
+# ios/ — 하이하잇 iOS 네이티브
 
-IOS.md **§9 S1** 검증용 스파이크. 목적: **MapLibre Native iOS + 웹과 동일한 `buildStyle()` JSON +
-원격 PMTiles**가 렌더되는지, 두 테마에서 카토그래피 패리티가 나오는지 확인한다. **버릴 수 있는 검증 앱**.
+MapLibre Native iOS + SwiftUI 로 만든 대한민국 등산 앱. 웹앱(`../app.js` 등)의 4탭 화면을
+네이티브로 재작성하고, 웹과 **동일한 `buildStyle()` 스타일 로직**을 공유한다.
+이식 계획서(단일 기준): **`../IOS.md`**.
+
+## 아키텍처 — 맥 의존 없음(전부 HTTPS/번들)
+
+개발용 맥 프록시(`admin_server`/`serve.py` 8890)에 **의존하지 않는다.** 모든 데이터는 클라우드
+직결 또는 앱 번들에서 온다. 맥이 꺼져 있어도, 다른 네트워크에서도 동작한다.
+
+| 자원 | 출처 | 프로토콜 |
+|---|---|---|
+| 기저 벡터타일(`kr-base`)·음영기복(`kr-terrain`) | `hihi.metaphr.dev` (Cloudflare **R2 커스텀 도메인** 직결) | HTTPS `pmtiles://` Range |
+| 팩 오버레이(`packs/<산코드>/contours·routes·spots.geojson`)·`config/` | `hihi.metaphr.dev` (R2) | HTTPS |
+| 날씨(`/api/weather`) | `hihi.ksthink.com` (Vercel, 기상청 키 은닉) | HTTPS:443 |
+| 지도 글리프(라벨 pbf) | **앱 번들**(`Resources/glyphs/`, 오프라인) | — |
+| 카탈로그·산소개·로그인·기록 | Supabase 직결(anon 키 + RLS) | HTTPS |
+
+접속 상수 단일 출처: [`HiHeight/Config.swift`](HiHeight/Config.swift).
+R2 dev 엔드포인트(`pub-*.r2.dev`)는 레이트리밋·기본 UA 403 이 있어 앱이 직접 치지 않는다 →
+버킷에 커스텀 도메인을 연결(§8-1)해 직결한다. ATS 는 전부 HTTPS 라 `NSAllowsLocalNetworking` 만 둔다.
 
 ## 전제
-- **맥의 `admin_server.py`(포트 8890)가 떠 있어야 한다.** 시뮬레이터가 이 프록시로 PMTiles
-  (`/pmtiles/kr-base·kr-terrain.pmtiles`, R2 Range 프록시)와 글리프(`/fonts/…`)를 받는다.
-  → 스파이크 지름길: R2 dev 엔드포인트 UA 403·CORS 를 프록시가 이미 우회. `pmtiles://` 렌더 검증에 집중.
-- 로컬 툴: `node`, `xcodegen`(brew), Xcode. 시뮬레이터 빌드라 코드서명 불필요.
+
+- 로컬 툴: `node`, `xcodegen`(brew), Xcode. **맥 서버 기동 불필요.**
+- 실기기 빌드는 코드서명 필요(개인팀 자동 서명, `project.yml` `DEVELOPMENT_TEAM`). 시뮬레이터는 서명 불필요.
 
 ## 생성·빌드·실행
+
 ```bash
-# 0) (필요 시) 맥에서 서버 기동
-.venv/bin/python scripts/admin_server.py         # → http://localhost:8890
-
-# 0b) 오버레이 검증용 팩 geojson 확보 (data/packs/ 는 gitignore — 재생성물)
-#     admin_server 가 /data/packs/<코드>/… 로 정적 서빙 → 스타일이 이 URL 을 소스로 씀
-mkdir -p data/packs/282600201
-curl -s -H "User-Agent: hiheight/1.0" \
-  https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/packs/282600201/contours.geojson \
-  -o data/packs/282600201/contours.geojson
-
-# 1) 스타일 JSON 생성 (basemap-style.js → 절대 URL 로 절대화 + 등고선 오버레이)
+# 1) 스타일 JSON 4벌 생성(basemap-{light,dark}[-osm].json) + 글리프 pbf 를 번들로 복사.
+#    스타일 로직 단일출처는 ../basemap-style.js, URL 베이스는 HIHEIGHT_BASE(기본 hihi.metaphr.dev).
 cd ios && node gen-style.mjs
 
-# 2) 프로젝트 생성 (SPM: MapLibre 6.27.0 해석)
+# 2) 프로젝트 생성(SPM: MapLibre 6.27.0, supabase-swift 해석)
 xcodegen generate
 
-# 3) 시뮬레이터 빌드
+# 3-a) 시뮬레이터 빌드
 xcodebuild -project HiHeight.xcodeproj -scheme HiHeight \
   -sdk iphonesimulator -configuration Debug \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build
 
-# 4) 설치·실행 (부팅된 시뮬레이터에)
-xcrun simctl install booted <빌드산출물>/HiHeight.app
-xcrun simctl launch booted dev.metaphr.hiheight
+# 3-b) 실기기 빌드(연결·잠금해제·개발자모드 필요)
+xcodebuild -project HiHeight.xcodeproj -scheme HiHeight -configuration Debug \
+  -destination 'id=<디바이스 UDID>' -allowProvisioningUpdates build
+
+# 4) 실기기 설치·실행
+xcrun devicectl device install app --device <UDID> <빌드산출물>/HiHeight.app
+xcrun devicectl device process launch --device <UDID> --terminate-existing dev.metaphr.hiheight
 ```
 
+로컬 dev 로 맥 프록시를 쓰고 싶으면 `HIHEIGHT_BASE=http://localhost:8890 node gen-style.mjs` +
+`Config.proxyBase` 를 로컬로 바꾼다(선택). 실기기에선 비표준 포트가 모바일망에서 막힐 수 있어 클라우드 권장.
+
 ## 구조
-- `project.yml` — XcodeGen 정의 (SPM MapLibre, min iOS 16, ATS 로컬 예외). `.xcodeproj` 는 재생성물.
-- `gen-style.mjs` — `buildStyle()` 재사용 → `basemap-light/dark.json`. 스타일 로직 단일출처는 `../basemap-style.js`.
-- `HiHeight/HiHeightApp.swift` — 앱 엔트리.
-- `HiHeight/ContentView.swift` — colorScheme → 테마 스타일 선택.
-- `HiHeight/MapView.swift` — `MLNMapView` SwiftUI 브리지.
 
-## S1 판정 (IOS.md §9) — 2026-07-13 **GO**
+- `project.yml` — XcodeGen 정의(SPM MapLibre·Supabase, min iOS 17, ATS, 서명, 번들 리소스).
+  글리프는 `type: folder` 폴더참조로 번들해 `<fontstack>/<range>.pbf` 디렉터리 구조를 보존한다.
+  `.xcodeproj` 는 재생성물(커밋 금지).
+- `gen-style.mjs` — `buildStyle()` 재사용 → 스타일 JSON 절대화(R2 URL)·오버레이(등고선/루트/스팟)
+  추가 + 글리프를 `../fonts/` 에서 `Resources/glyphs/` 로 복사. 산출물은 gitignore(재생성).
+- `HiHeight/` — SwiftUI 앱. `ContentView`(탭), `ExploreView`(탐험·지도), `DeungView`(등반),
+  `RecoView`(추천), `RecordsView`(기록), `MapView`(MLNMapView 브리지), `Config`(접속 상수),
+  `AuthStore`/`CatalogStore`/`ClimbStore`(Supabase·상태), `Weather`(기상청), `Font+Kakao` 등.
+- `Resources/` — 스타일 JSON·컨트롤 아이콘·UI 폰트(ttf)·글리프 pbf(모두 재생성/복사물, gitignore).
 
-카토그래피 엔진 패리티(스파이크의 make-or-break 위험)는 전부 통과. 남은 항목은
-"MapLibre 가 되는가"(위험)가 아니라 "런타임 아이콘 로직 Swift 포팅"(M1 구현)이라 M1 로 이월.
+## App Store 전 남은 과제(요약, 상세 ../IOS.md)
 
-| 항목 | 결과 |
-|---|---|
-| 라이트/다크 두 테마 | ✅ |
-| `pmtiles://` 원격 Range (기저 벡터타일) | ✅ 서버 로그 206 |
-| hillshade 페이드 (z13→16) | ✅ |
-| CJK + 라틴 글리프 라벨 (프록시 /fonts) | ✅ |
-| 등산로 위계 (기저 paths) | ✅ |
-| POI 이중 줌 게이트 (텍스트 poi-urban) | ✅ |
-| **등고선 3종** (팩 geojson 오버레이 + GL 필터·라인심볼 라벨) | ✅ |
-| 스팟 coalesce 오버라이드 | ⏭ M1 (geojson 경로는 등고선으로 입증) |
-| POI 아이콘 배지 / 코스 번호 배지 | ⏭ M1 (런타임 캔버스→UIGraphicsImageRenderer 포팅) |
-| 루트 위계 (팩 routes 오버레이) | ⏭ M1 |
-
-결론: **S1 통과 → §10 M1 착수 가능.** 실패 시 대안은 IOS.md §9 표 참조.
+- 백그라운드 GPS 트래킹·기록 영속화(CoreLocation/SwiftData) 실구현.
+- 출처표기(OSM ODbL·Protomaps·산림청·국립공원공단·Copernicus DEM·기상청) 정보화면.
+- Apple Developer Program·App Privacy·백그라운드 위치 사유서.

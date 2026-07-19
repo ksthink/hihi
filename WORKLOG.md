@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-07-20
+
+맥 프록시 의존 완전 제거 — 타일·팩·날씨·글리프를 클라우드 직결/앱 번들로 이전(전부 HTTPS). 실기기 검증. iOS README 재작성.
+
+### 생성 / 추가
+- **지도 글리프 앱 번들 포함(오프라인)**: `fonts/MonaS12 {Regular,Bold}/` pbf 를 `ios/HiHeight/Resources/glyphs/` 로 복사해 번들. `gen-style.mjs` 가 `../fonts/` → `Resources/glyphs/` 복사(cpSync), `project.yml` 이 `type: folder`(폴더참조)로 `<fontstack>/<range>.pbf` 구조 보존해 번들(일반 그룹이면 루트 평탄화로 range 파일명 충돌). `ios/.gitignore` 에 `Resources/glyphs/` 추가(소스는 `fonts/` 에 있어 44MB 중복 방지·재생성물). 스타일은 상대경로 `glyphs/{fontstack}/{range}.pbf` → MapLibre Native 가 스타일 URL 기준으로 번들 해석. **S1 미검증 항목(번들 글리프 로딩)을 실기기로 해소.**
+
+### 수정 / 변경
+- **접속 상수 클라우드 직결(`Config.swift`)**: `proxyBase`(날씨) 맥 `.local`/localhost:8890 → **`https://hihi.ksthink.com`(Vercel `/api/weather`, HTTPS:443)**. `r2Public`(타일·팩·config) dev `pub-*.r2.dev`(레이트리밋·UA403) → **`https://hihi.metaphr.dev`(Cloudflare R2 커스텀 도메인 직결, §8-1)**. `#if targetEnvironment(simulator)` 분기 제거.
+- **스타일 생성기(`gen-style.mjs`)**: 기본 `HIHEIGHT_BASE` → `https://hihi.metaphr.dev`. pmtiles 경로 프록시식 `/pmtiles/kr-base.pmtiles` → **R2 루트 `/kr-base.pmtiles`**(버킷 루트에 객체 존재). 팩 소스 `/data/packs/` → `/packs/`. 글리프 URL(프록시 절대경로) → **번들 상대경로**.
+- **ATS 정합(`project.yml`)**: 모든 트래픽 HTTPS 가 되어 `NSAllowsArbitraryLoads` **제거**, `NSAllowsLocalNetworking` 만 유지(App Store 정합). 글리프 폴더참조 source 추가(+ 메인 source `excludes` 로 이중 포함 방지).
+- **iOS README(`ios/README.md`) 재작성**: "S1 스파이크(버릴 앱)" → 현재 아키텍처("맥 의존 없음, 전부 HTTPS/번들") 문서로 갱신. 자원별 출처 표(R2/Vercel/번들/Supabase)·빌드/실기기 실행 명령·구조·App Store 남은 과제.
+- **원인 규명 2건(맥 의존 제거 중)**: ① `hihi.metaphr.dev` 가 R2 Active 인데도 계속 Vercel(`DEPLOYMENT_NOT_FOUND`)로 가던 원인 = **Vercel 프로젝트에 남은 `*.metaphr.dev` 와일드카드 도메인**(TLS 인증서 `*.metaphr.dev` 로 확정). 제거 후 R2 직결(server: cloudflare, 루트 pmtiles 206). ② 날씨를 EC2 admin_server(`13.209.31.163:8890`)로 했더니 맥은 되고 실기기는 실패 = **비표준 포트 8890 모바일망 차단** → Vercel 443 로 전환.
+- 검증: 실기기(iPhone 12 mini) 빌드·설치·실행 — **날씨·타일·라벨 전부 정상**, 맥 서버 무관하게 동작.
+
 ## 2026-07-19
 
 현재 위치 버튼에 나침반(헤딩) 추적 통합 — 네이티브.

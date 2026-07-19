@@ -7,22 +7,34 @@
 //
 // 계약(§8-2): 스타일 로직의 단일 출처는 basemap-style.js. 이 스크립트는 URL 절대화만 한다.
 import { buildStyle } from "../basemap-style.js";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, cpSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 
-const BASE = process.env.HIHEIGHT_BASE || "http://localhost:8890";
+// 타일·팩 소스 절대 URL 베이스 — R2 커스텀 도메인 직결(§8-1). dev/로컬은 env 로 오버라이드.
+const BASE = process.env.HIHEIGHT_BASE || "https://hihi.metaphr.dev";
 const OUT = new URL("./HiHeight/Resources/", import.meta.url);
 mkdirSync(OUT, { recursive: true });
 
+// 지도 글리프 pbf 를 번들 리소스로 복사(../fonts/<fontstack>/ → Resources/glyphs/<fontstack>/).
+// 소스는 fonts/ 에 커밋돼 있고 이 복사본은 gitignore(중복 방지). project.yml 이 type:folder 로 번들.
+const ROOT = fileURLToPath(new URL("../", import.meta.url));   // 저장소 루트(ios/ 의 상위)
+const RES = fileURLToPath(OUT);
+for (const stack of ["MonaS12 Regular", "MonaS12 Bold"]) {
+  cpSync(join(ROOT, "fonts", stack), join(RES, "glyphs", stack), { recursive: true });
+}
+
 function make(theme, baseMode) {
   const style = buildStyle(
-    `${BASE}/pmtiles/kr-base.pmtiles`,
+    `${BASE}/kr-base.pmtiles`,        // R2 버킷 루트에 객체 존재(프록시의 /pmtiles/ 접두사 없음)
     theme,
-    `${BASE}/pmtiles/kr-terrain.pmtiles`,
+    `${BASE}/kr-terrain.pmtiles`,
     null, // poiDisplay 기본값 (스파이크). 본 이식에선 R2 config/poi-display.json 반영.
     baseMode, // "terrain"(지형 전용) | "osm"(전체 basemap) — 앱 지도 컨트롤 토글이 파일명으로 선택.
   );
-  // 글리프: 웹의 "/fonts/{fontstack}/{range}.pbf" 상대경로 → 프록시 절대 URL.
-  style.glyphs = `${BASE}/fonts/{fontstack}/{range}.pbf`;
+  // 글리프: 앱 번들 포함(오프라인, §3.2). 번들 상대경로 → MapLibre 가 스타일 URL 기준으로 해석.
+  // Resources/glyphs/<fontstack>/<range>.pbf (폴더참조로 구조 보존 — project.yml).
+  style.glyphs = "glyphs/{fontstack}/{range}.pbf";
 
   // ── S1 오버레이 검증: 등고선 3종 (팩 geojson) ──
   // buildStyle() 기저엔 없고 웹은 app.js:463-489 에서 별도 오버레이로 얹는다.
@@ -34,7 +46,7 @@ function make(theme, baseMode) {
     : { line: "#c4bfb5", label: "#8a857c", halo: "#ffffff" };
   style.sources.contours = {
     type: "geojson",
-    data: `${BASE}/data/packs/${PACK}/contours.geojson`,
+    data: `${BASE}/packs/${PACK}/contours.geojson`,
   };
   style.layers.push(
     // 50m 보조 등고선
@@ -65,7 +77,7 @@ function make(theme, baseMode) {
     16, ["match", ["get", "difficulty"], "초급", 3.5, "중급", 5, "고급", 7, 4.5]];
   style.sources.trails = {
     type: "geojson",
-    data: `${BASE}/data/packs/${PACK}/routes.geojson`,
+    data: `${BASE}/packs/${PACK}/routes.geojson`,
   };
   // 코스 번호 배지 위치 — 코스당 중점 1개(웹 courseNoFC 대응). MapView 가 런타임에 채운다(course.mid).
   style.sources["course-nos"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
@@ -105,7 +117,7 @@ function make(theme, baseMode) {
     ["coalesce", ["get", "disp_zoom"], ["match", ["get", "category"], "장소", 14, "시종점", 12, 99]]];
   style.sources.spots = {
     type: "geojson",
-    data: `${BASE}/data/packs/${PACK}/spots.geojson`,
+    data: `${BASE}/packs/${PACK}/spots.geojson`,
   };
   style.layers.push(
     { id: "spots-dots", type: "circle", source: "spots",

@@ -4,6 +4,9 @@ HiHeight.xcodeproj/
 # gen-style.mjs 가 basemap-style.js 에서 재생성 — 커밋 금지
 HiHeight/Resources/basemap-*.json
 
+# gen-style.mjs 가 ../fonts/ 에서 복사 — 커밋 금지(소스는 fonts/ 에 있음, 44MB 중복 방지)
+HiHeight/Resources/glyphs/
+
 # Xcode 빌드 산출물 / SPM 캐시
 build/
 DerivedData/

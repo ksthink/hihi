@@ -22,7 +22,13 @@ targets:
     type: application
     platform: iOS
     sources:
-      - HiHeight
+      - path: HiHeight
+        excludes:
+          - "Resources/glyphs/**"   # 아래 폴더참조로 별도 추가(구조 보존) — 이중 포함 방지
+      # 지도 글리프 pbf — 폴더참조(type: folder)로 <fontstack>/<range>.pbf 디렉터리 구조 보존.
+      # (일반 그룹이면 번들 루트로 평탄화돼 range 파일명이 fontstack 간 충돌.)
+      - path: HiHeight/Resources/glyphs
+        type: folder
     dependencies:
       - package: MapLibre
       - package: Supabase
@@ -51,8 +57,9 @@ targets:
           - MonaS12-Bold.ttf     # Bold
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        # 개발용: 맥 admin_server(시뮬레이터=localhost / 실기기=LAN IP, 8890) 프록시로
-        # PMTiles·글리프·날씨 API 를 받는다. ATS 가 http 를 막으므로 로컬 네트워킹 예외 허용.
+        # 모든 트래픽 HTTPS — 타일·팩·config=hihi.metaphr.dev(R2), 날씨=hihi.ksthink.com(Vercel),
+        # Supabase 직결, 글리프=앱 번들. HTTP 없음 → arbitrary loads 불필요(App Store 정합).
+        # NSAllowsLocalNetworking 은 로컬 dev(localhost 프록시 전환 시)용으로만 유지 — 심사 무관.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         # 등반 트래킹(M5) — 산행 중 현재 위치·이동 경로 기록.
