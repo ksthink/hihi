@@ -93,6 +93,16 @@ final class AuthStore: ObservableObject {
         }
     }
 
+    // 다운로드한 오프라인 팩을 계정에 표시(saved_packs upsert, 웹 동일). 로컬 파일은 이미 설치됐으므로
+    // 비로그인이면 조용히 무시 — 오프라인 지도 설치 자체는 계정과 무관하게 동작한다.
+    func saveDownloadedPack(_ mountainId: String) async {
+        guard let uid = client.auth.currentUser?.id else { return }
+        struct SavedPack: Encodable { let user_id: String; let mountain_id: String; let pack_version: Int }
+        _ = try? await client.from("saved_packs")
+            .upsert(SavedPack(user_id: uid.uuidString.lowercased(), mountain_id: mountainId, pack_version: 1))
+            .execute()
+    }
+
     // MARK: 등반 기록 저장 (웹 saveClimb 이식) — 종료 시 climb_records 삽입 후 목록 갱신.
     // 반환값은 사용자 안내 메시지.
     func saveClimb(_ d: ClimbDraft) async -> String {

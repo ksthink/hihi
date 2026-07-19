@@ -7,6 +7,18 @@
 ## 2026-07-20
 
 맥 프록시 의존 완전 제거 — 타일·팩·날씨·글리프를 클라우드 직결/앱 번들로 이전(전부 HTTPS). 실기기 검증. iOS README 재작성.
+이어 **지도 다운로드(오프라인 팩) 기능 신규 구현** — 다운로드→폰 로컬 설치→비행기 모드 렌더(S2 정석). 실기기 검증.
+
+### 생성 / 추가 (오프라인 팩)
+- **다운로드·로컬 설치(`PackStore.swift` 신규)**: 껍데기였던 "지도 다운" 버튼(동작 없는 Text)을 실제 기능으로. 산별 `packs/<코드>/{base.pmtiles + routes/spots/contours.geojson}` 를 `Application Support/packs/<코드>/` 에 설치(웹 IndexedDB → 네이티브 파일시스템, 웹 주석의 예고대로). base.pmtiles 는 `URLSessionDownloadTask` 델리게이트로 바이트 진행률(0→0.9), geojson 은 나머지(routes 필수). `@MainActor` 클래스 + `nonisolated` 델리게이트 → `Task { @MainActor }` hop. 경로조회(root/packDir/localFile/isDownloaded)는 `nonisolated`(MapView 가 소스로 사용).
+- **오프라인 렌더(`MapView.swift`)**: 팩 설치된 산은 지도가 로컬 소스 사용 — 오버레이 geojson 은 `MLNShapeSource.url` 을 로컬 file URL 로 교체, base 벡터타일은 `MLNVectorTileSource.configurationURL` 불변이라 **오프라인 스타일 재로딩**(번들 스타일의 `sources.protomaps.url` → `pmtiles://<로컬 base.pmtiles>` 치환, `offline-<resource>-<코드>.json` 캐시). **로컬 `pmtiles://file:///…` 형식이 MapLibre Native 6.27 에서 동작함을 실기기로 확정.** 비행기 모드에서 기저지도+등산로+등고선 렌더(네트워크 0).
+
+### 수정 / 변경 (오프라인 팩)
+- **`Config.swift`**: 팩 파일 URL 헬퍼 정리 — 범용 `packURL(code,file)` + `baseTilesURL`(base.pmtiles) 추가, contours/routes/spots 를 그 위로 재정의.
+- **`AuthStore.swift`**: `saveDownloadedPack(mountainId:)` — `saved_packs(user_id,mountain_id,pack_version)` upsert(로그인 시만; 로컬 설치는 계정 무관).
+- **`ExploreView.swift`**: "지도 다운" 버튼을 상태별 렌더(`downloadButton`: 미다운→다운로드 / 진행 중→퍼센트+진행바 / 완료→다운됨 ✓) + `MapView` 에 `offlineBaseURL`(설치된 산의 로컬 base) 전달. `@StateObject PackStore.shared`.
+
+### 맥 의존 제거 (앞 항목)
 
 ### 생성 / 추가
 - **지도 글리프 앱 번들 포함(오프라인)**: `fonts/MonaS12 {Regular,Bold}/` pbf 를 `ios/HiHeight/Resources/glyphs/` 로 복사해 번들. `gen-style.mjs` 가 `../fonts/` → `Resources/glyphs/` 복사(cpSync), `project.yml` 이 `type: folder`(폴더참조)로 `<fontstack>/<range>.pbf` 구조 보존해 번들(일반 그룹이면 루트 평탄화로 range 파일명 충돌). `ios/.gitignore` 에 `Resources/glyphs/` 추가(소스는 `fonts/` 에 있어 44MB 중복 방지·재생성물). 스타일은 상대경로 `glyphs/{fontstack}/{range}.pbf` → MapLibre Native 가 스타일 URL 기준으로 번들 해석. **S1 미검증 항목(번들 글리프 로딩)을 실기기로 해소.**

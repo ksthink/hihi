@@ -16,15 +16,14 @@ enum Config {
     // 팩 오버레이(등고선/스팟/루트) — 웹과 동일하게 R2(packs/<코드>/…) 직결.
     // 관리자 '배포'가 R2 로 올리므로, 로컬 맥/EC2 어디서 배포하든 즉시 같은 소스를 읽는다.
     // (프록시 data/packs 는 로컬 맥 파일이라 EC2 관리자 배포가 반영 안 됐다.)
-    static func contoursURL(_ code: String) -> URL? {
-        URL(string: "\(r2Public)/packs/\(code)/contours.geojson")
+    // 팩 파일 원격 URL(다운로드/온라인 소스용). 오프라인은 PackStore 의 로컬 파일로 대체.
+    static func packURL(_ code: String, _ file: String) -> URL? {
+        URL(string: "\(r2Public)/packs/\(code)/\(file)")
     }
-    static func routesURL(_ code: String) -> URL? {
-        URL(string: "\(r2Public)/packs/\(code)/routes.geojson")
-    }
-    static func spotsURL(_ code: String) -> URL? {
-        URL(string: "\(r2Public)/packs/\(code)/spots.geojson")
-    }
+    static func contoursURL(_ code: String) -> URL? { packURL(code, "contours.geojson") }
+    static func routesURL(_ code: String) -> URL? { packURL(code, "routes.geojson") }
+    static func spotsURL(_ code: String) -> URL? { packURL(code, "spots.geojson") }
+    static func baseTilesURL(_ code: String) -> URL? { packURL(code, "base.pmtiles") }
 
     // 기상청 단기예보 프록시 — 웹 /api/weather 와 동일 계약(CORS 회피·키 은닉).
     // 배포 시 네이티브 직접 호출(KMA)로 교체 예정(IOS.md). op=ufcst|vfcst|ncst.

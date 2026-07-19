@@ -26,6 +26,7 @@ struct ExploreView: View {
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
     @State private var weather: [WeatherHour] = []
+    @StateObject private var packs = PackStore.shared    // 오프라인 팩 다운로드/설치 상태
 
     // 국가지점번호 — 등반 중(GPS 위치 기준)에만 표시. 탐험(지도) 상태에선 숨김.
     private var npnCode: String? {
@@ -52,6 +53,9 @@ struct ExploreView: View {
                         mountain: catalog.selected, courses: courses, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
+                        // 팩이 설치된 산은 로컬 base.pmtiles 로 오프라인 렌더(오버레이도 로컬)
+                        offlineBaseURL: catalog.selected.flatMap {
+                            packs.downloaded.contains($0.id) ? packs.localFile($0.id, "base.pmtiles") : nil },
                         locateTick: locateTick, fitCourseTick: courseFitTick,
                         bottomInset: peek + 40,
                         onScaleChanged: { metersPerPoint = $0 },
@@ -401,10 +405,13 @@ struct ExploreView: View {
                             Text("\(courses.count)").font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.muted)
                         }
                         Spacer()
-                        Text("지도 다운").font(.kakao(size: 13, weight: .medium))
-                            .foregroundStyle(t.onAccent)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(t.accent, in: Capsule())
+                        downloadButton(m, t)
+                    }
+                    if packs.downloadingCode == m.id {           // 이 산 다운로드 진행률
+                        VStack(alignment: .leading, spacing: 4) {
+                            ProgressView(value: packs.progress).tint(t.accent)
+                            Text(packs.status).font(.kakao(size: 11)).foregroundStyle(t.muted)
+                        }.padding(.top, 2)
                     }
                     if courses.isEmpty {
                         Text("코스 정보를 불러오는 중…").font(.kakao(size: 13)).foregroundStyle(t.muted)
@@ -496,6 +503,28 @@ struct ExploreView: View {
         climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
         courseFitTick += 1                         // 지도를 코스 범위로 이동
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = revealList ? .medium : .peek }
+    }
+
+    // 지도 다운 버튼 — 상태별: 미다운=다운로드 시작, 진행 중=퍼센트, 완료=다운됨 배지.
+    // 다운로드는 로컬 파일 설치가 목적이라 로그인 불필요(로그인 시 saved_packs 동기화만 추가).
+    @ViewBuilder private func downloadButton(_ m: Mountain, _ t: Theme) -> some View {
+        if packs.downloadingCode == m.id {
+            Text("받는 중 \(Int(packs.progress * 100))%")
+                .font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.muted)
+        } else if packs.downloaded.contains(m.id) {
+            Text("다운됨 ✓").font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(t.muted, in: Capsule())
+        } else {
+            Button {
+                Task { if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) } }
+            } label: {
+                Text("지도 다운").font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(t.accent, in: Capsule())
+            }
+            .disabled(packs.downloadingCode != nil)
+        }
     }
 
     private func courseRow(_ c: Course, _ t: Theme) -> some View {

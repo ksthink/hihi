@@ -12,6 +12,7 @@ struct MapView: UIViewRepresentable {
     var climbTrack: [[Double]] = []      // 등반 중 지나온 GPS 트랙 [lng,lat,...]
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
+    var offlineBaseURL: URL? = nil       // 다운로드된 팩의 로컬 base.pmtiles(있으면 오프라인 렌더)
     var locateTick: Int = 0              // 증가 시 현재위치로 이동 + 정북·수평 복원(위치/나침반 통합 버튼)
     var fitCourseTick: Int = 0           // 증가 시 선택 코스 범위로 fitBounds(코스 탭)
     var bottomInset: CGFloat = 306       // 시트가 가리는 하단 높이(기기별) — fitBounds·저작권 배치
@@ -58,8 +59,31 @@ struct MapView: UIViewRepresentable {
     }
 
     private func applyStyle(_ mv: MLNMapView) {
-        guard let url = Bundle.main.url(forResource: styleResource, withExtension: "json") else { return }
+        // 팩이 다운로드돼 있으면 로컬 base 를 쓰는 오프라인 스타일, 아니면 번들(원격) 스타일.
+        let url = offlineBaseURL.flatMap { Self.offlineStyleURL(resource: styleResource, base: $0) }
+                  ?? Bundle.main.url(forResource: styleResource, withExtension: "json")
+        guard let url else { return }
         if mv.styleURL != url { mv.styleURL = url }
+    }
+
+    // 오프라인 스타일 — 번들 스타일의 base 벡터소스(protomaps) URL 을 로컬 pmtiles 로 치환해 캐시에 기록.
+    // 산코드별 파일명이라 산 전환 시 styleURL 이 달라져 재로딩된다. (오버레이 geojson 은 applyOverlay 가 로컬로 교체.)
+    static func offlineStyleURL(resource: String, base: URL) -> URL? {
+        let code = base.deletingLastPathComponent().lastPathComponent
+        let out = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("offline-\(resource)-\(code).json")
+        if FileManager.default.fileExists(atPath: out.path) { return out }
+        guard let src = Bundle.main.url(forResource: resource, withExtension: "json"),
+              let data = try? Data(contentsOf: src),
+              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              var sources = json["sources"] as? [String: Any],
+              var proto = sources["protomaps"] as? [String: Any] else { return nil }
+        proto["url"] = "pmtiles://\(base.absoluteString)"     // 로컬 base 타일 (pmtiles://file:///…)
+        sources["protomaps"] = proto
+        json["sources"] = sources
+        guard let outData = try? JSONSerialization.data(withJSONObject: json) else { return nil }
+        try? outData.write(to: out)
+        return out
     }
 
     final class Coordinator: NSObject, MLNMapViewDelegate {
@@ -202,9 +226,11 @@ struct MapView: UIViewRepresentable {
 
         private func applyOverlay(_ m: Mountain, on mv: MLNMapView) {
             guard let style = mv.style else { return }
-            swap(style, "contours", Config.contoursURL(m.id))
-            swap(style, "trails", Config.routesURL(m.id))
-            swap(style, "spots", Config.spotsURL(m.id))
+            // 다운로드된 팩이 있으면 로컬 geojson, 아니면 원격(R2).
+            let ps = PackStore.shared
+            swap(style, "contours", ps.localFile(m.id, "contours.geojson") ?? Config.contoursURL(m.id))
+            swap(style, "trails",   ps.localFile(m.id, "routes.geojson")   ?? Config.routesURL(m.id))
+            swap(style, "spots",    ps.localFile(m.id, "spots.geojson")     ?? Config.spotsURL(m.id))
         }
 
         // 스타일 JSON 의 geojson 소스 데이터 URL 만 교체(레이어·표현식 유지).
