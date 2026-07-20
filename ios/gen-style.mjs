@@ -21,9 +21,10 @@ mkdirSync(OUT, { recursive: true });
 //
 // ⚠️ 용량 최적화 여지 (2026-07-20 정밀 분석, 지금은 의도적으로 미적용)
 //   글리프 44MB = 앱 설치크기 58MB 의 76%. 두 가지 낭비가 확인됨:
-//   1) Bold 16.5MB 가 문자 "X" 하나를 위해 실려 있다 — 스타일 전체에서 Bold 를 쓰는
-//      레이어는 course-ends-x 뿐이고 그 text-field 는 리터럴 "X" 다. Bold 의 한글
-//      8.5MB·한자 5.7MB 는 절대 렌더되지 않는다. → range 0(ASCII) 만 남기면 -16.5MB.
+//   1) Bold 16.5MB 를 **어느 레이어도 쓰지 않는다**(생성된 스타일 4종 전부 0건).
+//      한때 시종점 X 마커가 유일한 Bold 사용처였으나 출발/도착 텍스트로 되돌리면서
+//      그마저 사라졌다. 웹은 이 라벨에 Bold 를 쓰지만 한글은 localIdeographFontFamily
+//      가 기기 폰트로 그리므로 글리프가 필요 없다. → Bold 를 통째로 빼면 -16.5MB.
 //   2) Regular 의 가나·키릴·아랍 등 -2.6MB 도 렌더 대상이 아니다. 기저지도 MVT 에
 //      name:ja/name:zh 가 들어 있지만 스타일이 읽는 키는 name:ko / name 뿐이다.
 //      (전국 104개 타일 표본에서 렌더 문자는 한글 664종·ASCII 69종·한자 3종(道林里)뿐)
@@ -46,9 +47,9 @@ function make(theme, baseMode) {
     // ⚠️ 이때 Bold 문제를 반드시 같이 볼 것 — 웹 스타일은 POI 분류별 bold 플래그를 지원하고
     //    (basemap-style.js FONT(P.<분류>.bold): 사찰·전철역·편의시설·버스정류장),
     //    켜지는 순간 **한글 라벨에 Bold 글리프가 필요**해진다. 현재 null=전부 bold:false 라
-    //    Bold 는 리터럴 "X" 에만 쓰인다(위 글리프 주석 참조). 설정을 반영하면서 Bold 글리프를
-    //    줄이면 라벨이 □ 로 조용히 깨지므로, 줄일 거면 "Bold 가 리터럴 아닌 text-field 에
-    //    쓰이면 빌드 실패" 가드를 함께 넣을 것.
+    //    Bold 를 쓰는 레이어가 하나도 없다(위 글리프 주석 참조). 설정을 반영하면서 Bold
+    //    글리프를 줄이면 라벨이 □ 로 조용히 깨지므로, 줄일 거면 "Bold 가 실제로 쓰이면
+    //    빌드 실패" 가드를 함께 넣을 것.
     null,
     baseMode, // "terrain"(지형 전용) | "osm"(전체 basemap) — 앱 지도 컨트롤 토글이 파일명으로 선택.
   );
@@ -162,20 +163,16 @@ function make(theme, baseMode) {
   // ── 시종점(course-ends) — 선택 코스 지오메트리 첫/끝 점 (app.js:533-550). ──
   // 데이터는 런타임 파생이라 빈 FC 로 두고, 코스 선택 시 MapView 가 source.shape 로 채운다.
   style.sources["course-ends"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
-  // 보물지도 기호 — 시작:속 빈 동그라미(○), 끝:굵은 X("X marks the spot")
   style.layers.push(
     { id: "course-ends-dots", type: "circle", source: "course-ends",
-      filter: ["==", ["get", "kind"], "start"],
-      paint: { "circle-radius": 6.5,
-               "circle-color": tc.casing,            // 속 빈 링(배경색 채움)
-               "circle-stroke-color": tc.line,
-               "circle-stroke-width": 2.5 } },
-    { id: "course-ends-x", type: "symbol", source: "course-ends",
-      filter: ["==", ["get", "kind"], "end"],
-      layout: { "text-field": "X", "text-font": ["MonaS12 Bold"],
-                "text-size": 20, "text-anchor": "center",
-                "text-allow-overlap": true, "text-ignore-placement": true },
-      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 2 } },
+      paint: { "circle-radius": 5.5,
+               "circle-color": ["case", ["==", ["get", "kind"], "start"], tc.line, tc.casing],
+               "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], tc.casing, tc.line],
+               "circle-stroke-width": 2 } },
+    { id: "course-ends-labels", type: "symbol", source: "course-ends",
+      layout: { "text-field": ["get", "label"], "text-font": ["MonaS12 Regular"],
+                "text-size": 12, "text-offset": [0, 1.1], "text-anchor": "top" },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
   );
 
   // ── 등반 중 "앞으로 갈 루트" — 선택 코스를 회색 점선(검정 테두리)으로. ──
