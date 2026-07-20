@@ -39,13 +39,22 @@ struct RecoView: View {
                     }
                     .padding(.top, 16).padding(.bottom, 24)
                 }
+                // 당겨서 새로고침 — TabView 는 탭 뷰를 살려두므로 .task 가 앱 실행당 한 번만
+                // 돈다. 관리자에서 큐레이션을 고친 뒤 앱을 재실행하지 않고 확인하는 수단.
+                .refreshable { await reload() }
             }
         }
         .background(t.bg)
-        .task {
-            curations = await CurationLoader.load()
-            pickID = curations.first?.items.first?.id   // 캐러셀 첫 카드부터 시작
-        }
+        .task { await reload() }
+    }
+
+    // 큐레이션 로드 — 최초 표시(.task)와 당겨서 새로고침(.refreshable) 공용.
+    private func reload() async {
+        let list = await CurationLoader.load()
+        curations = list
+        if magIndex >= list.count { magIndex = 0 }      // 매거진이 줄었을 때 범위 이탈 방지
+        // 캐러셀 스크롤 위치를 현재 매거진 첫 카드로(빈 목록이면 해제).
+        pickID = list.isEmpty ? nil : list[min(magIndex, list.count - 1)].items.first?.id
     }
 
     // MARK: 매거진 캐러셀 (노출 1세트)
