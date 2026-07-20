@@ -16,3 +16,7 @@ xcuserdata/
 
 # Info.plist 은 XcodeGen 이 project.yml info 블록에서 생성
 HiHeight/Info.plist
+
+# 실기기/시뮬레이터 빌드 산출물(-derivedDataPath 지정 시)
+build-device/
+build-sim/

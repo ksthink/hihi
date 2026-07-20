@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- TestFlight/App Store 업로드용 export 설정 (ios/testflight.sh 가 사용).
+     destination=upload 이므로 export 와 동시에 App Store Connect 로 전송된다. -->
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+
+    <!-- export 후 곧바로 업로드. (generate-ipa 로 바꾸면 .ipa 파일만 남긴다) -->
+    <key>destination</key>
+    <string>upload</string>
+
+    <key>teamID</key>
+    <string>977YU63XXZ</string>
+
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <!-- 크래시 리포트 심볼화를 위해 dSYM 업로드 -->
+    <key>uploadSymbols</key>
+    <true/>
+
+    <!-- 빌드번호는 testflight.sh 가 git 커밋 수로 정한다 — Xcode 가 임의로 손대지 않게 false -->
+    <key>manageAppVersionAndBuildNumber</key>
+    <false/>
+</dict>
+</plist>

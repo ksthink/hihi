@@ -40,9 +40,13 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"   # iPhone
-        # 실기기 테스트 — 개인팀(무료) 자동 서명. 시뮬레이터는 서명 없이도 빌드됨.
+        # 실기기 테스트 · TestFlight 배포 — 자동 서명(배포 인증서/프로파일은
+        # xcodebuild -allowProvisioningUpdates 가 App Store Connect API 키로 발급).
         DEVELOPMENT_TEAM: 977YU63XXZ
         CODE_SIGN_STYLE: Automatic
+        # 앱 아이콘 — Assets.xcassets/AppIcon.appiconset (1024 단일, scripts/make_app_icon.py 로 생성).
+        # ⚠️ 없으면 App Store Connect 가 업로드를 거부한다("Missing app icon").
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: HiHeight/Info.plist
       properties:
@@ -67,3 +71,6 @@ targets:
         UIBackgroundModes:
           - location
         NSLocationWhenInUseUsageDescription: 등반 중 현재 위치를 지도에 표시하고, 화면이 꺼져 있어도 이동 경로를 계속 기록합니다.
+        # 수출 규정 — 통신은 표준 HTTPS(TLS)뿐이라 면제 대상. false 를 박아두면
+        # TestFlight/App Store 업로드마다 암호화 설문을 받지 않는다.
+        ITSAppUsesNonExemptEncryption: false
