@@ -12,6 +12,27 @@
 이어 **등반 GPS 동기화·정확도 개선 + 로그인 세션 복원 + 지도 다운 로그인 필수** 수정. 실기기 검증.
 이어 **등반 루트 점선/실선 구분 + 종료 오터치 방지 팝업 + 등반 중 네비바 숨김** 추가.
 이어 **세션 복구·백그라운드 위치(S3) + 누적고도 버그 수정 + 커스텀 스와이프 삭제 + 프로필 사진 크롭 + 기록 필터·정렬 + 시트 2단계화**.
+이어 **용어 사전(WORD.md) 신규**.
+이어 **TestFlight 내부 배포 파이프라인 구축 — 앱 아이콘·업로드 스크립트 신규, 실제 업로드 성공(build 166)**.
+
+### 생성 / 추가 (TestFlight)
+- **앱 아이콘(`Assets.xcassets/AppIcon.appiconset` + `scripts/make_app_icon.py` 신규)**: 지금까지 아이콘이 아예 없었다 — **없으면 App Store Connect 가 업로드를 거부**한다("Missing app icon"). 앱의 흑백 원칙대로 검정 바탕 + 흰 능선 + 주봉 정상 위치 마커(산 + 내 위치를 한 형태로). 1024 단일 크기·**알파 채널 없음**(App Store 필수). 실루엣 안에 등고선을 넣는 안도 만들었으나 홈화면 크기(120px)에서 층층이 뭉쳐 폐기. SVG 렌더러(ImageMagick)의 `clip-path` 지원이 불안정해 **Pillow 로 직접 합성**(4배 슈퍼샘플 후 축소).
+- **업로드 스크립트(`ios/testflight.sh` + `ios/ExportOptions.plist` 신규)**: 아카이브 → App Store Connect 전송을 한 줄로. `destination: upload` 라 export 와 동시에 전송된다. 인증은 **App Store Connect API 키(.p8)** — `ASC_KEY_ID`/`ASC_ISSUER_ID`/`ASC_KEY_PATH` 환경변수. 배포 인증서·프로비저닝 프로파일은 `-allowProvisioningUpdates` 가 자동 발급하므로 수동 생성 불필요. 빌드번호는 **`git rev-list --count HEAD`** 로 단조 증가(같은 번호 재업로드는 애플이 거부). ⚠️ **커밋 없이 재실행하면 번호가 그대로라 거부된다.**
+
+### 수정 / 변경 (TestFlight)
+- **`project.yml`**: `ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon` 추가, **`ITSAppUsesNonExemptEncryption: false`** 추가 — 통신이 표준 HTTPS(TLS)뿐이라 수출규정 면제 대상이며, 박아두면 업로드마다 암호화 설문을 받지 않는다. 서명 주석도 "개인팀(무료)" → TestFlight 배포 전제로 갱신.
+- **`ios/.gitignore`**: `build-device/`·`build-sim/`(`-derivedDataPath` 지정 빌드 산출물) 무시 추가.
+
+### 배포 환경 확정 (TestFlight)
+- **와일드카드 App ID 로는 TestFlight 불가**: 기존 실기 빌드는 `977YU63XXZ.*`(iOS Team Provisioning Profile: \*)로 되고 있었으나, **App Store/TestFlight 배포는 명시적(Explicit) App ID 필수** → `dev.metaphr.hiheight` 를 포털에 신규 등록. 백그라운드 위치는 App ID capability 가 필요 없어 추가 권한 없이 등록.
+- **배포 방식 = 내부 테스터**: 지정된 팀원에게만 시험 배포 → **Beta App Review 없음**(업로드 처리 5~15분 후 즉시 설치 가능), 최대 100명. 대신 테스터가 App Store Connect 사용자로 들어온다. 외부 테스터(이메일 초대·공개링크 OFF)는 첫 빌드 심사 1~2일 + 백그라운드 위치 사유서가 필요해 제외.
+- **업로드 검증 완료**: `ARCHIVE SUCCEEDED` → `Upload succeeded` → `EXPORT SUCCEEDED`, **build 166** 수신 확인. 앱 레코드 = 하이하잇 / ID 6792697435 / SKU hiheight.
+- **알려진 경고(무해)**: MapLibre 가 미리 컴파일된 바이너리 프레임워크라 **dSYM 미포함** → MapLibre 내부 크래시는 심볼화 안 됨(앱 Swift 코드는 정상). 내부 테스트 단계에선 방치.
+- 버전 표기는 App Store Connect 레코드가 1.0, 앱은 `MARKETING_VERSION 0.1.0` 로 불일치하나 TestFlight 표시만 다를 뿐 업로드에 무관 — 0.1.0 유지 선택.
+
+### 생성 / 추가 (문서)
+- **`WORD.md` 신규 — 프로젝트 용어 사전**: 이 저장소에 실제로 등장한 용어만 8개 분야(지도 기술 / 데이터·좌표계 / 오프라인 / iOS 네이티브 / 백엔드·인프라 / 보안 / 빌드·배포 / 이 프로젝트만의 약속)로 정리. 각 항목에 뜻과 함께 **"왜 이 선택을 했나"(결정 배경)** 를 남겨 나중에 되짚을 수 있게 했다. 프록시 2종의 목적 구분(CORS 회피=네이티브에서 소멸 / 키 은닉=영구 유지), 키 배치표, S1·S2·S3 현황, 겪은 삽질의 원인(포트 8890 셀룰러 차단·Vercel 와일드카드 도메인 잔재·누적고도 2404m) 포함.
+- **`README.md` 11장 문서 표 갱신**: WORD.md 링크 추가. 존재하지 않는 `~/.claude/plans/moonlit-rolling-tulip.md` 행을 이를 대체한 **IOS.md** 로 교체(CLAUDE.md 가 명시한 단일 기준 문서인데 표에서 빠져 있었다).
 
 ### 생성 / 추가 (S3·UX)
 - **강제 종료 세션 복구(`ClimbStore` + `ClimbResumeView.swift` 신규)**: 앱 스위처 강제 종료는 종료 콜백이 보장되지 않고 사용자가 종료한 앱은 위치 이벤트로 재실행되지도 않는다 → "종료를 막는" 대신 **진행 중 계속 append**. `climb-session.ndjson`(1행=메타{산·코스·계획고도·코스거리·시작시각}, 이후=`[lng,lat,고도,unix초]`)에 GPS 점마다 기록, 깨진 마지막 줄은 관대 파싱. 재실행 시 감지해 **앱 UI 팝업**(시스템 다이얼로그 아님)으로 **이어서 계속 / 종료하고 저장 / 삭제** 제시(모호한 "나중에"는 제거). IOS.md §9 S3 "앱 강제종료/재실행 시 세션 복구" 충족.
