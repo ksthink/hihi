@@ -464,6 +464,8 @@ class AdminHandler(BaseHandler):
                 with open(cfg_path, "wb") as f:
                     f.write(body)
                 import r2_lib
+                # Cache-Control 은 r2_lib.cache_control_for 가 확장자로 결정한다
+                # (*.json → no-cache). 없으면 앱이 옛 큐레이션을 몇 시간 재사용한다.
                 r2_lib.upload_bytes(body, "config/curations.json",
                                     content_type="application/json")
                 return self._json({"ok": True, **cfg})
