@@ -14,6 +14,25 @@
 이어 **세션 복구·백그라운드 위치(S3) + 누적고도 버그 수정 + 커스텀 스와이프 삭제 + 프로필 사진 크롭 + 기록 필터·정렬 + 시트 2단계화**.
 이어 **용어 사전(WORD.md) 신규**.
 이어 **TestFlight 내부 배포 파이프라인 구축 — 앱 아이콘·업로드 스크립트 신규, 실제 업로드 성공(build 166)**.
+이어 **글리프 용량 분석(미적용 결론) + 큐레이션 캐시 버그 수정 + 빌드 버전 반영 버그 수정 + 추천 당겨서 새로고침**. 실기기 검증(build 171).
+
+### 수정 / 변경 (큐레이션 캐시 버그)
+- **admin 에서 큐레이션을 바꿔도 앱 추천 탭에 몇 시간 반영되지 않던 버그 수정(`scripts/r2_lib.py`·`ios/HiHeight/Curation.swift`)**: 원인은 **R2 가 `Cache-Control` 을 아예 보내지 않는 것**. 명시적 만료가 없으면 클라이언트가 **휴리스틱 캐싱**((now − Last-Modified) × 10%)을 적용하는데, 파일이 7일 전 수정 상태여서 **약 17시간 동안 서버에 재검증조차 하지 않았다**. `URLCache` 는 디스크에 있어 **앱을 강제 종료해도 살아남는다**(그래서 "앱 껐다 켜도 그대로"). 웹은 `fetch(url, {cache:"no-cache"})` 로 피해 갔으나 네이티브는 기본 정책이라 직격.
+  - **서버**: `r2_lib.cache_control_for(key)` 신설 — `*.json`·`*.geojson` → `no-cache`(쓰기 전 재검증, 안 바뀌었으면 304 라 저렴), `*.pmtiles` → 미지정(수백 MB·Range 요청이라 매 요청 재검증은 손해). `upload_bytes`/`upload_file` 이 이를 기본값으로 쓰므로 **호출부(admin_server·publish_pack·upload_packs) 수정 없이 전부 자동 적용** — 호출부마다 인자를 넣는 방식은 하나 빠뜨리면 조용히 재발하므로 채택하지 않음.
+  - **앱**: `cachePolicy = .reloadIgnoringLocalCacheData`(문서 1KB 미만) — 서버 헤더가 빠져도 안전하도록 이중 방어.
+  - **기존 R2 객체 소급 적용**: 헤더는 다음 업로드부터 붙으므로 EC2 에서 `copy_object(MetadataDirective="REPLACE")` 로 기존 `*.json`·`*.geojson` 전체에 헤더 부여(내용 보존). config 2종 + 팩 geojson 확인 완료, `kr-base.pmtiles` 는 정책대로 제외됨을 검증. ⚠️ `git pull` 만으로는 안 되고 **admin 서버 재시작 필요**(파이썬이 로드한 모듈을 캐시).
+- **추천 탭 당겨서 새로고침(`RecoView.swift`)**: 캐시를 무시해도 **다시 받는 시점**이 앱 재실행뿐이었다 — `TabView` 는 한번 만든 탭 뷰를 살려두므로 `.task` 가 앱 실행당 한 번만 돈다. `.task`/`.refreshable` 공용 `reload()` 로 일원화하고, 매거진이 삭제돼 목록이 짧아진 경우 `magIndex` 범위 이탈 방지 + 캐러셀 위치 재설정. 탭 전환마다 자동 재요청하는 안도 있었으나 큐레이션이 자주 바뀌지 않아 사용자 주도 방식을 택함.
+
+### 수정 / 변경 (빌드 버전 반영)
+- **빌드 버전이 Info.plist 에 반영되지 않던 문제(`ios/project.yml`)**: TestFlight 업로드가 `bundle version must be higher than the previously uploaded version: '1'` 로 거부돼 드러났다. `info.properties` 에 `CFBundleVersion`·`CFBundleShortVersionString` 참조가 없어 **XcodeGen 이 자기 기본값(1 / 1.0)을 Info.plist 에 리터럴로 박았고**, 그 결과 `project.yml` 의 `MARKETING_VERSION` 도 `testflight.sh` 의 `xcodebuild CURRENT_PROJECT_VERSION` 오버라이드도 **전부 무시**됐다. **build 166 은 0.1.0(166) 이 아니라 실제로는 1.0(1) 로 올라가 있었다.**
+  - `$(MARKETING_VERSION)`·`$(CURRENT_PROJECT_VERSION)` 참조 추가 → `CURRENT_PROJECT_VERSION=169` 빌드가 `1.0 (169)` 로 나오는 것을 확인.
+  - `MARKETING_VERSION` 을 **1.0 으로 정정** — 이미 업로드된 빌드와 App Store Connect 버전 레코드가 1.0 이라 0.1.0 으로 내리면 버전이 역행한다.
+  - ⚠️ 업로드 결과를 `grep|tail` 로 파이프하면 **종료 코드가 tail 것으로 바뀌어 실패가 성공으로 보인다**. 스크립트는 `set -euo pipefail` 로 정상이었고 확인 방식이 문제였음.
+
+### 기록 (글리프 용량 — 분석만, 미적용)
+- **`ios/gen-style.mjs` 주석으로 근거 보존**: 글리프 44MB = 앱 설치크기 58MB 의 76%. ① **Bold 16.5MB 가 문자 `X` 하나를 위해** 실려 있다(Bold 를 쓰는 레이어는 `course-ends-x` 뿐이고 text-field 가 리터럴). ② Regular 의 가나·키릴·아랍 2.6MB 도 렌더 대상 아님 — 기저지도 MVT 에 `name:ja`/`name:zh` 가 있으나 스타일이 읽는 키는 `name:ko`/`name` 뿐(원격 PMTiles 에서 전국 104개 타일을 받아 MVT 를 직접 파싱해 확인: 렌더 문자 = 한글 664종·ASCII 69종·한자 3종(`道林里`)·전각 `ｅ`).
+- **미적용 결론**: pbf 압축률이 높아 **다운로드는 9.7MB→7.8MB 로 1.9MB 만** 준다. 얻는 건 설치 19MB 절감뿐인데 오프라인 팩이 그보다 크고, 실수하면 희귀 한자 지명이 □ 로 조용히 깨진다. 착수 적기: poi-display 볼드 설정 반영 / 용량 민원 / App Store 정식 출시.
+- **함께 남긴 경고**: `poi-display.json` 을 반영하면 사찰·전철역 등에 볼드가 켜져 **한글 Bold 글리프가 필요해진다**. 줄일 거면 "Bold 가 리터럴 아닌 text-field 에 쓰이면 빌드 실패" 가드를 함께 넣을 것.
 
 ### 생성 / 추가 (TestFlight)
 - **앱 아이콘(`Assets.xcassets/AppIcon.appiconset` + `scripts/make_app_icon.py` 신규)**: 지금까지 아이콘이 아예 없었다 — **없으면 App Store Connect 가 업로드를 거부**한다("Missing app icon"). 앱의 흑백 원칙대로 검정 바탕 + 흰 능선 + 주봉 정상 위치 마커(산 + 내 위치를 한 형태로). 1024 단일 크기·**알파 채널 없음**(App Store 필수). 실루엣 안에 등고선을 넣는 안도 만들었으나 홈화면 크기(120px)에서 층층이 뭉쳐 폐기. SVG 렌더러(ImageMagick)의 `clip-path` 지원이 불안정해 **Pillow 로 직접 합성**(4배 슈퍼샘플 후 축소).
