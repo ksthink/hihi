@@ -273,8 +273,9 @@ hihi/
 
 | 문서 | 내용 |
 |---|---|
+| **[WORD.md](WORD.md)** | **용어 사전** — 이 프로젝트에 쓰인 용어의 뜻과 **왜 그 선택을 했는지** |
 | **[CLOUDFLARE.md](CLOUDFLARE.md)** | Cloudflare R2 기저 타일 자체 호스팅 **구축 순서**(처음 하는 사람용) |
+| [IOS.md](IOS.md) | iOS 네이티브 이식 계획서 (단일 기준 문서) |
 | [WORKLOG.md](WORKLOG.md) | 작업일지 (날짜별 생성·수정 기록) |
 | [QA.md](QA.md) | 설계 질문/답변 기록 |
 | [CLAUDE.md](CLAUDE.md) | 개발 지침 (iOS 이식 전제 규칙 등) |
-| `~/.claude/plans/moonlit-rolling-tulip.md` | iOS 네이티브 이식 상세 계획서 |
