@@ -201,6 +201,20 @@ function make(theme, baseMode) {
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": tc.line, "line-width": 2.6, "line-dasharray": [0.1, 1.8] } },
   );
+  // 기록 트랙의 시작·도착 — 선택 코스(course-ends)와 동일한 모양. 트랙 선 위에 얹는다.
+  // 빈 FC 로 두고 MapView.applyRecordTrack 이 트랙 첫/끝 점으로 채운다.
+  style.sources["rec-ends"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  style.layers.push(
+    { id: "rec-ends-dots", type: "circle", source: "rec-ends",
+      paint: { "circle-radius": 5.5,
+               "circle-color": ["case", ["==", ["get", "kind"], "start"], tc.line, tc.casing],
+               "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], tc.casing, tc.line],
+               "circle-stroke-width": 2 } },
+    { id: "rec-ends-labels", type: "symbol", source: "rec-ends",
+      layout: { "text-field": ["get", "label"], "text-font": ["MonaS12 Regular"],
+                "text-size": 12, "text-offset": [0, 1.1], "text-anchor": "top" },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
+  );
 
   // ── 등반 중 라이브 트랙(지나온 곳) — app.js:566-578. ──
   // 빈 FC 로 두고, 등반 세션의 GPS 갱신마다 MapView 가 source.shape 로 채운다(본선색).

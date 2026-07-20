@@ -378,12 +378,21 @@ struct MapView: UIViewRepresentable {
         private func applyRecordTrack(_ track: [[Double]]?, on mv: MLNMapView) {
             guard let style = mv.style,
                   let src = style.source(withIdentifier: "rec-track") as? MLNShapeSource else { return }
+            // 기록 트랙의 시작·도착 마커 — 선택 코스와 동일한 endsGeoJSON 을 재사용.
+            let ends = style.source(withIdentifier: "rec-ends") as? MLNShapeSource
             guard let track, track.count >= 2,
                   let data = Self.trackGeoJSON(track),
                   let shape = try? MLNShape(data: data, encoding: String.Encoding.utf8.rawValue) else {
-                src.shape = nil; return
+                src.shape = nil; ends?.shape = nil; return
             }
             src.shape = shape
+            if let s = track.first, let e = track.last, s.count >= 2, e.count >= 2,
+               let d = Self.endsGeoJSON(start: Array(s.prefix(2)), end: Array(e.prefix(2))),
+               let sh = try? MLNShape(data: d, encoding: String.Encoding.utf8.rawValue) {
+                ends?.shape = sh
+            } else {
+                ends?.shape = nil
+            }
         }
 
         private func fit(_ track: [[Double]], on mv: MLNMapView) {

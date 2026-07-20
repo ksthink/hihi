@@ -479,10 +479,17 @@ function courseEndsData() {
   const lines = asLines(f.geometry);
   const first = lines[0], last = lines[lines.length - 1];
   if (!first?.length || !last?.length) return EMPTY_FC;
+  return endsFC(first[0], last[last.length - 1]);
+}
+
+// 시종점 2점 FeatureCollection — 선택 코스(course-ends)와 기록 트랙(rec-ends) 공용.
+// 라벨 문구를 한 곳에 두어 두 경로가 어긋나지 않게 한다.
+function endsFC(startPt, endPt) {
+  if (!startPt?.length || !endPt?.length) return EMPTY_FC;
   return { type: "FeatureCollection", features: [
-    { type: "Feature", geometry: { type: "Point", coordinates: first[0] },
+    { type: "Feature", geometry: { type: "Point", coordinates: startPt },
       properties: { kind: "start", label: "출발" } },
-    { type: "Feature", geometry: { type: "Point", coordinates: last[last.length - 1] },
+    { type: "Feature", geometry: { type: "Point", coordinates: endPt },
       properties: { kind: "end", label: "도착" } },
   ] };
 }
@@ -599,6 +606,26 @@ function ensureOverlays() {
       id: "rec-track", type: "line", source: "rec-track",
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": c.line, "line-width": 2.6, "line-dasharray": [0.1, 1.8] }
+    });
+    // 기록 트랙의 시작·도착 — 선택 코스(course-ends)와 동일한 모양. 트랙 선 위에 얹는다.
+    map.addSource("rec-ends", { type: "geojson", data: EMPTY_FC });
+    map.addLayer({
+      id: "rec-ends-dots", type: "circle", source: "rec-ends",
+      paint: {
+        "circle-radius": 5,
+        "circle-color": ["case", ["==", ["get", "kind"], "start"], c.line, c.casing],
+        "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], c.casing, c.line],
+        "circle-stroke-width": 2
+      }
+    });
+    map.addLayer({
+      id: "rec-ends-labels", type: "symbol", source: "rec-ends",
+      layout: {
+        "text-field": ["get", "label"], "text-font": ["MonaS12 Bold"],
+        "text-size": 9.5, "text-offset": [0, 1.1], "text-anchor": "top",
+        "text-allow-overlap": true
+      },
+      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.6 }
     });
 
     // 등반 중 라이브 트랙(지나온 곳) — GPS 갱신마다 setData. 선택 코스(trail-hl,
@@ -872,6 +899,7 @@ async function loadPark(park) {
   if (map.getSource("spots")) map.getSource("spots").setData(ov.spots || EMPTY_FC);
   if (map.getSource("contours")) map.getSource("contours").setData(ov.contours || EMPTY_FC);
   if (map.getSource("rec-track")) map.getSource("rec-track").setData(EMPTY_FC); // 산 전환 시 기록 트랙 지움
+  if (map.getSource("rec-ends")) map.getSource("rec-ends").setData(EMPTY_FC);   // 시종점도 함께
   applySpotsVisibility();
   applyContourVisibility();
   applyTrailFilter();
@@ -1741,6 +1769,7 @@ async function openRecordTrack(r) {
   const coords = r.track.points.map((pt) => [pt[0], pt[1]]);
   map.getSource("rec-track")?.setData({ type: "Feature", properties: {},
     geometry: { type: "LineString", coordinates: coords } });
+  map.getSource("rec-ends")?.setData(endsFC(coords[0], coords[coords.length - 1]));
   let minX = 180, minY = 90, maxX = -180, maxY = -90;
   for (const [x, y] of coords) {
     if (x < minX) minX = x; if (x > maxX) maxX = x;
