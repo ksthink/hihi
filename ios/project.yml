@@ -62,5 +62,8 @@ targets:
         # NSAllowsLocalNetworking 은 로컬 dev(localhost 프록시 전환 시)용으로만 유지 — 심사 무관.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
-        # 등반 트래킹(M5) — 산행 중 현재 위치·이동 경로 기록.
-        NSLocationWhenInUseUsageDescription: 등반 중 현재 위치를 지도에 표시하고 이동 경로를 기록합니다.
+        # 등반 트래킹(M5·IOS.md §7-1) — 화면이 꺼져 있거나 앱을 벗어나도 경로가 끊기지 않게 기록.
+        # ⚠️ UIBackgroundModes(location) 가 없으면 allowsBackgroundLocationUpdates 설정이 크래시한다.
+        UIBackgroundModes:
+          - location
+        NSLocationWhenInUseUsageDescription: 등반 중 현재 위치를 지도에 표시하고, 화면이 꺼져 있어도 이동 경로를 계속 기록합니다.

@@ -11,6 +11,44 @@ struct RecordsView: View {
     @State private var pass = ""
     @State private var pendingDelete: ClimbRecord?
     @State private var showProfileEdit = false
+    @State private var selectedDay: String?        // 캘린더에서 고른 날짜 "y-m-d" (nil=전체)
+    @State private var sort: RecSort = .date       // 목록 정렬 기준
+    @State private var sortAsc = false             // false=내림차순(최신·큰 값 먼저)
+
+    // 목록 정렬 — 날짜/거리/등반시간(모두 큰 값 우선).
+    enum RecSort: CaseIterable {
+        case date, distance, duration
+        var label: String {
+            switch self {
+            case .date: return "날짜순"
+            case .distance: return "거리순"
+            case .duration: return "시간순"
+            }
+        }
+    }
+
+    // 화면에 보일 기록 — 날짜 필터 적용 후 정렬.
+    private var shownRecords: [ClimbRecord] {
+        let cal = Calendar.current
+        var list = auth.records
+        if let day = selectedDay {
+            list = list.filter { r in
+                guard let d = r.startedDate else { return false }
+                let c = cal.dateComponents([.year, .month, .day], from: d)
+                return "\(c.year!)-\(c.month!)-\(c.day!)" == day
+            }
+        }
+        // 오름/내림 공통 비교기 — sortAsc 에 따라 방향만 뒤집는다.
+        func by<T: Comparable>(_ key: @escaping (ClimbRecord) -> T) -> (ClimbRecord, ClimbRecord) -> Bool {
+            { a, b in sortAsc ? key(a) < key(b) : key(a) > key(b) }
+        }
+        switch sort {
+        case .date:     list.sort(by: by { $0.startedDate ?? .distantPast })
+        case .distance: list.sort(by: by { $0.distance_km ?? 0 })
+        case .duration: list.sort(by: by { $0.duration_s ?? 0 })
+        }
+        return list
+    }
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -49,37 +87,40 @@ struct RecordsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 summary(t)
-                RecCalendar(dayKeys: recordDayKeys)   // 산행 달력 — 기록 있는 날 점 표시
+                // 산행 달력 — 기록 있는 날 점 표시, 그 날을 탭하면 해당 일만 보기(다시 탭 해제)
+                RecCalendar(dayKeys: recordDayKeys, selected: $selectedDay)
+                sortBar(t)                            // 정렬 + 선택 날짜 해제
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+            .listRowInsets(EdgeInsets())   // 좌우 여백은 List 자체에 줌(행 안쪽에 주면 스와이프 버튼과 틈이 생김)
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
 
-            if auth.records.isEmpty {
-                Text("아직 등반 기록이 없습니다.").font(.kakao(size: 13)).foregroundStyle(t.muted)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+            if shownRecords.isEmpty {
+                Text(auth.records.isEmpty ? "아직 등반 기록이 없습니다." : "선택한 날짜에 기록이 없습니다.")
+                    .font(.kakao(size: 13)).foregroundStyle(t.muted)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                     .listRowSeparator(.hidden).listRowBackground(Color.clear)
             } else {
-                ForEach(auth.records) { r in           // 웹 rec-item — elevated 카드(gap 10)
-                    recordRow(r, t)
-                        .padding(.horizontal, 16).padding(.vertical, 14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
-                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 10, trailing: 20))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .contentShape(Rectangle())
-                        .onTapGesture { if r.hasTrack { onShowRoute(r) } }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) { pendingDelete = r } label: {
-                                Label("삭제", systemImage: "trash")
-                            }
-                        }
+                ForEach(shownRecords) { r in           // 웹 rec-item — elevated 카드(gap 10)
+                    // 커스텀 스와이프 — 카드가 삭제 버튼 위로 미끄러진다(모서리·틈·겹침 모두 해결).
+                    SwipeToDeleteRow(onDelete: { pendingDelete = r }) {
+                        recordRow(r, t)
+                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
+                            .contentShape(Rectangle())
+                            .onTapGesture { if r.hasTrack { onShowRoute(r) } }
+                    }
+                    .listRowInsets(EdgeInsets())   // 좌우 여백은 List 자체에 줌
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                 }
             }
         }
         .listStyle(.plain)
+        .listRowSpacing(10)          // 카드 간 여백 — 행 밖이라 삭제 버튼 높이가 카드와 정확히 일치
+        .padding(.horizontal, 20)    // 좌우 여백을 List 에 줘서 행 폭 = 카드 폭
         .scrollContentBackground(.hidden)
         .background(t.bg)
     }
@@ -137,6 +178,52 @@ struct RecordsView: View {
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
         }
         .buttonStyle(.plain)
+    }
+
+    // 목록 위 정렬 바 — 작은 알약 버튼 3개(날짜/거리/시간). 날짜 필터 중이면 해제 칩을 우측에.
+    private func sortBar(_ t: Theme) -> some View {
+        HStack(spacing: 6) {
+            ForEach(RecSort.allCases, id: \.self) { s in
+                let on = sort == s
+                Button {
+                    if on { sortAsc.toggle() }        // 선택된 걸 다시 누르면 오름↔내림
+                    else { sort = s; sortAsc = false } // 새로 고르면 내림차순부터
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(s.label).font(.kakao(size: 11, weight: on ? .bold : .regular))
+                        if on {
+                            Image(systemName: sortAsc ? "arrow.up" : "arrow.down")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                    }
+                    .foregroundStyle(on ? t.onAccent : t.muted)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(on ? t.accent : t.surface, in: Capsule())
+                    .overlay(Capsule().strokeBorder(on ? .clear : t.line))
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 4)
+            if let day = selectedDay {
+                Button { selectedDay = nil } label: {
+                    HStack(spacing: 4) {
+                        Text(dayLabel(day)).font(.kakao(size: 11, weight: .semibold))
+                        Image(systemName: "xmark.circle.fill").font(.system(size: 11))
+                    }
+                    .foregroundStyle(t.text)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(t.surface, in: Capsule())
+                    .overlay(Capsule().strokeBorder(t.line))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // "y-m-d" → "M월 d일"
+    private func dayLabel(_ key: String) -> String {
+        let p = key.split(separator: "-").compactMap { Int($0) }
+        return p.count == 3 ? "\(p[1])월 \(p[2])일" : key
     }
 
     // 프로필 아바타 — 로컬 이미지 있으면 원형, 없으면 기본(person.circle).
@@ -227,6 +314,7 @@ struct RecordsView: View {
 // 산행 달력 — 웹 renderRecCalendar(app.js:1556) 이식. ‹ › 월 이동, 오늘 강조, 기록 있는 날 점.
 struct RecCalendar: View {
     let dayKeys: Set<String>          // "y-m-d"(로컬)
+    @Binding var selected: String?    // 선택된 날짜("y-m-d") — 기록 있는 날만 선택 가능
     @Environment(\.colorScheme) private var scheme
     @State private var offset = 0     // 표시 월 = 이번 달 + offset
     private let cal = Calendar.current
@@ -278,17 +366,22 @@ struct RecCalendar: View {
     @ViewBuilder
     private func dayCell(_ day: Int?, _ y: Int, _ m: Int, _ tc: DateComponents, _ t: Theme) -> some View {
         if let d = day {
+            let key = "\(y)-\(m)-\(d)"
             let isToday = tc.year == y && tc.month == m && tc.day == d
-            let hasRec = dayKeys.contains("\(y)-\(m)-\(d)")
+            let hasRec = dayKeys.contains(key)
+            let isSel = selected == key
             VStack(spacing: 2) {
                 Text("\(d)")
-                    .font(.kakao(size: 12, weight: isToday ? .heavy : .regular))
-                    .foregroundStyle(t.text)
+                    .font(.kakao(size: 12, weight: isToday || isSel ? .heavy : .regular))
+                    .foregroundStyle(isSel ? t.onAccent : t.text)
                     .frame(width: 24, height: 24)
-                    .overlay { if isToday { Circle().strokeBorder(t.line, lineWidth: 1) } }   // 웹 .rc-d.today::before
-                Circle().fill(hasRec ? t.text : .clear).frame(width: 4, height: 4)
+                    .background { if isSel { Circle().fill(t.accent) } }                       // 선택일 강조
+                    .overlay { if isToday && !isSel { Circle().strokeBorder(t.line, lineWidth: 1) } }  // 웹 .rc-d.today::before
+                Circle().fill(hasRec && !isSel ? t.text : .clear).frame(width: 4, height: 4)
             }
             .frame(maxWidth: .infinity).frame(height: 30)
+            .contentShape(Rectangle())
+            .onTapGesture { if hasRec { selected = isSel ? nil : key } }   // 기록 있는 날만, 다시 탭하면 해제
         } else {
             Color.clear.frame(maxWidth: .infinity).frame(height: 30)
         }

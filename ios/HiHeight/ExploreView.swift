@@ -21,7 +21,7 @@ struct ExploreView: View {
     @FocusState private var searchFocused: Bool     // 펼침 시 입력창 자동 포커스
     private var hasQuery: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
     @State private var attrExpanded = false          // 저작권 ⓘ — 탭 시 옆으로 펼침(팝업 대체)
-    @State private var detent: SheetDetent = .peek     // 바텀시트 3단계
+    @State private var detent: SheetDetent = .peek     // 바텀시트 2단계(지도 ⇄ 목록)
     @State private var sheetDrag: CGFloat = 0           // 드래그 실시간 오프셋(+아래 -위)
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
@@ -67,7 +67,7 @@ struct ExploreView: View {
                         bottomInset: peek + 40,
                         onScaleChanged: { metersPerPoint = $0 },
                         onCourseTapped: { name in                       // 지도에서 등산로/배지 탭 → 코스 선택 + 목록 노출·스크롤
-                            if let c = courses.first(where: { $0.name == name }) { selectCourse(c, revealList: true) }
+                            if let c = courses.first(where: { $0.name == name }) { selectCourse(c) }
                         })
                     .ignoresSafeArea()
 
@@ -180,7 +180,8 @@ struct ExploreView: View {
             weather = await wx
             climb.mountainName = m.name
             climb.mountainCode = m.id
-            climb.course = courses.first              // 단일 코스 자동 선택 → 시종점 즉시 표시
+            // 단일 코스 자동 선택 → 시종점 즉시 표시. 복구된 세션이면 원래 코스명을 우선 매칭.
+            climb.course = courses.first(where: { $0.name == climb.restoredCourseName }) ?? courses.first
             if climb.fitRequested {                   // 추천 등 외부 진입 → 코스 범위로 프레이밍
                 climb.fitRequested = false
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }
@@ -382,16 +383,17 @@ struct ExploreView: View {
         String(format: "%d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60)
     }
 
-    // 바텀시트 3단계 (웹 2단계 → Apple 지도식 peek·medium·large)
-    enum SheetDetent: CaseIterable { case peek, medium, large }
+    // 바텀시트 2단계 (peek=지도 모드 / large=목록 모드)
+    // 2단계 — 지도 모드(peek) ⇄ 목록 모드(large). 중간 단계는 스크롤이 막혀 "보이는데 못 넘기는"
+    // 사각지대였고, 손잡이 탭 토글도 이미 건너뛰고 있어 제거했다.
+    enum SheetDetent: CaseIterable { case peek, large }
 
-    // MARK: 바텀시트 (산 소개) — peek 는 기기별 비율(상위에서 계산), medium·large 는 maxH 비율.
+    // MARK: 바텀시트 (산 소개) — peek 는 기기별 비율(상위에서 계산), large 는 maxH 비율.
     // 드래그를 실시간 추종(sheetDrag)하고, 놓을 때 속도(예상 종점) 반영해 가장 가까운 단계로 스냅.
     private func infoSheet(_ t: Theme, maxH: CGFloat, peek: CGFloat) -> some View {
-        let mediumH = maxH * 0.52
         let largeH = maxH * 0.88
         func heightFor(_ d: SheetDetent) -> CGFloat {
-            switch d { case .peek: return peek; case .medium: return mediumH; case .large: return largeH }
+            switch d { case .peek: return peek; case .large: return largeH }
         }
         let base = heightFor(detent)
         // 실시간 높이 — 위로 끌면(sheetDrag<0) 커지고, 경계 밖은 점진적 저항(러버밴딩).
@@ -552,12 +554,13 @@ struct ExploreView: View {
     // 등산로 카드 — 웹 trail-item(프레임 + 좌측 강조선). 이름·난이도 배지·거리/시간·고도 프로파일.
     // 탭 → 선택(시종점 표시). 선택 시 accent 링 강조.
     // 코스 선택(목록 탭·지도 탭 공통): 선택 반영 + 지도 코스 범위로 fitBounds.
-    // revealList=true(지도 탭)면 시트를 올려 목록을 노출(선택 코스로 자동 스크롤됨), 아니면(목록 탭) 낮춰 지도 노출.
-    private func selectCourse(_ c: Course, revealList: Bool = false) {
+    // 어느 경로로 고르든 시트를 접어 지도를 보여준다 — 코스명은 상단 오버레이가, 시종점·배지는
+    // 지도가 알려주므로 목록을 펼칠 필요가 없다(목록을 보려면 손잡이 탭 한 번).
+    private func selectCourse(_ c: Course) {
         withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
         climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
         courseFitTick += 1                         // 지도를 코스 범위로 이동
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = revealList ? .medium : .peek }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = .peek }
     }
 
     // 지도 다운 버튼 — 상태별: 미다운=다운로드 시작, 진행 중=퍼센트, 완료=다운됨 배지.

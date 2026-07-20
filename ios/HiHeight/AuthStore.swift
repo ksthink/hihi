@@ -178,7 +178,9 @@ final class AuthStore: ObservableObject {
             started_at: Self.iso.string(from: d.startedAt),
             ended_at: Self.iso.string(from: d.endedAt),
             distance_km: measuredKm,
-            ascent_m: elev?.ascent ?? d.plannedAscent,
+            ascent_m: elev?.ascent ?? Self.estimatedAscent(measuredKm: measuredKm,
+                                                           plannedAscent: d.plannedAscent,
+                                                           plannedKm: d.plannedDistanceKm),
             duration_s: duration,
             track: track.count >= 2 ? TrackJSON(points: points, elev: elev) : nil)
 
@@ -190,6 +192,14 @@ final class AuthStore: ObservableObject {
         } catch {
             return "기록 저장 실패: \((error as NSError).localizedDescription)"
         }
+    }
+
+    // 실측 고도가 없을 때의 누적고도 추정 — 코스 계획고도를 "실제 걸은 비율"만큼만 인정한다.
+    // 예전엔 계획고도를 통째로 적립해, 시작하자마자 종료한 0km 세션도 코스 전체 고도(예 315m)가
+    // 기록돼 합계가 크게 부풀었다. 거의 움직이지 않았으면(0.2km 미만) 아예 기록하지 않는다(nil).
+    private static func estimatedAscent(measuredKm: Double, plannedAscent: Int?, plannedKm: Double?) -> Int? {
+        guard measuredKm >= 0.2, let pa = plannedAscent, pa > 0, let pk = plannedKm, pk > 0 else { return nil }
+        return Int((Double(pa) * min(1.0, measuredKm / pk)).rounded())
     }
 
     // 트랙 고도 통계 — 이동평균(창5)으로 잡음 제거 후 누적 상승/하강 (app.js:1473).

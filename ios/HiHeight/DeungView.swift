@@ -128,24 +128,24 @@ struct DeungView: View {
         if !saved.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("저장된 지도").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
+                // 기록 탭과 동일한 커스텀 스와이프 삭제(카드가 삭제 버튼 위로 미끄러짐).
                 ForEach(saved) { m in
-                    HStack(spacing: 12) {
-                        Image(systemName: "map").font(.system(size: 15)).foregroundStyle(t.muted)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(m.name).font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
-                            Text("오프라인 사용 가능").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                    SwipeToDeleteRow(corner: 12, onDelete: { deletePackTarget = m }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "map").font(.system(size: 15)).foregroundStyle(t.muted)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(m.name).font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                                Text("오프라인 사용 가능").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                            }
+                            Spacer(minLength: 0)
                         }
-                        Spacer()
-                        Button { deletePackTarget = m } label: {
-                            Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(t.muted)
-                                .padding(6).contentShape(Rectangle())
-                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
+                        .contentShape(Rectangle())
+                        .onTapGesture { onOpenMap(m) }
                     }
-                    .padding(12)
-                    .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
-                    .contentShape(Rectangle())
-                    .onTapGesture { onOpenMap(m) }
                 }
             }
             .padding(.horizontal, 20).padding(.bottom, 20)

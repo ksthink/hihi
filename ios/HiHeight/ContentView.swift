@@ -35,6 +35,28 @@ struct ContentView: View {
             async let c: Void = catalog.load()
             async let a: Void = auth.refresh()
             _ = await (c, a)
+            climb.checkPending()               // 강제 종료로 중단된 등반이 있으면 복구 안내
+        }
+        // 중단된 등반 복구 — 강제 종료는 막을 수 없으므로 진행 중 저장해 둔 세션으로 되살린다(IOS.md §9 S3).
+        // 시스템 다이얼로그 대신 앱 UI 로 통일한 전용 팝업(ClimbResumeView).
+        .overlay {
+            if let s = climb.pending {
+                ClimbResumeView(
+                    session: s,
+                    onResume: {
+                        if let mc = s.mountainCode, let m = catalog.mountains.first(where: { $0.id == mc }) {
+                            catalog.selected = m
+                        }
+                        climb.resume(s); tab = 0
+                    },
+                    onFinish: {
+                        let d = climb.draft(from: s)
+                        climb.discardPending()
+                        Task { climb.saveResult = await auth.saveClimb(d) }
+                        tab = 3
+                    },
+                    onDiscard: { climb.discardPending() })
+            }
         }
         .overlay {                                                  // 인트로 스플래시 (앱 시작 시)
             if showSplash {

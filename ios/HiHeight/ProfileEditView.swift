@@ -9,9 +9,10 @@ struct ProfileEditView: View {
 
     @State private var nickname = ""
     @State private var pickerItem: PhotosPickerItem?
-    @State private var pickedImage: UIImage?     // 새로 고른 이미지(미저장)
+    @State private var pickedImage: UIImage?     // 새로 고른(크롭 완료) 이미지 — 미저장
     @State private var removeImage = false        // 기본 이미지로 되돌림
     @State private var saving = false
+    @State private var cropping: UIImage?         // 크롭 화면에 올릴 원본(선택 직후)
 
     // 미리보기 이미지 — 새로 고른 것 > (되돌림 아니면)현재 아바타 > 기본
     private var preview: UIImage? { pickedImage ?? (removeImage ? nil : auth.avatar) }
@@ -32,6 +33,7 @@ struct ProfileEditView: View {
                 .frame(width: 104, height: 104).clipShape(Circle())
                 .overlay(Circle().strokeBorder(t.line))
                 .padding(.top, 8)
+                .onTapGesture { if let img = preview { cropping = img } }   // 기존 사진 다시 조정
 
                 PhotosPicker(selection: $pickerItem, matching: .images) {
                     Text("사진 선택").font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
@@ -88,8 +90,20 @@ struct ProfileEditView: View {
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let ui = UIImage(data: data) {
-                    pickedImage = ui; removeImage = false
+                    cropping = ui          // 바로 적용하지 않고 원형 크롭 화면으로
                 }
+            }
+        }
+        // 프로필 사진 조정 — 원형 가이드 안에서 위치·확대를 맞춘 뒤 적용.
+        .fullScreenCover(isPresented: Binding(get: { cropping != nil },
+                                              set: { if !$0 { cropping = nil } })) {
+            if let src = cropping {
+                AvatarCropView(image: src,
+                               onCancel: { cropping = nil; pickerItem = nil },
+                               onDone: { cropped in
+                                   pickedImage = cropped; removeImage = false
+                                   cropping = nil; pickerItem = nil
+                               })
             }
         }
     }
