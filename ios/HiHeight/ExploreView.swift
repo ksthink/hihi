@@ -30,6 +30,8 @@ struct ExploreView: View {
     @StateObject private var net = NetworkMonitor.shared  // 온라인/오프라인 — 하이브리드 base 전환
     @State private var deletePackTarget: Mountain?        // 저장된 지도 삭제 확인 대상
     @State private var dlLoginHint = false                // 지도 다운 — 비로그인 시 로그인 안내
+    @State private var showEndConfirm = false             // 등반 종료 오터치 방지 확인 팝업
+    @State private var endCode = ""                       // 팝업에 제시할 랜덤 2자리 확인번호
 
     // 국가지점번호 — 등반 중(GPS 위치 기준)에만 표시. 탐험(지도) 상태에선 숨김.
     private var npnCode: String? {
@@ -152,14 +154,16 @@ struct ExploreView: View {
                 VStack(spacing: 0) {
                     Spacer()
                     if climb.tracking {
-                        // 지도는 세이프에어리어를 무시(전체화면)라 HUD 도 그 영역에 놓여 하단 네비 뒤로
-                        // 잘린다 → 하단 안전영역만큼 띄워 버튼·안내가 네비 위에 오게 한다.
-                        climbHUD(t).padding(.bottom, geo.safeAreaInsets.bottom)
+                        climbHUD(t)
                     } else {
                         infoSheet(t, maxH: geo.size.height, peek: peek)
                     }
                 }
                 .ignoresSafeArea(.keyboard)
+                // 등반 중엔 하단 네비바가 숨겨진다 — 이 컨테이너가 하단 안전영역까지 내려가야 HUD 카드가
+                // 화면 물리적 끝까지 채워진다(자식에만 걸면 부모가 이미 안전영역을 소비해 확장이 안 됨).
+                // 내용은 climbHUD 안의 safeAreaPadding 이 기기별 인디케이터 높이만큼 자동으로 밀어 올린다.
+                .ignoresSafeArea(.container, edges: climb.tracking ? .bottom : [])
             }
             .ignoresSafeArea(.keyboard)   // 검색 키보드가 지도·컨트롤을 위로 밀지 않도록
         }
@@ -182,6 +186,16 @@ struct ExploreView: View {
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }
             }
         }
+        // 등반 종료 오터치 방지 — 확인번호가 일치할 때만 종료 + 기록 저장.
+        .sheet(isPresented: $showEndConfirm) {
+            ClimbEndConfirmView(code: endCode) { finishClimb() }
+        }
+    }
+
+    // 등반 종료 + 기록 저장 (확인 팝업 통과 후 호출).
+    private func finishClimb() {
+        guard let draft = climb.finish() else { climb.stop(); return }
+        Task { climb.saveResult = await auth.saveClimb(draft) }
     }
 
     // 상단 오버레이 박스 — 웹 title-block/npn-box: 반투명 흰(다크는 검정) 사각형 배경.
@@ -333,8 +347,9 @@ struct ExploreView: View {
                 hudStat("\(climb.pointCount)", "GPS 지점", t)
             }
             Button {
-                guard let draft = climb.finish() else { climb.stop(); return }
-                Task { climb.saveResult = await auth.saveClimb(draft) }
+                // 오터치 방지 — 랜덤 2자리 확인번호를 키패드로 입력해야 실제 종료된다.
+                endCode = String(format: "%02d", Int.random(in: 10...99))
+                showEndConfirm = true
             } label: {
                 Text("등반 종료").font(.kakao(size: 16, weight: .semibold))
                     .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 13)
@@ -345,6 +360,7 @@ struct ExploreView: View {
             }
         }
         .padding(16)
+        .safeAreaPadding(.bottom)          // 기기별 홈 인디케이터 높이만큼 자동 여백(SE=0, 노치=실측)
         .background(t.elevated)
         .clipShape(.rect(topLeadingRadius: 18, topTrailingRadius: 18))
         .overlay(alignment: .top) {

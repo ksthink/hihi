@@ -57,6 +57,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.setCourseNos(courses, on: mv)                       // 번호 배지 위치(코스당 1개)
         context.coordinator.applyCourse(selectedCourse, on: mv)
+        context.coordinator.tracking = tracking                                 // 등반 여부(코스 점선 표시에 필요) 선반영
         context.coordinator.applyTrailSelection(selectedCourse?.name, on: mv)   // 선택 코스 강조(검정/회색·배지)
         context.coordinator.fitCourse(fitCourseTick, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
@@ -200,8 +201,16 @@ struct MapView: UIViewRepresentable {
             if let tl = style.layer(withIdentifier: "trail-line") as? MLNLineStyleLayer {
                 tl.lineColor = NSExpression(forConstantValue: name != nil ? faded : line)
             }
+            // 등반 중엔 선택 코스를 "앞으로 갈 루트"(회색 점선+검정 테두리)로 그리고 기존 검정 실선 강조는 끈다.
+            // (지나온 길은 climb-track 검정 실선이 그 위에 덮여 자연스럽게 구분된다.)
+            let climbing = tracking && name != nil
             if let hl = style.layer(withIdentifier: "trail-hl") as? MLNLineStyleLayer {
-                hl.predicate = NSPredicate(format: "name == %@", name ?? "__none__")
+                hl.predicate = NSPredicate(format: "name == %@", climbing ? "__none__" : (name ?? "__none__"))
+            }
+            for id in ["climb-route-casing", "climb-route"] {
+                if let l = style.layer(withIdentifier: id) as? MLNLineStyleLayer {
+                    l.predicate = NSPredicate(format: "name == %@", climbing ? name! : "__none__")
+                }
             }
             if let bl = style.layer(withIdentifier: "course-no-badges") as? MLNSymbolStyleLayer {
                 bl.iconImageName = NSExpression(mglJSONObject: [

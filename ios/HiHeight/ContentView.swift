@@ -29,7 +29,8 @@ struct ContentView: View {
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
-        .safeAreaInset(edge: .bottom, spacing: 0) { if !searching { bottomNav } }   // 검색 중엔 네비바 숨김
+        // 검색 중엔 네비바 숨김. 등반 중에도 숨긴다 — 배터리 절약·오조작 방지로 다른 탭 이동 차단(종료하면 복귀).
+        .safeAreaInset(edge: .bottom, spacing: 0) { if !searching && !climb.tracking { bottomNav } }
         .task {                                // 앱 시작 시 카탈로그 + 저장된 로그인 세션 복원(탭 무관)
             async let c: Void = catalog.load()
             async let a: Void = auth.refresh()

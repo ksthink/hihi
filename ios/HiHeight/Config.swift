@@ -25,8 +25,9 @@ enum Config {
     static func spotsURL(_ code: String) -> URL? { packURL(code, "spots.geojson") }
     static func baseTilesURL(_ code: String) -> URL? { packURL(code, "base.pmtiles") }
 
-    // 기상청 단기예보 프록시 — 웹 /api/weather 와 동일 계약(CORS 회피·키 은닉).
-    // 배포 시 네이티브 직접 호출(KMA)로 교체 예정(IOS.md). op=ufcst|vfcst|ncst.
+    // 기상청 단기예보 프록시 — 웹 /api/weather 와 동일 계약(키 은닉). op=ufcst|vfcst|ncst.
+    // 프록시는 배포 후에도 유지한다 — data.go.kr 개인 키를 앱 바이너리에 심으면 추출·도용·쿼터
+    // 소진 위험. (IOS.md §2 "네이티브도 이 프록시를 그대로 호출" · §13 "앱에 키 미포함")
     static func weatherURL(op: String, nx: Int, ny: Int, baseDate: String, baseTime: String) -> URL? {
         URL(string: "\(proxyBase)/api/weather?op=\(op)&nx=\(nx)&ny=\(ny)&base_date=\(baseDate)&base_time=\(baseTime)")
     }

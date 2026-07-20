@@ -158,6 +158,21 @@ function make(theme, baseMode) {
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 2 } },
   );
 
+  // ── 등반 중 "앞으로 갈 루트" — 선택 코스를 회색 점선(검정 테두리)으로. ──
+  // 지나온 길은 아래 climb-track(검정 실선)이 이 위에 덮여 자연스럽게 구분된다(그래서 순서상 먼저).
+  // dasharray 단위가 선폭 배수라 두 겹의 대시 길이를 맞추려면 폭에 반비례 스케일 → 고정폭 사용.
+  // 필터는 런타임(MapView.applyTrailSelection)이 등반 중 선택 코스명으로 지정한다.
+  style.layers.push(
+    { id: "climb-route-casing", type: "line", source: "trails",
+      filter: ["==", ["get", "name"], "__none__"],
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: { "line-color": tc.line, "line-width": 7, "line-dasharray": [1.03, 0.926] } },
+    { id: "climb-route", type: "line", source: "trails",
+      filter: ["==", ["get", "name"], "__none__"],
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: { "line-color": tc.faded, "line-width": 3.6, "line-dasharray": [2, 1.8] } },
+  );
+
   // ── 기록 루트 보기 — 저장된 기록 트랙(점선). app.js:554-566. ──
   // 빈 FC 로 두고, 기록 탭에서 루트를 탭하면 MapView 가 source.shape 로 채운다.
   style.sources["rec-track"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
