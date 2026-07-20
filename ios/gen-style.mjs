@@ -18,6 +18,19 @@ mkdirSync(OUT, { recursive: true });
 
 // 지도 글리프 pbf 를 번들 리소스로 복사(../fonts/<fontstack>/ → Resources/glyphs/<fontstack>/).
 // 소스는 fonts/ 에 커밋돼 있고 이 복사본은 gitignore(중복 방지). project.yml 이 type:folder 로 번들.
+//
+// ⚠️ 용량 최적화 여지 (2026-07-20 정밀 분석, 지금은 의도적으로 미적용)
+//   글리프 44MB = 앱 설치크기 58MB 의 76%. 두 가지 낭비가 확인됨:
+//   1) Bold 16.5MB 가 문자 "X" 하나를 위해 실려 있다 — 스타일 전체에서 Bold 를 쓰는
+//      레이어는 course-ends-x 뿐이고 그 text-field 는 리터럴 "X" 다. Bold 의 한글
+//      8.5MB·한자 5.7MB 는 절대 렌더되지 않는다. → range 0(ASCII) 만 남기면 -16.5MB.
+//   2) Regular 의 가나·키릴·아랍 등 -2.6MB 도 렌더 대상이 아니다. 기저지도 MVT 에
+//      name:ja/name:zh 가 들어 있지만 스타일이 읽는 키는 name:ko / name 뿐이다.
+//      (전국 104개 타일 표본에서 렌더 문자는 한글 664종·ASCII 69종·한자 3종(道林里)뿐)
+//   미적용 이유: 압축 전송되므로 **다운로드는 9.7MB→7.8MB 로 1.9MB 밖에 안 준다**
+//   (pbf 압축률이 매우 높음). 얻는 건 기기 설치 19MB 절감뿐인데 오프라인 팩이 그보다
+//   크고, 실수하면 희귀 한자 지명이 □ 로 조용히 깨진다. 손익이 맞지 않아 보류.
+//   착수 적기: poi-display 볼드 설정 반영 작업 / 용량 민원 발생 / App Store 정식 출시.
 const ROOT = fileURLToPath(new URL("../", import.meta.url));   // 저장소 루트(ios/ 의 상위)
 const RES = fileURLToPath(OUT);
 for (const stack of ["MonaS12 Regular", "MonaS12 Bold"]) {
@@ -29,7 +42,14 @@ function make(theme, baseMode) {
     `${BASE}/kr-base.pmtiles`,        // R2 버킷 루트에 객체 존재(프록시의 /pmtiles/ 접두사 없음)
     theme,
     `${BASE}/kr-terrain.pmtiles`,
-    null, // poiDisplay 기본값 (스파이크). 본 이식에선 R2 config/poi-display.json 반영.
+    // poiDisplay 기본값 (스파이크). 본 이식에선 R2 config/poi-display.json 반영.
+    // ⚠️ 이때 Bold 문제를 반드시 같이 볼 것 — 웹 스타일은 POI 분류별 bold 플래그를 지원하고
+    //    (basemap-style.js FONT(P.<분류>.bold): 사찰·전철역·편의시설·버스정류장),
+    //    켜지는 순간 **한글 라벨에 Bold 글리프가 필요**해진다. 현재 null=전부 bold:false 라
+    //    Bold 는 리터럴 "X" 에만 쓰인다(위 글리프 주석 참조). 설정을 반영하면서 Bold 글리프를
+    //    줄이면 라벨이 □ 로 조용히 깨지므로, 줄일 거면 "Bold 가 리터럴 아닌 text-field 에
+    //    쓰이면 빌드 실패" 가드를 함께 넣을 것.
+    null,
     baseMode, // "terrain"(지형 전용) | "osm"(전체 basemap) — 앱 지도 컨트롤 토글이 파일명으로 선택.
   );
   // 글리프: 앱 번들 포함(오프라인, §3.2). 번들 상대경로 → MapLibre 가 스타일 URL 기준으로 해석.
