@@ -143,13 +143,22 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
       // z13 부터 서서히 빼고 z16 에서 완전히 끔 (등산 줌 11~14 는 지형감 유지).
       ...(terrainUrl ? [{
         id: "hillshade", type: "hillshade", source: "dem", maxzoom: 16,
+        // ⚠️ "얼룩 폴리곤"의 정체 (2026-07-20 규명) — 잘못 칠해진 폴리곤이 아니라
+        // **칠해지지 않은 평지**다. Copernicus DEM 은 수역을 상수 고도로 평탄화하는데
+        // (서울 z12 타일 실측: 정확히 3.0m 인 픽셀 8.4%, 3.5m 3.5%, 사방이 같은 값 10.6%),
+        // MapLibre 음영 셰이더는 음영 강도에 sin(경사)를 곱하므로 경사 0 인 면은
+        // 완전 투명 → 밑바탕색 그대로다. 그 결과 강 유역이 "질감 없는 매끈한 면 +
+        // 급경사 가장자리의 또렷한 윤곽선"으로 남아 폴리곤처럼 읽힌다.
+        // → 해법은 얼룩 제거가 아니라 **대비 완화**: 산지에 얹히는 하이라이트를
+        //    밑바탕색(earth) 쪽으로 낮춰 평지와의 낙차를 줄인다. 지형 입체감과의
+        //    맞교환이라 값을 더 낮추면 띠는 더 옅어지고 능선 판독은 어려워진다.
         paint: dark
-          ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.4, 15, 0.18, 16, 0],
+          ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 10, 0.28, 13, 0.28, 15, 0.14, 16, 0],
               "hillshade-shadow-color": "#000000",
-              "hillshade-highlight-color": "#3d3d3d", "hillshade-accent-color": "#000000" }
-          : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.35, 15, 0.15, 16, 0],
-              "hillshade-shadow-color": "#6e6e6e",
-              "hillshade-highlight-color": "#ffffff", "hillshade-accent-color": "#909090" }
+              "hillshade-highlight-color": "#2b2b2b", "hillshade-accent-color": "#000000" }
+          : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 10, 0.24, 13, 0.24, 15, 0.12, 16, 0],
+              "hillshade-shadow-color": "#8a8a8a",
+              "hillshade-highlight-color": "#fbfbfb", "hillshade-accent-color": "#a8a8a8" }
       }] : []),
       { id: "water", type: "fill", source: "protomaps", "source-layer": "water", paint: { "fill-color": C.water } },
       {
