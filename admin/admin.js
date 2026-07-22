@@ -605,7 +605,7 @@ async function handleTrackFiles(fileList) {
     const f = files[i];
     rep.textContent = `일괄 등록 중… ${i + 1}/${files.length} — ${f.name}`;
     try {
-      const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(f.name)}`, {
+      const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(f.name)}&tau=${gpxTau()}`, {
         method: "POST", headers: { "Content-Type": "application/octet-stream" },
         body: await f.arrayBuffer(),
       });
@@ -631,6 +631,12 @@ $("gpx-dir").addEventListener("change", async (e) => {
   if (e.target.files.length) await handleTrackFiles(e.target.files);
   e.target.value = "";
 });
+// 매칭 허용 오차(tau) 슬라이더 — 드리프트 큰 트랙은 올려서 매칭률 개선 (기본 25m).
+// 미리보기가 떠 있으면 조절 즉시 재매칭해 원본(점선) 대비 결과를 눈으로 검증.
+const gpxTau = () => +$("gpx-tau").value;
+$("gpx-tau").addEventListener("input", () => { $("gpx-tau-val").textContent = `${gpxTau()}m`; });
+$("gpx-tau").addEventListener("change", () => { if (S.gpx) runMatch(); });
+
 $("gpx-cancel").onclick = () => { S.gpx = null; clearGpxPreview(); };
 $("gpx-accept").onclick = () => {
   if (!S.gpx?.candidate) return;
@@ -647,7 +653,7 @@ async function runMatch() {
   $("gpx-report").hidden = false;
   $("gpx-report").textContent = "매칭 중…";
   try {
-    const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(S.gpx.name || "")}`, {
+    const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(S.gpx.name || "")}&tau=${gpxTau()}`, {
       method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: S.gpx.data,
     });
     S.gpx.candidate = r.course;
@@ -657,10 +663,11 @@ async function runMatch() {
     const fb = rep.fallbacks.length
       ? `<div class="warn">구간망 밖 ${rep.fallbacks.length}곳 (GPX 원 좌표 유지): ${rep.fallbacks.map((f) => f.km + "km").join(", ")}</div>`
       : "<div>전 구간 구간망 매칭 ✓</div>";
+    const parts = rep.parts > 1 ? ` · 조각 ${rep.parts}개(사이를 잇지 않음)` : "";
     $("gpx-report").innerHTML =
-      `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> · ${rep.distance_km}km · ↑${rep.ascent}m · 최대이탈 ${Math.round(rep.max_dev_m)}m ${fb}`;
+      `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> <span class="dim">(오차 ${gpxTau()}m)</span> · ${rep.distance_km}km · ↑${rep.ascent}m · 최대이탈 ${Math.round(rep.max_dev_m)}m${parts} ${fb}`;
     $("gpx-actions").hidden = false;
-    const pts = r.preview.raw.features[0].geometry.coordinates;
+    const pts = r.preview.raw.features.flatMap((f) => f.geometry.coordinates);
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
     map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
       { padding: 60, duration: 500 });

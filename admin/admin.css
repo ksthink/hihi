@@ -250,6 +250,9 @@ button.active { background: #111; color: #fff; }
 }
 #gpx-report { font-size: 12px; margin-top: 6px; }
 #gpx-report .warn { color: #b00020; }
+#gpx-tau-row { font-size: 12px; }
+#gpx-tau { flex: 1; min-width: 100px; max-width: 220px; }
+#gpx-tau-val { min-width: 34px; font-variant-numeric: tabular-nums; }
 
 /* 스팟(정상·장소) 목록 */
 #pk-lat, #pk-lon { width: 118px; font-size: 12px; padding: 3px 6px; }

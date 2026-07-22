@@ -10,8 +10,10 @@ draft.json 스키마:
   courses: [{ id(uuid), name, difficulty(초급|중급|고급), desc, kind,
               status(draft|ready),                    # ready 만 배포에 포함
               source{ type: gpx|forest_auto|legacy, gpx_file?, matched_ratio? },
-              segments: [{src: graph|gpx, n}] | None, # 하이브리드 구간 출처(포인트 수)
+              segments: [{src: graph|gpx, n, part?}] | None, # 하이브리드 구간 출처
+                                                      # (포인트 수, part=lines 인덱스)
               lines: [[[lon,lat],...], ...],          # MultiLineString 좌표
+                                                      # (파트 = 업로드 파일의 끊어진 조각)
               computed{ distance_km, time_hr, profile[48], min_elev, max_elev,
                         ascent, descent } }]
   spots: [{ id, category, name(운영자 라벨, null=앱 라벨 미노출), coord[lon,lat],

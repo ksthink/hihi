@@ -112,6 +112,12 @@
         <input id="gpx-dir" type="file" webkitdirectory hidden />
       </div>
       <p class="dim">여러 파일을 선택하면 <b>미리보기 없이 일괄 등록</b>됩니다 (비공개 상태로 추가 — 목록에서 확인 후 공개).</p>
+      <label class="row" id="gpx-tau-row"
+        title="GPX 점을 구간망에 붙이는 최대 거리. GPS 흔들림이 커서 매칭률이 낮으면 올려보세요 — 단 너무 크면 나란한 옆 등산로에 잘못 붙을 수 있습니다. 미리보기 중 조절하면 즉시 재매칭됩니다.">
+        <span class="dim">매칭 허용 오차</span>
+        <input id="gpx-tau" type="range" min="10" max="60" step="5" value="25" />
+        <span id="gpx-tau-val">25m</span>
+      </label>
       <div id="gpx-report" hidden></div>
       <div class="row" id="gpx-actions" hidden>
         <button id="gpx-accept" class="primary">코스로 추가</button>

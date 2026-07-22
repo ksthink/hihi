@@ -8,7 +8,7 @@
    "bold": true
   },
   "장소": {
-   "zoom": 14,
+   "zoom": 0,
    "icon": true,
    "size": 8.9,
    "bold": false
@@ -44,7 +44,7 @@
    "bold": false
   },
   "주차장": {
-   "zoom": 12,
+   "zoom": 0,
    "icon": true,
    "size": 8.4,
    "bold": false

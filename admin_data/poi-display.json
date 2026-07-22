@@ -2,7 +2,7 @@
  "version": 2,
  "categories": {
   "전철역": {
-   "zoom": 14,
+   "zoom": 16,
    "icon": true,
    "size": 12,
    "bold": true

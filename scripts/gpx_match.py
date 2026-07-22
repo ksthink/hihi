@@ -2,7 +2,11 @@
 """GPX 트랙 → 산림청 구간망 맵매칭 → 코스 후보 (관리자 콘솔 코어).
 
 알고리즘 (draft: tau=25m 스냅 임계, detour=1.6 우회 허용비):
- 1. GPX 트랙포인트를 5m 간격으로 리샘플
+ 0. 파일 안의 조각(trkseg·rte·MultiLineString 파트·SHP 파트)은 각각 별도
+    파트로 파싱·매칭·저장 — 조각 경계를 평탄화하면 리샘플이 갭을 5m 직선
+    점열로 메워 끊어진 출발·도착이 허공 직선으로 이어지는 문제가 있었다.
+    코스 lines 는 파트 배열(팩 MultiLineString)이라 하류는 그대로 대응.
+ 1. 각 파트의 트랙포인트를 5m 간격으로 리샘플
  2. 공간 그리드(≈100m 셀)로 각 점을 구간망 간선에 최근접 투영 — d≤tau 면 matched
  3. matched/unmatched 런 분할 (3점 미만 요동은 이웃에 흡수)
  4. matched 런 → 투영점 폴리라인(구간망 위를 그대로 따라감, src="graph")
@@ -39,31 +43,47 @@ GAP_FILL_CORRIDOR_M = 80.0
 
 
 # ── 업로드 트랙 파싱 (GPX·GeoJSON·Shapefile) ──
+# 모든 파서는 (parts [[(lon,lat),...],...], name|None) 을 반환한다.
+# 파트 = 파일이 명시한 연결 점열 하나 — 파트 사이는 절대 잇지 않는다.
 def parse_gpx(raw):
-    """raw bytes → (pts [[lon,lat],...], name|None). 네임스페이스 무시."""
+    """raw bytes → (parts, name|None). 네임스페이스 무시, trkseg·rte 마다 별도 파트.
+    trk(실측 트랙)가 있으면 rte 는 버린다 — 일부 내보내기가 rte 에 출발·도착
+    요약 2점을 함께 담는데, 이를 채택하면 출발-도착 허공 직선이 코스에 섞인다."""
     root = ET.fromstring(raw)
-    pts, name = [], None
+    trk_parts, rte_parts, name = [], [], None
     for el in root.iter():
         tag = el.tag.rsplit("}", 1)[-1]
-        if tag in ("trkpt", "rtept"):
-            pts.append((float(el.attrib["lon"]), float(el.attrib["lat"])))
+        if tag in ("trkseg", "rte"):
+            pts = [(float(p.attrib["lon"]), float(p.attrib["lat"]))
+                   for p in el.iter()
+                   if p.tag.rsplit("}", 1)[-1] in ("trkpt", "rtept")]
+            if len(pts) >= 2:
+                (trk_parts if tag == "trkseg" else rte_parts).append(pts)
         elif tag == "name" and name is None and el.text and el.text.strip():
             name = el.text.strip()
-    if len(pts) < 2:
+    parts = trk_parts or rte_parts
+    if not parts:  # trkseg·rte 없이 점만 흩어진 비표준 파일 폴백 — 전체를 한 파트로
+        pts = [(float(el.attrib["lon"]), float(el.attrib["lat"]))
+               for el in root.iter()
+               if el.tag.rsplit("}", 1)[-1] in ("trkpt", "rtept")]
+        if len(pts) >= 2:
+            parts.append(pts)
+    if not parts:
         raise ValueError("GPX 에 트랙포인트가 2개 미만")
-    return pts, name
+    return parts, name
 
 
-def _maybe_tm(pts):
+def _maybe_tm(parts):
     """좌표 크기로 투영계 감지 — 경위도 범위를 벗어나면 EPSG:5186(미터)로 보고 변환.
     (산림청 SHP/GeoJSON 내보내기가 5186 이라 이 폴백이 실제로 쓰인다.)"""
-    if pts and (abs(pts[0][0]) > 180 or abs(pts[0][1]) > 90):
-        return [tuple(pl.tm_to_wgs84(x, y)) for x, y in pts]
-    return pts
+    p0 = parts[0][0]
+    if abs(p0[0]) > 180 or abs(p0[1]) > 90:
+        return [[tuple(pl.tm_to_wgs84(x, y)) for x, y in pts] for pts in parts]
+    return parts
 
 
 def parse_geojson(raw):
-    """JSON 계열 업로드 → (pts, name).
+    """JSON 계열 업로드 → (parts, name). 라인(스트링·멀티 파트)마다 별도 파트.
     지원: 표준 GeoJSON(LineString·MultiLineString·GeometryCollection, Point 시퀀스 폴백)
     + ESRI JSON(산림청 PMNTN_*.json — features[].geometry.paths, EPSG:5186)."""
     d = json.loads(raw)
@@ -71,28 +91,35 @@ def parse_geojson(raw):
     # ESRI JSON (ArcGIS 내보내기): geometry 가 type 대신 paths 를 가짐
     feats_e = d.get("features") if isinstance(d, dict) else None
     if feats_e and any("paths" in (f.get("geometry") or {}) for f in feats_e[:5]):
-        pts, name = [], None
+        parts, name = [], None
         for f in feats_e:
             for path in (f.get("geometry") or {}).get("paths", []):
-                pts.extend((float(p[0]), float(p[1])) for p in path)
+                pts = [(float(p[0]), float(p[1])) for p in path]
+                if len(pts) >= 2:
+                    parts.append(pts)
             if name is None:
                 a = f.get("attributes") or {}
                 name = (a.get("PMNTN_NM") or a.get("MNTN_NM") or "").strip() or None
-        if len(pts) < 2:
+        if not parts:
             raise ValueError("ESRI JSON 에 폴리라인 좌표가 2개 미만")
-        return _maybe_tm(pts), name
+        return _maybe_tm(parts), name
 
     feats = d["features"] if d.get("type") == "FeatureCollection" else [d]
-    pts, pt_seq, name, seen = [], [], None, set()
+    parts, pt_seq, name, seen = [], [], None, set()
+
+    def add(coords):
+        pts = [(float(p[0]), float(p[1])) for p in coords]
+        if len(pts) >= 2:
+            parts.append(pts)
 
     def eat(g):
         t = g.get("type")
         seen.add(t)
         if t == "LineString":
-            pts.extend((float(p[0]), float(p[1])) for p in g["coordinates"])
+            add(g["coordinates"])
         elif t == "MultiLineString":
             for part in g["coordinates"]:
-                pts.extend((float(p[0]), float(p[1])) for p in part)
+                add(part)
         elif t == "GeometryCollection":
             for gg in g.get("geometries", []):
                 eat(gg)
@@ -104,15 +131,15 @@ def parse_geojson(raw):
         eat(f.get("geometry") or f)         # bare geometry 허용
         if name is None:
             name = (f.get("properties") or {}).get("name")
-    if len(pts) < 2 and len(pt_seq) >= 2:
-        pts = pt_seq                        # 라인이 없으면 Point 시퀀스를 트랙으로
-    if len(pts) < 2:
+    if not parts and len(pt_seq) >= 2:
+        parts = [pt_seq]                    # 라인이 없으면 Point 시퀀스를 한 파트로
+    if not parts:
         raise ValueError(f"GeoJSON 에서 라인 좌표를 찾지 못함 (발견된 기하: {sorted(t for t in seen if t) or '없음'})")
-    return _maybe_tm(pts), name
+    return _maybe_tm(parts), name
 
 
 def parse_shp(raw):
-    """Shapefile(.shp 단독 또는 .zip 묶음) → (pts, name=None).
+    """Shapefile(.shp 단독 또는 .zip 묶음) → (parts, name=None). shape 파트마다 별도.
     폴리라인 계열만 사용. 좌표계는 _maybe_tm 휴리스틱 (산림청 5186 대응)."""
     import shapefile  # pyshp — 업로드 시에만 로드
     if raw[:4] == b"PK\x03\x04":
@@ -130,17 +157,21 @@ def parse_shp(raw):
                              shx=member(".shx"), dbf=member(".dbf"))
     else:
         r = shapefile.Reader(shp=io.BytesIO(raw))
-    pts = []
+    parts = []
     for sh in r.shapes():
         if sh.shapeType in (3, 13, 23):     # POLYLINE / Z / M
-            pts.extend((float(x), float(y)) for x, y in sh.points)
-    if len(pts) < 2:
+            idx = list(sh.parts) + [len(sh.points)]
+            for a, b in zip(idx, idx[1:]):
+                pts = [(float(x), float(y)) for x, y in sh.points[a:b]]
+                if len(pts) >= 2:
+                    parts.append(pts)
+    if not parts:
         raise ValueError("Shapefile 에 폴리라인 좌표가 2개 미만")
-    return _maybe_tm(pts), None
+    return _maybe_tm(parts), None
 
 
 def parse_track(raw, fname=""):
-    """확장자·매직바이트로 포맷 판별 → (pts, name|None)."""
+    """확장자·매직바이트로 포맷 판별 → (parts, name|None)."""
     ext = os.path.splitext((fname or "").lower())[1]
     head = raw.lstrip()[:1]
     if ext in (".geojson", ".json") or (not ext and head in (b"{", b"[")):
@@ -265,14 +296,9 @@ def _max_offset(path, ref):
 
 
 # ── 매칭 본체 ──
-def match(code, raw, tau=25.0, detour=1.6, fname=""):
-    """→ dict(lines, segments, report, gpx_name)"""
-    gpx_pts, gpx_name = parse_track(raw, fname)
-    pts = smooth(resample(gpx_pts))
-    segments, _ = pl.load_forest_segments(code)
-    net = Network(segments)
-    adj = pl.build_graph(segments)
-
+def _match_part(pts, net, adj, tau, detour, km0):
+    """한 파트(연결 점열) 매칭 → (stitched [(src, coords, km_pos)], max_dev_m, part_gpx_km).
+    km_pos 는 전체 코스 기준 — km0 = 앞 파트들의 누적 GPX km."""
     proj = [net.nearest(p) for p in pts]           # (d, q, ei)
     matched = [d <= tau for d, _, _ in proj]
 
@@ -306,7 +332,7 @@ def match(code, raw, tau=25.0, detour=1.6, fname=""):
 
     # 조각 생성
     pieces = []                                     # (src, coords, gpx_km_pos)
-    cum_km = 0.0
+    cum_km = km0
     for k, (flag, i0, i1) in enumerate(runs):
         seg_pts = pts[i0:i1]
         gpx_km = _polyline_km(pts[max(0, i0 - 1):i1])
@@ -341,51 +367,78 @@ def match(code, raw, tau=25.0, detour=1.6, fname=""):
                 pieces.append(("gpx", [tuple(p) for p in seg_pts], cum_km))
         cum_km += gpx_km
 
-    if not pieces:
-        raise ValueError("매칭 결과가 비어 있음 (GPX 가 구간망·산 영역과 무관?)")
-
-    # 인접 동일 src 병합 + 전체 스티칭
-    stitched = [pieces[0]]
-    for src, coords, pos in pieces[1:]:
-        psrc, pcoords, ppos = stitched[-1]
-        if src == psrc:
+    # 인접 동일 src 병합
+    stitched = []
+    for src, coords, pos in pieces:
+        if stitched and stitched[-1][0] == src:
+            psrc, pcoords, ppos = stitched[-1]
             stitched[-1] = (psrc, _dedupe(pcoords + coords), ppos)
         else:
             stitched.append((src, coords, pos))
 
-    full = []
-    seg_meta = []
-    for src, coords, _ in stitched:
-        add = coords if not full else ([full[-1]] + coords)[1:]
-        seg_meta.append({"src": src, "n": len(add)})
-        full += add
-    full = _dedupe(full)
-
-    graph_km = sum(_polyline_km(c) for s, c, _ in stitched if s == "graph")
-    total_km = _polyline_km(full)
-    fallbacks = [{"km": round(pos, 2), "len_km": round(_polyline_km(c), 2)}
-                 for s, c, pos in stitched if s == "gpx"]
     max_dev = max((d for (d, _, _), m in zip(proj, matched) if m), default=0.0)
+    return stitched, max_dev, cum_km - km0
+
+
+def match(code, raw, tau=25.0, detour=1.6, fname=""):
+    """→ dict(lines, segments, report, gpx_name). 파트마다 독립 매칭 — lines 는
+    파트별 폴리라인 배열(팩 MultiLineString 파트와 1:1), 파트 사이는 잇지 않는다."""
+    track_parts, gpx_name = parse_track(raw, fname)
+    segments, _ = pl.load_forest_segments(code)
+    net = Network(segments)
+    adj = pl.build_graph(segments)
+
+    lines, seg_meta, stitched_all, raw_parts = [], [], [], []
+    gpx_cum = 0.0
+    max_dev = 0.0
+    for part in track_parts:
+        pts = smooth(resample(part))
+        if len(pts) < 2:
+            continue
+        stitched, dev, part_km = _match_part(pts, net, adj, tau, detour, gpx_cum)
+        gpx_cum += part_km
+        max_dev = max(max_dev, dev)
+        raw_parts.append(pts)
+        full, meta = [], []
+        for src, coords, _ in stitched:
+            meta.append({"src": src, "n": len(coords), "part": len(lines)})
+            full += coords
+        full = _dedupe(full)
+        if len(full) < 2:
+            continue
+        lines.append(full)
+        seg_meta += meta
+        stitched_all += stitched
+
+    if not lines:
+        raise ValueError("매칭 결과가 비어 있음 (GPX 가 구간망·산 영역과 무관?)")
+
+    graph_km = sum(_polyline_km(c) for s, c, _ in stitched_all if s == "graph")
+    total_km = sum(_polyline_km(ln) for ln in lines)
+    fallbacks = [{"km": round(pos, 2), "len_km": round(_polyline_km(c), 2)}
+                 for s, c, pos in stitched_all if s == "gpx"]
 
     return {
-        "lines": [[[round(x, 6), round(y, 6)] for x, y in full]],
+        "lines": [[[round(x, 6), round(y, 6)] for x, y in ln] for ln in lines],
         "segments": seg_meta,
         "gpx_name": gpx_name,
         "report": {
             "matched_ratio": round(graph_km / total_km, 3) if total_km else 0.0,
             "distance_km": round(total_km, 2),
             "max_dev_m": round(max_dev, 1),
+            "parts": len(lines),
             "fallbacks": fallbacks,
         },
         "preview_raw": {"type": "FeatureCollection", "features": [{
             "type": "Feature", "properties": {},
             "geometry": {"type": "LineString",
-                         "coordinates": [[round(x, 6), round(y, 6)] for x, y in pts]}}]},
+                         "coordinates": [[round(x, 6), round(y, 6)] for x, y in pts]}}
+            for pts in raw_parts]},
         "preview_matched": {"type": "FeatureCollection", "features": [{
             "type": "Feature", "properties": {"src": s},
             "geometry": {"type": "LineString",
                          "coordinates": [[round(x, 6), round(y, 6)] for x, y in c]}}
-            for s, c, _ in stitched]},
+            for s, c, _ in stitched_all]},
     }
 
 
