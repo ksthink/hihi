@@ -90,11 +90,13 @@ struct ContentView: View {
         .overlay(alignment: .top) { Rectangle().fill(t.line).frame(height: 0.5) }
     }
 
-    // 큐레이션 슬라이드 탭 → 해당 산 선택 후 탐험 탭으로 이동.
-    private func openCuration(_ code: String) {
+    // 큐레이션 슬라이드 탭 → 해당 산 + 코스를 선택하고 탐험 탭으로 이동.
+    // 코스명은 팩 로드가 끝난 뒤에야 매칭할 수 있어 ClimbStore 에 담아 둔다(ExploreView.task).
+    private func openCuration(_ code: String, _ courseName: String?) {
         if let m = catalog.mountains.first(where: { $0.id == code }) {
             catalog.selected = m
         }
+        climb.wantedCourseName = courseName
         climb.recordTrack = nil
         climb.fitRequested = true       // 코스 로드 후 지도를 코스 범위로 프레이밍
         tab = 0

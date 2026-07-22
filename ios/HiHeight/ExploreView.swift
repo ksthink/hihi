@@ -180,8 +180,15 @@ struct ExploreView: View {
             weather = await wx
             climb.mountainName = m.name
             climb.mountainCode = m.id
-            // 단일 코스 자동 선택 → 시종점 즉시 표시. 복구된 세션이면 원래 코스명을 우선 매칭.
-            climb.course = courses.first(where: { $0.name == climb.restoredCourseName }) ?? courses.first
+            // 단일 코스 자동 선택 → 시종점 즉시 표시.
+            // 우선순위: 추천 큐레이션이 지정한 코스 > 복구된 세션의 코스 > 첫 코스.
+            // (큐레이션 항목을 무시하면 산만 맞고 코스는 늘 1번이 잡힌다 — 북한산에서
+            //  "아인쌤 야호~"를 눌러도 원효봉 코스로 등반이 시작되던 버그.)
+            let wanted = climb.wantedCourseName
+            climb.wantedCourseName = nil                  // 1회용 — 이후 산 전환에 새지 않게
+            climb.course = courses.first(where: { $0.name == wanted })
+                ?? courses.first(where: { $0.name == climb.restoredCourseName })
+                ?? courses.first
             if climb.fitRequested {                   // 추천 등 외부 진입 → 코스 범위로 프레이밍
                 climb.fitRequested = false
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }

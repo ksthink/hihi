@@ -5,7 +5,9 @@ import SwiftUI
 // 나머지는 "지난 매거진 보기" 아코디언. 공식 추천 3종 아코디언(다크 필). 슬라이드 탭 → onOpen.
 struct RecoView: View {
     @ObservedObject var catalog: CatalogStore
-    let onOpen: (String) -> Void
+    // (산코드, 코스명) — 코스 큐레이션이면 코스명까지 넘겨야 그 코스가 선택된다.
+    // 산 목록(아코디언)에서는 코스 지정이 없으므로 nil.
+    let onOpen: (String, String?) -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var curations: [Curation] = []
     @State private var magIndex = 0              // 캐러셀에 표시 중인 매거진
@@ -70,7 +72,7 @@ struct RecoView: View {
                         slide(it, cardW)
                             .id(it.id)
                             .contentShape(Rectangle())
-                            .onTapGesture { onOpen(it.code) }
+                            .onTapGesture { onOpen(it.code, it.type == "course" ? it.name : nil) }
                     }
                 }
                 .scrollTargetLayout()
@@ -164,7 +166,7 @@ struct RecoView: View {
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
                     } else {
                         ForEach(members) { m in
-                            memberRow(m.name, "\(m.elev.map { "\($0)m" } ?? "") · \(m.region ?? "")", t) { onOpen(m.id) }
+                            memberRow(m.name, "\(m.elev.map { "\($0)m" } ?? "") · \(m.region ?? "")", t) { onOpen(m.id, nil) }
                         }
                     }
                 }

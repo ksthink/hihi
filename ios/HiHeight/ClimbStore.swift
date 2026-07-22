@@ -39,6 +39,9 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var pending: PendingSession?
     // 복구된 세션의 코스명 — 팩 로드 후 같은 이름의 코스를 다시 선택하는 데 쓴다.
     var restoredCourseName: String?
+    // 추천 큐레이션에서 특정 코스로 진입할 때의 코스명 — 팩 로드는 비동기라 여기 담아두고
+    // ExploreView 가 코스 목록을 받은 뒤 매칭한다(없으면 첫 코스로 폴백). 1회용.
+    var wantedCourseName: String?
 
     private let manager = CLLocationManager()
     private var startedAt: Date?
