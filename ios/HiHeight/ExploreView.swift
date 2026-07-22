@@ -180,15 +180,25 @@ struct ExploreView: View {
             weather = await wx
             climb.mountainName = m.name
             climb.mountainCode = m.id
-            // 단일 코스 자동 선택 → 시종점 즉시 표시.
-            // 우선순위: 추천 큐레이션이 지정한 코스 > 복구된 세션의 코스 > 첫 코스.
-            // (큐레이션 항목을 무시하면 산만 맞고 코스는 늘 1번이 잡힌다 — 북한산에서
-            //  "아인쌤 야호~"를 눌러도 원효봉 코스로 등반이 시작되던 버그.)
-            let wanted = climb.wantedCourseName
-            climb.wantedCourseName = nil                  // 1회용 — 이후 산 전환에 새지 않게
-            climb.course = courses.first(where: { $0.name == wanted })
-                ?? courses.first(where: { $0.name == climb.restoredCourseName })
-                ?? courses.first
+            // 코스 자동 선택.
+            // ⚠️ 이 task 는 산이 바뀔 때뿐 아니라 **탭 전환으로 뷰가 다시 나타날 때마다**
+            //    재실행된다(.task 는 disappear 에서 취소되고 appear 에서 다시 시작).
+            //    그래서 무조건 `?? courses.first` 로 덮어쓰면 사용자가 고른 코스가 매번
+            //    1번으로 되돌아간다 — 5번을 골라 [등반 시작]을 눌러도 onStart 가 탐험 탭으로
+            //    돌아오는 순간 1번으로 바뀌어 있던 버그(2026-07-22).
+            //    등반 중에는 아예 건드리지 않는다. 세션 코스가 바뀌면 HUD 도, 저장되는 기록의
+            //    코스명·계획고도도 어긋난다.
+            if !climb.tracking {
+                let wanted = climb.wantedCourseName
+                climb.wantedCourseName = nil              // 1회용 — 이후 산 전환에 새지 않게
+                // 우선순위: 큐레이션 지정 > 이미 고른 코스 유지 > 복구된 세션 > 첫 코스.
+                // (산이 바뀌었으면 이전 코스명이 새 목록에 없어 자연히 첫 코스로 떨어진다.)
+                let keep = climb.course.flatMap { cur in courses.first(where: { $0.name == cur.name }) }
+                climb.course = courses.first(where: { $0.name == wanted })
+                    ?? keep
+                    ?? courses.first(where: { $0.name == climb.restoredCourseName })
+                    ?? courses.first
+            }
             if climb.fitRequested {                   // 추천 등 외부 진입 → 코스 범위로 프레이밍
                 climb.fitRequested = false
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }
