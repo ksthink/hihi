@@ -27,6 +27,27 @@ struct DeungView: View {
             }
         }
         .background(t.bg)
+        // 팩 없이 등반 시작 → 저장 권유(앱 UI 팝업). 무시하면 온라인 모드로 진행한다.
+        .overlay {
+            if showPackPrompt, let m = catalog.selected {
+                PackPromptView(
+                    mountainName: m.name,
+                    downloading: packs.downloadingCode == m.id,
+                    progress: packs.progress,
+                    status: packs.status,
+                    onSave: {
+                        Task {
+                            if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) }
+                            showPackPrompt = false
+                            beginClimb()               // 실패해도 진행 — 온라인 모드로 등반
+                        }
+                    },
+                    onIgnore: { showPackPrompt = false; beginClimb() },
+                    onCancel: { showPackPrompt = false })
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: showPackPrompt)
         .task(id: catalog.selected?.id) {   // 산 전환 시 예보 갱신
             weather = []
             guard let m = catalog.selected, m.center.count == 2 else { return }
@@ -120,27 +141,6 @@ struct DeungView: View {
                 Text("등반 기록을 저장하려면 기록 탭에서 로그인하세요.")
                     .font(.kakao(size: 11)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
             }
-            // 저장을 고른 경우 — 다운로드가 끝나면 자동으로 등반이 시작되므로 진행률을 보여준다.
-            if let m = catalog.selected, packs.downloadingCode == m.id {
-                VStack(spacing: 4) {
-                    ProgressView(value: packs.progress).tint(t.accent)
-                    Text(packs.status).font(.kakao(size: 11)).foregroundStyle(t.muted)
-                }
-            }
-        }
-        // 팩 없이 등반 시작 → 저장 권유. 무시하면 온라인 모드로 진행한다.
-        .confirmationDialog("지도 다운로드", isPresented: $showPackPrompt,
-                            titleVisibility: .visible, presenting: climb.course == nil ? nil : catalog.selected) { m in
-            Button("지도 저장") {
-                Task {
-                    if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) }
-                    beginClimb()                       // 실패해도 진행 — 온라인 모드로 등반
-                }
-            }
-            Button("무시하고 시작") { beginClimb() }
-            Button("취소", role: .cancel) {}
-        } message: { _ in
-            Text("등반 중 배터리 절약을 위해 지도 다운을 권장합니다.")
         }
         .padding(16)
         .frame(maxWidth: .infinity)

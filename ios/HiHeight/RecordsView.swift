@@ -129,12 +129,20 @@ struct RecordsView: View {
     private func authForm(_ t: Theme) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("로그인하고 등반 기록을 저장하세요.").font(.kakao(size: 14)).foregroundStyle(t.muted)
+            // ⚠️ .font 를 주지 않으면 입력 글자와 플레이스홀더가 시스템 폰트로 나온다
+            //    (SwiftUI 는 필드의 font 를 플레이스홀더에도 적용한다). ProfileEditView 의
+            //    닉네임 필드와 같은 구성으로 맞춘다 — 테두리까지 포함.
             TextField("이메일", text: $email)
+                .font(.kakao(size: 15)).foregroundStyle(t.text)
                 .textContentType(.emailAddress).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .padding(12).background(t.surface, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(t.line))
             SecureField("비밀번호", text: $pass)
+                .font(.kakao(size: 15)).foregroundStyle(t.text)
+                .textContentType(.password)
                 .padding(12).background(t.surface, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(t.line))
             HStack(spacing: 10) {
                 Button { Task { await auth.signIn(email, pass) } } label: {
                     Text("로그인").font(.kakao(size: 15, weight: .semibold))
