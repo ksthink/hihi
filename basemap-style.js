@@ -144,18 +144,22 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         paint: { "fill-color": C.grass }
       },
       // 음영기복 — 지표 채움 위, 물·선·라벨 아래. 흑백에서 능선·계곡을 입체로 읽게 하는 층.
-      // DEM 이 30m(타일 z12까지)라 고줌에선 오버줌으로 뭉개진 얼룩이 됨 →
-      // z13 부터 서서히 빼고 z16 에서 완전히 끔 (등산 줌 11~14 는 지형감 유지).
+      // ⚠️ maxzoom 14 = DEM 오버줌 한계선 (2026-07-23).
+      //   DEM 은 30m·타일 z12 까지다. 그 이상은 없는 정보를 늘려 그리는 것이라 원래도
+      //   뭉개졌지만, **MapLibre Native 에서는 오버줌 구간에 타일 경계를 따라 직선 이음매**
+      //   가 생긴다(한쪽만 하이라이트가 덧칠돼 뿌옇게 씻긴 모양). 지리적으로 고정되고,
+      //   어느 지역에서나, 500m 이하로 확대할 때만 나타나며, 웹(GL JS)에서는 안 보인다
+      //   — 두 렌더러의 raster-dem 오버줌 처리 차이. 그래서 오버줌 전에 끊는다.
+      //   z12(원본 해상도)까지 온전히 쓰고 z14 에서 0 으로 사라진다. 접근 축척(3km~1km)의
+      //   지형감은 유지되고, 근접 축척은 어차피 DEM 정보가 없으므로 등고선이 대신한다.
       ...(useTerrainRaster ? [{
-        id: "hillshade", type: "hillshade", source: "dem", maxzoom: 16,
-        // 값은 2026-07-20 이전 원본 그대로. 그 사이 얼룩 폴리곤을 쫓느라 두 차례
-        // 약화시켰다가(대비 축소 → 하이라이트를 밑바탕색과 일치) 원인이 water fill 로
-        // 밝혀져 되돌렸다. 두 완화 모두 얼룩과 무관했고 지형 입체감만 깎았다.
+        id: "hillshade", type: "hillshade", source: "dem", maxzoom: 14,
+        // 색은 2026-07-20 이전 원본 그대로(얼룩을 쫓다 두 차례 약화시켰던 것을 되돌림).
         paint: dark
-          ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.4, 15, 0.18, 16, 0],
+          ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 12, 0.4, 13, 0.28, 14, 0],
               "hillshade-shadow-color": "#000000",
               "hillshade-highlight-color": "#3d3d3d", "hillshade-accent-color": "#000000" }
-          : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.35, 15, 0.15, 16, 0],
+          : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 12, 0.35, 13, 0.24, 14, 0],
               "hillshade-shadow-color": "#6e6e6e",
               "hillshade-highlight-color": "#ffffff", "hillshade-accent-color": "#909090" }
       }] : []),
