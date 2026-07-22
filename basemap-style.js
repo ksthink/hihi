@@ -143,22 +143,31 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
       // z13 부터 서서히 빼고 z16 에서 완전히 끔 (등산 줌 11~14 는 지형감 유지).
       ...(terrainUrl ? [{
         id: "hillshade", type: "hillshade", source: "dem", maxzoom: 16,
-        // ⚠️ "얼룩 폴리곤"의 정체 (2026-07-20 규명) — 잘못 칠해진 폴리곤이 아니라
-        // **칠해지지 않은 평지**다. Copernicus DEM 은 수역을 상수 고도로 평탄화하는데
-        // (서울 z12 타일 실측: 정확히 3.0m 인 픽셀 8.4%, 3.5m 3.5%, 사방이 같은 값 10.6%),
-        // MapLibre 음영 셰이더는 음영 강도에 sin(경사)를 곱하므로 경사 0 인 면은
-        // 완전 투명 → 밑바탕색 그대로다. 그 결과 강 유역이 "질감 없는 매끈한 면 +
-        // 급경사 가장자리의 또렷한 윤곽선"으로 남아 폴리곤처럼 읽힌다.
-        // → 해법은 얼룩 제거가 아니라 **대비 완화**: 산지에 얹히는 하이라이트를
-        //    밑바탕색(earth) 쪽으로 낮춰 평지와의 낙차를 줄인다. 지형 입체감과의
-        //    맞교환이라 값을 더 낮추면 띠는 더 옅어지고 능선 판독은 어려워진다.
+        // ⚠️ "얼룩 폴리곤"의 정체 (2026-07-20 규명 · 2026-07-22 완결) —
+        // 잘못 칠해진 폴리곤이 아니라 **평지와 산지의 밝기 차**다.
+        // MapLibre 음영 셰이더는 음영량에 sin(경사)를 곱하므로 **경사 0 인 평지에는
+        // 아무것도 그리지 않는다**(= 밑바탕색 그대로). 반면 비탈에는 highlight 가
+        // 덧칠돼 밝아진다. highlight 가 밑바탕보다 밝으면 산지 전체가 들리고
+        // 평지(특히 하천 유역 — DEM 이 수면을 상수 고도로 평탄화한다. 서울 z12 실측:
+        // 고도가 정확히 3.0m 인 픽셀 8.4%, 사방이 같은 값 10.6%)가 상대적으로 어두운
+        // 띠로 남는다. 축척마다 DEM 해상도가 달라져 띠 모양도 바뀐다.
+        //   → 1차 시도(#ffffff→#fbfbfb)는 낙차만 줄였을 뿐 구조가 그대로라 실패.
+        //   → **highlight 를 밑바탕색과 동일하게** 두면 비탈이 밝아지는 일 자체가
+        //     없어져 띠가 사라지고, 입체감은 shadow(그늘)만으로 표현된다.
+        //     밑바탕은 모드마다 다르다 — 지형 전용은 earth 레이어가 빠져 배경(bg)이,
+        //     일반 지도는 earth 가 밑바탕이다.
+        // accent 는 완경사에만 작용(평지에선 0) — 밑바탕에 가깝게 둬 얼룩을 만들지 않는다.
+        // 다크는 밑바탕이 이미 최암(#0d0d0d)이라 highlight 를 바탕색으로 맞추면 그늘(#000000)
+        // 과의 차가 거의 없어 지형이 사라진다. 어두운 지도에서 "평지=검정"은 자연스럽게
+        // 읽히므로 기존 하이라이트를 유지한다(라이트만 바탕색 정렬).
         paint: dark
           ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 10, 0.28, 13, 0.28, 15, 0.14, 16, 0],
               "hillshade-shadow-color": "#000000",
               "hillshade-highlight-color": "#2b2b2b", "hillshade-accent-color": "#000000" }
           : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 10, 0.24, 13, 0.24, 15, 0.12, 16, 0],
               "hillshade-shadow-color": "#8a8a8a",
-              "hillshade-highlight-color": "#fbfbfb", "hillshade-accent-color": "#a8a8a8" }
+              "hillshade-highlight-color": terrain ? C.bg : C.earth,
+              "hillshade-accent-color": terrain ? C.bg : C.earth }
       }] : []),
       { id: "water", type: "fill", source: "protomaps", "source-layer": "water", paint: { "fill-color": C.water } },
       {
