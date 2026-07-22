@@ -62,6 +62,13 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
   const urbanMin = Math.min(...urbanZooms);
   const dark = theme === "dark";
   const terrain = baseMode === "terrain";
+  // 음영기복 사용 여부 — 2026-07-22 사용자 요청으로 끔.
+  // 평지/산지 밝기 차가 "얼룩 띠"로 읽히는 문제를 두 차례 완화(대비 축소 → 하이라이트를
+  // 밑바탕색과 일치)했으나 해소되지 않아 아예 제거. 지형 판독은 등고선이 대신한다.
+  // ⚠️ 다시 켜려면 이 값만 true 로. 단, 끈 뒤에도 띠가 남는다면 원인은 음영이 아니다
+  //    (300m 축척에서는 exaggeration 이 이미 0 에 가까운데도 띠가 보였다는 보고가 있다).
+  const HILLSHADE = false;
+  const useTerrainRaster = HILLSHADE && !!terrainUrl;
   // 흑백 가독성 원칙: 색이 없으므로 "명도 계단"이 유일한 분리 수단.
   // 지표 클래스마다 뚜렷한 밝기 단계를 배정 — 라이트: 시가지(밝음) > 풀 > 공원 > 물(어두움).
   // 산지·지형 표현은 hillshade(음영기복)가 전담한다. OSM 숲 폴리곤은 한국에서 경계가
@@ -107,7 +114,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         attribution:
           '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
       },
-      ...(terrainUrl ? {
+      ...(useTerrainRaster ? {
         dem: {
           type: "raster-dem", url: "pmtiles://" + terrainUrl,
           encoding: "mapbox", tileSize: 256, maxzoom: 12,
@@ -141,7 +148,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
       // 음영기복 — 지표 채움 위, 물·선·라벨 아래. 흑백에서 능선·계곡을 입체로 읽게 하는 층.
       // DEM 이 30m(타일 z12까지)라 고줌에선 오버줌으로 뭉개진 얼룩이 됨 →
       // z13 부터 서서히 빼고 z16 에서 완전히 끔 (등산 줌 11~14 는 지형감 유지).
-      ...(terrainUrl ? [{
+      ...(useTerrainRaster ? [{
         id: "hillshade", type: "hillshade", source: "dem", maxzoom: 16,
         // ⚠️ "얼룩 폴리곤"의 정체 (2026-07-20 규명 · 2026-07-22 완결) —
         // 잘못 칠해진 폴리곤이 아니라 **평지와 산지의 밝기 차**다.
