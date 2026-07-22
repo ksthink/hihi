@@ -58,11 +58,22 @@ struct ExploreView: View {
                         mountain: catalog.selected, courses: courses, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
-                        // 하이브리드: 온라인=원격 전국 base(자유 팬), 오프라인=로컬 팩 base.
-                        // (오버레이 geojson 은 설치 시 항상 로컬 — MapView.applyOverlay.)
-                        offlineBaseURL: catalog.selected.flatMap {
-                            (!net.isOnline && packs.downloaded.contains($0.id))
-                                ? packs.localFile($0.id, "base.pmtiles") : nil },
+                        // 로컬 팩을 쓸지 결정 — base 타일과 오버레이(MapView.applyOverlay)가 함께 따른다.
+                        //   탐험 중  : **항상 원격 우선**. 팩이 설치돼 있어도 원격을 본다.
+                        //             팩은 받은 시점에 멈춰 있어(버전 추적 없음) 새로 추가된 코스가
+                        //             안 보이는 등 목록과 지도가 어긋난다. 탐험은 최신성이 우선.
+                        //             단 네트워크가 없으면 로컬로 폴백(안 그러면 빈 지도).
+                        //   등반 중  : **로컬 팩만**. 산에서는 신호가 끊기고 재요청은 배터리를 쓴다.
+                        //             기록이 걸린 구간이라 최신성보다 끊기지 않는 것이 중요하다.
+                        //             (같은 취지로 위 .task 도 등반 중엔 코스·산정보·날씨를
+                        //              다시 받지 않는다 — 날씨는 출발 시점 스냅샷.)
+                        // ⚠️ 팩이 없는 산에서 등반을 시작하면 여기서 nil 이 되어 원격을 쓴다.
+                        //    "등반 = 완전 오프라인"을 보장하려면 등반 시작 전 지도 다운로드를
+                        //    요구해야 한다(미결정).
+                        offlineBaseURL: catalog.selected.flatMap { m in
+                            let useLocal = climb.tracking || !net.isOnline
+                            return (useLocal && packs.downloaded.contains(m.id))
+                                ? packs.localFile(m.id, "base.pmtiles") : nil },
                         locateTick: locateTick, fitCourseTick: courseFitTick,
                         bottomInset: peek + 40,
                         onScaleChanged: { metersPerPoint = $0 },
@@ -172,6 +183,12 @@ struct ExploreView: View {
                 courses = []; info = nil; weather = []
                 climb.course = nil; climb.mountainName = nil; climb.mountainCode = nil; return
             }
+            // ⚠️ 등반 중에는 네트워크를 쓰지 않는다.
+            //   이 task 는 뷰가 다시 나타날 때마다 재실행되므로(백그라운드 복귀·시트 전환 등),
+            //   막지 않으면 산행 도중 코스·산정보·날씨를 계속 다시 받는다. 산에서는 신호가
+            //   약해 실패하거나 재시도로 배터리를 먹고, 날씨는 출발 시점 스냅샷이 맞다.
+            //   시작 시 이미 채워 둔 값을 그대로 쓴다(지도 소스도 로컬 팩 — offlineBaseURL).
+            guard !climb.tracking else { return }
             async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
             async let inf = InfoLoader.load(m.id)
             async let wx = WeatherService.fetch(lat: m.center[1], lon: m.center[0])
@@ -180,25 +197,22 @@ struct ExploreView: View {
             weather = await wx
             climb.mountainName = m.name
             climb.mountainCode = m.id
-            // 코스 자동 선택.
-            // ⚠️ 이 task 는 산이 바뀔 때뿐 아니라 **탭 전환으로 뷰가 다시 나타날 때마다**
-            //    재실행된다(.task 는 disappear 에서 취소되고 appear 에서 다시 시작).
-            //    그래서 무조건 `?? courses.first` 로 덮어쓰면 사용자가 고른 코스가 매번
-            //    1번으로 되돌아간다 — 5번을 골라 [등반 시작]을 눌러도 onStart 가 탐험 탭으로
-            //    돌아오는 순간 1번으로 바뀌어 있던 버그(2026-07-22).
-            //    등반 중에는 아예 건드리지 않는다. 세션 코스가 바뀌면 HUD 도, 저장되는 기록의
-            //    코스명·계획고도도 어긋난다.
-            if !climb.tracking {
-                let wanted = climb.wantedCourseName
-                climb.wantedCourseName = nil              // 1회용 — 이후 산 전환에 새지 않게
-                // 우선순위: 큐레이션 지정 > 이미 고른 코스 유지 > 복구된 세션 > 첫 코스.
-                // (산이 바뀌었으면 이전 코스명이 새 목록에 없어 자연히 첫 코스로 떨어진다.)
-                let keep = climb.course.flatMap { cur in courses.first(where: { $0.name == cur.name }) }
-                climb.course = courses.first(where: { $0.name == wanted })
-                    ?? keep
-                    ?? courses.first(where: { $0.name == climb.restoredCourseName })
-                    ?? courses.first
-            }
+            // 코스 자동 선택. (등반 중이면 위 guard 에서 이미 반환 — 세션 코스는 건드리지 않는다.
+            //  코스가 바뀌면 HUD 도, 저장되는 기록의 코스명·계획고도도 어긋난다.)
+            // ⚠️ 이 task 는 산이 바뀔 때뿐 아니라 **뷰가 다시 나타날 때마다** 재실행된다
+            //    (.task 는 disappear 에서 취소되고 appear 에서 다시 시작). 그래서 무조건
+            //    `?? courses.first` 로 덮어쓰면 사용자가 고른 코스가 매번 1번으로 되돌아간다
+            //    — 5번을 골라 [등반 시작]을 눌러도 onStart 가 탐험 탭으로 돌아오는 순간
+            //    1번으로 바뀌어 있던 버그(2026-07-22).
+            let wanted = climb.wantedCourseName
+            climb.wantedCourseName = nil                  // 1회용 — 이후 산 전환에 새지 않게
+            // 우선순위: 큐레이션 지정 > 이미 고른 코스 유지 > 복구된 세션 > 첫 코스.
+            // (산이 바뀌었으면 이전 코스명이 새 목록에 없어 자연히 첫 코스로 떨어진다.)
+            let keep = climb.course.flatMap { cur in courses.first(where: { $0.name == cur.name }) }
+            climb.course = courses.first(where: { $0.name == wanted })
+                ?? keep
+                ?? courses.first(where: { $0.name == climb.restoredCourseName })
+                ?? courses.first
             if climb.fitRequested {                   // 추천 등 외부 진입 → 코스 범위로 프레이밍
                 climb.fitRequested = false
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }

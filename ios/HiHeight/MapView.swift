@@ -55,7 +55,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.onScaleChanged = onScaleChanged
         context.coordinator.onCourseTapped = onCourseTapped
         // 오버레이 출처(로컬/원격) 판단 — apply(mountain:) 가 applyOverlay 를 부르므로 그 전에.
-        context.coordinator.offline = offlineBaseURL != nil
+        context.coordinator.useLocalPack = offlineBaseURL != nil
         context.coordinator.apply(mountain: mountain, on: mv)
         context.coordinator.setCourseNos(courses, on: mv)                       // 번호 배지 위치(코스당 1개)
         context.coordinator.applyCourse(selectedCourse, on: mv)
@@ -106,7 +106,7 @@ struct MapView: UIViewRepresentable {
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
         private var wasTracking = false     // 등반 시작 전이(자동 추적 켬) 감지
         var tracking = false                // 등반 중 — viewFor 가 참조(내장 dot 숨김)
-        var offline = false                 // 오프라인+팩 설치 상태 — applyOverlay 가 로컬/원격 선택에 참조
+        var useLocalPack = false            // 로컬 팩으로 렌더 중(등반 중 또는 오프라인) — applyOverlay 가 참조
         var dark = false                    // 현재 테마 (코스 번호 배지 색)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
         var onScaleChanged: ((Double) -> Void)?
@@ -309,15 +309,15 @@ struct MapView: UIViewRepresentable {
 
         private func applyOverlay(_ m: Mountain, on mv: MLNMapView) {
             guard let style = mv.style else { return }
-            // 온라인이면 원격(항상 최신), 오프라인이면 다운로드된 로컬 팩 — 기저 타일과 같은 하이브리드.
+            // base 타일과 같은 기준을 따른다(ExploreView 가 offlineBaseURL 로 결정):
+            //   탐험 중 = 원격 우선(최신성) · 등반 중 = 로컬 팩 우선(끊기지 않는 것이 우선).
             // ⚠️ 예전엔 설치돼 있으면 무조건 로컬을 썼는데, 팩 버전 관리가 없어 **팩을 받은 뒤
             //    추가된 코스가 지도에 영원히 안 나왔다**(2026-07-22: 북한산에 "아인쌤 야호~"를
             //    추가했더니 코스 목록·시종점 마커는 나오는데 — 이쪽은 PackLoader 가 원격을 읽음 —
-            //    지도의 코스 선과 번호 배지만 빠짐). 재다운로드를 유도할 계기도 없으므로
-            //    온라인에서는 원격을 읽어 목록·지도의 출처를 일치시킨다.
+            //    지도의 코스 선과 번호 배지만 빠짐). 목록과 지도의 출처를 일치시켜야 한다.
             let ps = PackStore.shared
             func pick(_ file: String, _ remote: URL?) -> URL? {
-                offline ? (ps.localFile(m.id, file) ?? remote) : (remote ?? ps.localFile(m.id, file))
+                useLocalPack ? (ps.localFile(m.id, file) ?? remote) : (remote ?? ps.localFile(m.id, file))
             }
             swap(style, "contours", pick("contours.geojson", Config.contoursURL(m.id)))
             swap(style, "trails",   pick("routes.geojson",   Config.routesURL(m.id)))
