@@ -321,10 +321,35 @@ button.active { background: #111; color: #fff; }
 .cfg-ctl { display: inline-flex; align-items: center; gap: 2px; }
 .cfg-ctl small { color: #888; font-size: 10px; white-space: nowrap; }
 .cfg-ctl input[type="number"] { width: 46px; font-size: 11.5px; padding: 2px 2px; }
-/* 기호 문자 — 비우면 기본 아이콘. 기본 아이콘이 없는 분류에서 비면 경고색(아무것도 안 나옴) */
-.cfg-sym { width: 34px; font-size: 12px; padding: 2px 3px; text-align: center; }
-.cfg-sym:disabled { background: #f4f4f4; color: #bbb; }
-.cfg-sym.warn { border-color: #b00020; }
+/* 기호 버튼 — 누르면 고르개(#sym-picker)가 뜬다. 라벨이 곧 현재 값(끔·기본·그 문자) */
+.cfg-sym { min-width: 38px; font-size: 12px; padding: 2px 5px; text-align: center; }
+.cfg-sym.is-char { font-size: 14px; line-height: 1.15; }
+.cfg-sym.is-off { color: #aaa; }
+.cfg-sym.warn { border-color: #b00020; color: #b00020; }
+
+/* 기호 고르개 — 형태별 탭 + 격자. 판은 하나를 재사용한다(admin.js openSymbolPicker) */
+#sym-picker {
+  position: fixed; z-index: 60; width: 330px;
+  background: #fff; border: 1px solid #bbb; border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .18); padding: 8px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+#sym-picker button { border: 1px solid #ddd; border-radius: 5px; background: #fff; cursor: pointer; }
+#sym-picker button:hover { border-color: #111; }
+#sym-picker button.on { background: #111; color: #fff; border-color: #111; }
+.sp-modes { display: flex; gap: 5px; }
+.sp-modes button { flex: 1; font-size: 11.5px; padding: 4px 6px; }
+.sp-modes button.warn { color: #b00020; border-color: #e0aeb6; }
+.sp-modes button.warn.on { color: #fff; }
+/* 형태 탭 — 18묶음이라 가로 스크롤 */
+.sp-tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 3px; }
+.sp-tabs button { flex: 0 0 auto; font-size: 11px; padding: 3px 7px; white-space: nowrap; }
+.sp-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 3px;
+  max-height: 210px; overflow-y: auto; padding: 1px;
+}
+.sp-grid button { aspect-ratio: 1 / 1; font-size: 16px; line-height: 1; padding: 0; }
+.sp-foot { font-size: 10.5px; color: #888; line-height: 1.45; }
 
 /* 코스 드래그 정렬 그립 */
 #course-list .c-grip { flex: 0 0 auto; cursor: grab; color: #aaa; font-size: 13px; user-select: none; }

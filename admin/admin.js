@@ -3,6 +3,7 @@ import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm";
 import { Protocol } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
 import { buildStyle, normPoiDisplay, symChar } from "../basemap-style.js";
 import { attachPoiIcons } from "../poi-icons.js";
+import { SYMBOL_GROUPS } from "./symbols.js";
 
 const $ = (id) => document.getElementById(id);
 const EMPTY = { type: "FeatureCollection", features: [] };
@@ -1044,6 +1045,85 @@ const SIZE_OPTS = [8, 10, 12, 14];
 // 아이콘 자체가 없는 분류 (기저지도 도시 POI — 텍스트 전용 레이어)
 const POI_NO_ICON = ["학교", "관공서", "병원", "아파트단지", "공원", "마트·쇼핑", "문화·체육"];
 
+// ── 기호 고르개 ── 버튼 아래 뜨는 판. 형태별 탭 + 격자에서 골라 넣는다.
+// 판은 하나만 만들어 재사용한다(행마다 만들면 1700칸 × 분류 수가 된다).
+let symPicker = null, symPickerClose = null;
+
+function buildSymbolPicker() {
+  const box = document.createElement("div");
+  box.id = "sym-picker";
+  box.hidden = true;
+  box.innerHTML = `<div class="sp-modes"></div>
+    <div class="sp-tabs"></div><div class="sp-grid"></div>
+    <div class="sp-foot">지도 글리프에 실제로 있는 <b>1696자</b> — 여기 없는 문자는 지도에서 안 그려집니다.</div>`;
+  document.body.appendChild(box);
+
+  // 바깥 클릭·Esc 로 닫기 (버튼 자신의 클릭은 openSymbolPicker 가 토글로 처리)
+  document.addEventListener("mousedown", (e) => {
+    if (!box.hidden && !box.contains(e.target) && !e.target.closest(".cfg-sym")) symPickerClose?.();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") symPickerClose?.(); });
+  return box;
+}
+
+function openSymbolPicker(anchor, current, hasBuiltin, onPick) {
+  const box = symPicker ||= buildSymbolPicker();
+  if (!box.hidden && box._anchor === anchor) return symPickerClose(); // 같은 버튼 → 닫기
+  box._anchor = anchor;
+
+  symPickerClose = () => { box.hidden = true; box._anchor = null; symPickerClose = null; };
+  const pick = (v) => { onPick(v); symPickerClose(); };
+
+  // 위쪽: 끔 / 기본 아이콘
+  const modes = box.querySelector(".sp-modes");
+  modes.textContent = "";
+  const mode = (label, value, on, note) => {
+    const b = Object.assign(document.createElement("button"), {
+      type: "button", textContent: label, className: on ? "on" : "", title: note || "",
+    });
+    b.onclick = () => pick(value);
+    modes.appendChild(b);
+  };
+  mode("끔", false, current === false, "기호 없이 이름만");
+  mode(hasBuiltin ? "기본 아이콘" : "기본 아이콘 없음", true, current === true,
+    hasBuiltin ? "손으로 그린 뱃지 아이콘" : "이 분류는 기본 아이콘이 없어 아무것도 안 나옵니다");
+  if (!hasBuiltin) modes.lastChild.classList.add("warn");
+
+  // 형태 탭 + 격자
+  const tabs = box.querySelector(".sp-tabs");
+  const grid = box.querySelector(".sp-grid");
+  const cur = symChar(current);
+  const showGroup = (g, btn) => {
+    for (const t of tabs.children) t.classList.toggle("on", t === btn);
+    grid.textContent = "";
+    grid.scrollTop = 0;
+    for (const ch of g.chars) {
+      const b = Object.assign(document.createElement("button"), {
+        type: "button", textContent: ch, className: ch === cur ? "on" : "",
+      });
+      b.onclick = () => pick(ch);
+      grid.appendChild(b);
+    }
+  };
+  tabs.textContent = "";
+  // 지금 고른 문자가 든 묶음을 열어 둔다 (없으면 첫 묶음)
+  const start = SYMBOL_GROUPS.findIndex((g) => cur && g.chars.includes(cur));
+  SYMBOL_GROUPS.forEach((g, i) => {
+    const t = Object.assign(document.createElement("button"), { type: "button", textContent: g.name });
+    t.onclick = () => showGroup(g, t);
+    tabs.appendChild(t);
+    if (i === (start < 0 ? 0 : start)) showGroup(g, t);
+  });
+
+  // 버튼 아래에 띄우되 화면 밖으로 나가지 않게
+  box.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  const w = box.offsetWidth, h = box.offsetHeight;
+  box.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px";
+  box.style.top = (r.bottom + h + 8 > innerHeight && r.top - h - 4 > 0
+    ? r.top - h - 4 : r.bottom + 4) + "px";
+}
+
 // 컨트롤 + 캡션 묶음
 function ctl(caption, el) {
   const w = document.createElement("span");
@@ -1081,43 +1161,29 @@ function bindDisplayCfg(apiPath, prefix, noIconCats = [], onChange = null) {
         sel.appendChild(o);
       }
       sel.onchange = () => { val.zoom = sel.value === "" ? null : +sel.value; dirty(); };
-      // 기호 — 3상: 끔 / 기본 아이콘 / 관리자가 넣은 문자 (val.icon = false | true | "★")
-      // 아이콘이 없는 분류(도시 POI)도 문자로는 기호를 가질 수 있으므로 체크박스를
-      // 비활성으로 두지 않는다 — 대신 문자를 비우면 아무것도 안 나온다고 알려 준다.
+      // 기호 — 3상: 끔 / 기본 아이콘 / 문자 (val.icon = false | true | "★")
+      // 버튼 하나로 셋을 다 고른다. 예전엔 체크박스 + 자유 입력이었는데, 쓸 수 있는
+      // 문자가 정해져 있어(글리프가 있는 것만) 직접 타이핑하면 안 그려지는 글자를
+      // 넣기 쉬웠다 — 고르개는 애초에 되는 것만 보여 준다.
       const hasBuiltin = !noIconCats.includes(cat);
-      const icon = document.createElement("input");
-      icon.type = "checkbox";
-      icon.checked = val.icon !== false && val.icon != null;
-      const sym = document.createElement("input");
-      sym.className = "cfg-sym";
-      sym.value = symChar(val.icon) || "";
-      sym.placeholder = hasBuiltin ? "기본" : "문자";
-      sym.title = hasBuiltin
-        ? "비우면 기본 아이콘, 문자를 넣으면 그 문자를 이름 앞에 (예: ★ ▲ ♨ ⛰ ⚑ ㉿)"
-        : "이 분류는 기본 아이콘이 없습니다 — 문자를 넣어야 기호가 생깁니다";
-      const syncSym = () => {
-        sym.disabled = !icon.checked;
-        sym.classList.toggle("warn", icon.checked && !hasBuiltin && !sym.value.trim());
+      const symBtn = document.createElement("button");
+      symBtn.className = "cfg-sym";
+      symBtn.type = "button";
+      symBtn.title = hasBuiltin
+        ? "기호 고르기 — 끔 · 기본 아이콘 · 문자"
+        : "이 분류는 기본 아이콘이 없습니다 — 문자를 골라야 기호가 생깁니다";
+      const paintSym = () => {
+        const ch = symChar(val.icon);
+        symBtn.textContent = ch || (val.icon === true ? "기본" : "끔");
+        symBtn.classList.toggle("is-char", !!ch);
+        symBtn.classList.toggle("is-off", val.icon === false);
+        // 기본 아이콘이 없는 분류에서 "기본" = 아무것도 안 나온다 → 눈에 띄게
+        symBtn.classList.toggle("warn", !hasBuiltin && val.icon === true);
       };
-      // 글리프 검사: 자체 호스팅 PBF 가 U+FFFF 에서 끝나 BMP 밖 문자(이모지)는
-      // 웹·네이티브 모두 아무 경고 없이 안 그려진다 → 여기서 되돌린다.
-      const readSym = () => {
-        const t = [...sym.value.trim()].slice(0, 2).join("");
-        const bad = [...t].find((c) => c.codePointAt(0) > 0xffff);
-        if (bad) {
-          alert(`"${bad}" 는 지도에 표시할 수 없습니다.\n\n` +
-            "이모지처럼 U+FFFF 를 넘는 문자는 자체 글리프에 없어 앱에서 조용히 사라집니다.\n" +
-            "★ ▲ ● ■ ◆ ♨ ⛰ ⚑ ⊕ ✚ ㉿ 卍 같은 기호를 쓰세요.");
-          sym.value = symChar(val.icon) || "";
-          return;
-        }
-        sym.value = t;
-        val.icon = icon.checked ? (t || true) : false;
-        syncSym(); dirty();
-      };
-      icon.onchange = () => { val.icon = icon.checked ? (sym.value.trim() || true) : false; syncSym(); dirty(); };
-      sym.onchange = readSym;
-      syncSym();
+      symBtn.onclick = () => openSymbolPicker(symBtn, val.icon, hasBuiltin, (next) => {
+        val.icon = next; paintSym(); dirty();
+      });
+      paintSym();
       // 글자 크기 — 4단계 선택. 예전 값(8.4·9.2·10.1 등)은 가장 가까운 단계로 보여주고,
       // 저장하면 그 값으로 정규화된다(단순화가 목적이라 원래 값을 남기지 않는다).
       const size = document.createElement("select");
@@ -1140,7 +1206,7 @@ function bindDisplayCfg(apiPath, prefix, noIconCats = [], onChange = null) {
 
       row.append(
         Object.assign(document.createElement("span"), { textContent: cat, className: "cfg-cat" }),
-        ctl("줌", sel), ctl("기호", icon), ctl("문자", sym), ctl("크기", size), ctl("볼드", bold));
+        ctl("줌", sel), ctl("기호", symBtn), ctl("크기", size), ctl("볼드", bold));
       box.appendChild(row);
     }
   }

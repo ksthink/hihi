@@ -125,7 +125,7 @@ def _norm_display_cat(cat, v, default):
                 if bad:
                     raise ValueError(
                         f"{cat}.icon: '{bad}' 는 글리프가 없어 지도에 안 그려집니다 "
-                        "(이모지 불가 — ★ ▲ ● ♨ ⛰ 등 BMP 기호를 쓰세요)")
+                        "(이모지 불가 — ★ ▲ ● ■ ◆ ⊕ ✚ ⚑ ㉿ ㈜ 등 BMP 기호를 쓰세요)")
                 if not val:
                     val = True   # 빈 문자열 = 기본 아이콘
             elif not isinstance(val, bool):
