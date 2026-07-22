@@ -62,12 +62,10 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
   const urbanMin = Math.min(...urbanZooms);
   const dark = theme === "dark";
   const terrain = baseMode === "terrain";
-  // 음영기복 사용 여부 — 2026-07-22 사용자 요청으로 끔.
-  // 평지/산지 밝기 차가 "얼룩 띠"로 읽히는 문제를 두 차례 완화(대비 축소 → 하이라이트를
-  // 밑바탕색과 일치)했으나 해소되지 않아 아예 제거. 지형 판독은 등고선이 대신한다.
-  // ⚠️ 다시 켜려면 이 값만 true 로. 단, 끈 뒤에도 띠가 남는다면 원인은 음영이 아니다
-  //    (300m 축척에서는 exaggeration 이 이미 0 에 가까운데도 띠가 보였다는 보고가 있다).
-  const HILLSHADE = false;
+  // 음영기복 사용 여부. 2026-07-22 얼룩 폴리곤을 쫓다 잠시 껐다가 되돌림 —
+  // 원인은 음영이 아니라 water fill 이 하천 중심선까지 채우던 것이었다(아래 water 레이어).
+  // 흑백 지도에서 능선·계곡을 읽게 하는 유일한 층이라 유지한다. 끄려면 false.
+  const HILLSHADE = true;
   const useTerrainRaster = HILLSHADE && !!terrainUrl;
   // 흑백 가독성 원칙: 색이 없으므로 "명도 계단"이 유일한 분리 수단.
   // 지표 클래스마다 뚜렷한 밝기 단계를 배정 — 라이트: 시가지(밝음) > 풀 > 공원 > 물(어두움).
@@ -150,31 +148,16 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
       // z13 부터 서서히 빼고 z16 에서 완전히 끔 (등산 줌 11~14 는 지형감 유지).
       ...(useTerrainRaster ? [{
         id: "hillshade", type: "hillshade", source: "dem", maxzoom: 16,
-        // ⚠️ "얼룩 폴리곤"의 정체 (2026-07-20 규명 · 2026-07-22 완결) —
-        // 잘못 칠해진 폴리곤이 아니라 **평지와 산지의 밝기 차**다.
-        // MapLibre 음영 셰이더는 음영량에 sin(경사)를 곱하므로 **경사 0 인 평지에는
-        // 아무것도 그리지 않는다**(= 밑바탕색 그대로). 반면 비탈에는 highlight 가
-        // 덧칠돼 밝아진다. highlight 가 밑바탕보다 밝으면 산지 전체가 들리고
-        // 평지(특히 하천 유역 — DEM 이 수면을 상수 고도로 평탄화한다. 서울 z12 실측:
-        // 고도가 정확히 3.0m 인 픽셀 8.4%, 사방이 같은 값 10.6%)가 상대적으로 어두운
-        // 띠로 남는다. 축척마다 DEM 해상도가 달라져 띠 모양도 바뀐다.
-        //   → 1차 시도(#ffffff→#fbfbfb)는 낙차만 줄였을 뿐 구조가 그대로라 실패.
-        //   → **highlight 를 밑바탕색과 동일하게** 두면 비탈이 밝아지는 일 자체가
-        //     없어져 띠가 사라지고, 입체감은 shadow(그늘)만으로 표현된다.
-        //     밑바탕은 모드마다 다르다 — 지형 전용은 earth 레이어가 빠져 배경(bg)이,
-        //     일반 지도는 earth 가 밑바탕이다.
-        // accent 는 완경사에만 작용(평지에선 0) — 밑바탕에 가깝게 둬 얼룩을 만들지 않는다.
-        // 다크는 밑바탕이 이미 최암(#0d0d0d)이라 highlight 를 바탕색으로 맞추면 그늘(#000000)
-        // 과의 차가 거의 없어 지형이 사라진다. 어두운 지도에서 "평지=검정"은 자연스럽게
-        // 읽히므로 기존 하이라이트를 유지한다(라이트만 바탕색 정렬).
+        // 값은 2026-07-20 이전 원본 그대로. 그 사이 얼룩 폴리곤을 쫓느라 두 차례
+        // 약화시켰다가(대비 축소 → 하이라이트를 밑바탕색과 일치) 원인이 water fill 로
+        // 밝혀져 되돌렸다. 두 완화 모두 얼룩과 무관했고 지형 입체감만 깎았다.
         paint: dark
-          ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 10, 0.28, 13, 0.28, 15, 0.14, 16, 0],
+          ? { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.4, 15, 0.18, 16, 0],
               "hillshade-shadow-color": "#000000",
-              "hillshade-highlight-color": "#2b2b2b", "hillshade-accent-color": "#000000" }
-          : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 10, 0.24, 13, 0.24, 15, 0.12, 16, 0],
-              "hillshade-shadow-color": "#8a8a8a",
-              "hillshade-highlight-color": terrain ? C.bg : C.earth,
-              "hillshade-accent-color": terrain ? C.bg : C.earth }
+              "hillshade-highlight-color": "#3d3d3d", "hillshade-accent-color": "#000000" }
+          : { "hillshade-exaggeration": ["interpolate", ["linear"], ["zoom"], 13, 0.35, 15, 0.15, 16, 0],
+              "hillshade-shadow-color": "#6e6e6e",
+              "hillshade-highlight-color": "#ffffff", "hillshade-accent-color": "#909090" }
       }] : []),
       {
         // ⚠️ "얼룩 폴리곤"의 진짜 원인 (2026-07-10 최초 보고 → 07-22 규명).
