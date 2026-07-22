@@ -38,6 +38,19 @@ export function normPoiDisplay(raw) {
 // 글꼴 선택 (볼드 글리프도 전 범위 자체 호스팅됨)
 const FONT = (bold) => [bold ? "MonaS12 Bold" : "MonaS12 Regular"];
 
+// POI 이름 (한글 우선)
+const NAME = ["coalesce", ["get", "name:ko"], ["get", "name"]];
+
+// ── 기호 설정 3상 ──
+//   false/없음 = 기호 없음 · true = 기본 아이콘(캔버스 생성, poi-icons.js) · 문자열 = 그 글자
+// 문자 기호는 스팟 정상의 "▲" 와 같은 방식 — 이름 앞에 붙여 라벨 하나로 그린다.
+// ⚠️ BMP(U+0000–FFFF) 문자만 쓸 수 있다. 자체 호스팅 글리프 PBF 가 65535 에서 끝나므로
+//    이모지(U+1F300~ 등)는 웹·네이티브 모두 아무 경고 없이 안 그려진다 (admin 에서 막는다).
+export const symChar = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
+export const useIcon = (v) => v === true;
+// 이름 앞에 문자 기호를 붙인 text-field
+const nameField = (v) => (symChar(v) ? ["concat", symChar(v), NAME] : NAME);
+
 // 도시 POI(텍스트 전용 poi-urban 레이어) 카테고리 → pois kind 매핑.
 // 카테고리 간 kind 중복 금지 (match 표현식 라벨 유일성).
 const URBAN_KINDS = {
@@ -268,7 +281,13 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
           [">=", ["zoom"], ["coalesce", ["get", "min_zoom"], 0]]],
         layout: {
           visibility: urbanMin < 99 ? "visible" : "none",
-          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          // 이 레이어는 분류가 여럿이라 기호도 kind 별로 (아이콘은 원래 없는 레이어 —
+          // 문자 기호가 이 분류들에 기호를 줄 수 있는 유일한 수단이다)
+          "text-field": ["concat",
+            ["match", ["get", "kind"],
+              ...Object.entries(URBAN_KINDS).flatMap(([cat, kinds]) =>
+                [kinds, symChar(P[cat].icon) ?? ""]), ""],
+            NAME],
           "text-font": ["match", ["get", "kind"],
             ...Object.entries(URBAN_KINDS).flatMap(([cat, kinds]) =>
               [kinds, ["literal", FONT(P[cat].bold)]]), ["literal", FONT(false)]],
@@ -286,17 +305,17 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         filter: ["in", "kind", "toilets", "drinking_water", "parking", "information"],
         layout: {
           visibility: P.편의시설.zoom != null ? "visible" : "none",
-          ...(P.편의시설.icon ? {
+          ...(useIcon(P.편의시설.icon) ? {
             "icon-image": ["concat", "poi-", ["get", "kind"]],
             "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 17, 0.95],
           } : {}),
-          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-field": nameField(P.편의시설.icon),
           "text-font": FONT(P.편의시설.bold),
           // 아이콘이 있으면 이름은 설정 줌+1.5 부터(아이콘 먼저), 없으면 즉시
-          "text-size": P.편의시설.icon
+          "text-size": useIcon(P.편의시설.icon)
             ? ["step", ["zoom"], 0, (P.편의시설.zoom ?? 0) + 1.5, P.편의시설.size]
             : P.편의시설.size,
-          ...(P.편의시설.icon ? { "text-offset": [0, 1.1], "text-anchor": "top" } : {}),
+          ...(useIcon(P.편의시설.icon) ? { "text-offset": [0, 1.1], "text-anchor": "top" } : {}),
           "text-max-width": 8,
           "text-optional": true
         },
@@ -308,16 +327,16 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         minzoom: P.버스정류장.zoom ?? 0, filter: ["==", "kind", "bus_stop"],
         layout: {
           visibility: P.버스정류장.zoom != null ? "visible" : "none",
-          ...(P.버스정류장.icon ? {
+          ...(useIcon(P.버스정류장.icon) ? {
             "icon-image": "poi-bus_stop",
             "icon-size": ["interpolate", ["linear"], ["zoom"], 14.5, 0.55, 17, 0.9],
           } : {}),
-          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-field": nameField(P.버스정류장.icon),
           "text-font": FONT(P.버스정류장.bold),
-          "text-size": P.버스정류장.icon
+          "text-size": useIcon(P.버스정류장.icon)
             ? ["step", ["zoom"], 0, (P.버스정류장.zoom ?? 0) + 1, P.버스정류장.size]
             : P.버스정류장.size,
-          ...(P.버스정류장.icon ? { "text-offset": [0, 1], "text-anchor": "top" } : {}),
+          ...(useIcon(P.버스정류장.icon) ? { "text-offset": [0, 1], "text-anchor": "top" } : {}),
           "text-max-width": 9,
           "text-optional": true
         },
@@ -338,12 +357,12 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         ],
         layout: {
           visibility: P.사찰.zoom != null ? "visible" : "none",
-          ...(P.사찰.icon ? {
+          ...(useIcon(P.사찰.icon) ? {
             "icon-image": "poi-place_of_worship",
             "icon-size": ["interpolate", ["linear"], ["zoom"], 13.5, 0.6, 17, 0.9],
             "text-offset": [0, 1.1], "text-anchor": "top",
           } : {}),
-          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-field": nameField(P.사찰.icon),
           "text-font": FONT(P.사찰.bold), "text-size": P.사찰.size, "text-max-width": 8,
           "text-optional": true
         },
@@ -355,16 +374,17 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         minzoom: P.전철역.zoom ?? 0, filter: ["==", "kind", "station"],
         layout: {
           visibility: P.전철역.zoom != null ? "visible" : "none",
-          ...(P.전철역.icon ? {
+          ...(useIcon(P.전철역.icon) ? {
             "icon-image": "poi-station",
             "icon-size": ["interpolate", ["linear"], ["zoom"], 12, 0.7, 16, 1],
           } : {}),
-          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
+          "text-field": nameField(P.전철역.icon),
           "text-font": FONT(P.전철역.bold),
-          "text-size": P.전철역.icon
+          // 아이콘일 때만 이름을 반 줌 늦춘다(아이콘 먼저). 문자 기호는 라벨과 한 몸이라 즉시.
+          "text-size": useIcon(P.전철역.icon)
             ? ["step", ["zoom"], 0, (P.전철역.zoom ?? 0) + 0.5, P.전철역.size]
             : P.전철역.size,
-          ...(P.전철역.icon ? { "text-offset": [0, 1.2], "text-anchor": "top" } : {}),
+          ...(useIcon(P.전철역.icon) ? { "text-offset": [0, 1.2], "text-anchor": "top" } : {}),
           "text-max-width": 8,
           "text-optional": true
         },

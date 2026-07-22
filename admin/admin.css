@@ -321,6 +321,10 @@ button.active { background: #111; color: #fff; }
 .cfg-ctl { display: inline-flex; align-items: center; gap: 2px; }
 .cfg-ctl small { color: #888; font-size: 10px; white-space: nowrap; }
 .cfg-ctl input[type="number"] { width: 46px; font-size: 11.5px; padding: 2px 2px; }
+/* 기호 문자 — 비우면 기본 아이콘. 기본 아이콘이 없는 분류에서 비면 경고색(아무것도 안 나옴) */
+.cfg-sym { width: 34px; font-size: 12px; padding: 2px 3px; text-align: center; }
+.cfg-sym:disabled { background: #f4f4f4; color: #bbb; }
+.cfg-sym.warn { border-color: #b00020; }
 
 /* 코스 드래그 정렬 그립 */
 #course-list .c-grip { flex: 0 0 auto; cursor: grab; color: #aaa; font-size: 13px; user-select: none; }

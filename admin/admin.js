@@ -1,7 +1,8 @@
 // 하이하잇 관리자 콘솔 — 코스 큐레이션·스팟 보정·팩 배포 (로컬 전용 도구)
 import maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm";
 import { Protocol } from "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/+esm";
-import { buildStyle, normPoiDisplay } from "../basemap-style.js";
+import { buildStyle, normPoiDisplay, symChar } from "../basemap-style.js";
+import { attachPoiIcons } from "../poi-icons.js";
 
 const $ = (id) => document.getElementById(id);
 const EMPTY = { type: "FeatureCollection", features: [] };
@@ -101,6 +102,7 @@ const map = new maplibregl.Map({
   localIdeographFontFamily: "'MonaS12', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
 });
 map.addControl(new maplibregl.NavigationControl({ showZoom: true }), "bottom-right");
+attachPoiIcons(map); // 기저지도 POI 아이콘 생성 — 앱과 같은 모듈 (관리자는 라이트 고정)
 window.__adminMap = map; // 디버그·헤드리스 테스트 훅 (앱 window.__map 과 동일 관례)
 
 // 표시 설정 라이브 미리보기 상태 — bindDisplayCfg(아래 설정 편집기)가 값 변경 때마다 갱신.
@@ -121,7 +123,8 @@ function applySpotEditorStyle() {
   const fontExpr = (catBold) => ["match", ["to-string", ["get", "disp_bold"]],
     "true", ["literal", font(true)], "false", ["literal", font(false)], ["literal", font(catBold)]];
   map.setLayoutProperty("spot-peak", "text-field",
-    ["concat", ["case", ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]], "▲", ""],
+    ["concat", ["case", ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]],
+      symChar(pk.icon) ?? "▲", ""],
       ["coalesce", ["get", "name"], ""]]);
   map.setLayoutProperty("spot-peak", "text-font", fontExpr(pk.bold));
   map.setLayoutProperty("spot-peak", "text-size", // 앱과 동일: 부봉(main=false)은 비율 축소
@@ -1078,13 +1081,43 @@ function bindDisplayCfg(apiPath, prefix, noIconCats = [], onChange = null) {
         sel.appendChild(o);
       }
       sel.onchange = () => { val.zoom = sel.value === "" ? null : +sel.value; dirty(); };
-      // 기호 (점·아이콘·▲)
+      // 기호 — 3상: 끔 / 기본 아이콘 / 관리자가 넣은 문자 (val.icon = false | true | "★")
+      // 아이콘이 없는 분류(도시 POI)도 문자로는 기호를 가질 수 있으므로 체크박스를
+      // 비활성으로 두지 않는다 — 대신 문자를 비우면 아무것도 안 나온다고 알려 준다.
+      const hasBuiltin = !noIconCats.includes(cat);
       const icon = document.createElement("input");
       icon.type = "checkbox";
-      icon.checked = val.icon && !noIconCats.includes(cat);
-      icon.disabled = noIconCats.includes(cat);
-      if (icon.disabled) icon.title = "이 분류는 텍스트 전용";
-      icon.onchange = () => { val.icon = icon.checked; dirty(); };
+      icon.checked = val.icon !== false && val.icon != null;
+      const sym = document.createElement("input");
+      sym.className = "cfg-sym";
+      sym.value = symChar(val.icon) || "";
+      sym.placeholder = hasBuiltin ? "기본" : "문자";
+      sym.title = hasBuiltin
+        ? "비우면 기본 아이콘, 문자를 넣으면 그 문자를 이름 앞에 (예: ★ ▲ ♨ ⛰ ⚑ ㉿)"
+        : "이 분류는 기본 아이콘이 없습니다 — 문자를 넣어야 기호가 생깁니다";
+      const syncSym = () => {
+        sym.disabled = !icon.checked;
+        sym.classList.toggle("warn", icon.checked && !hasBuiltin && !sym.value.trim());
+      };
+      // 글리프 검사: 자체 호스팅 PBF 가 U+FFFF 에서 끝나 BMP 밖 문자(이모지)는
+      // 웹·네이티브 모두 아무 경고 없이 안 그려진다 → 여기서 되돌린다.
+      const readSym = () => {
+        const t = [...sym.value.trim()].slice(0, 2).join("");
+        const bad = [...t].find((c) => c.codePointAt(0) > 0xffff);
+        if (bad) {
+          alert(`"${bad}" 는 지도에 표시할 수 없습니다.\n\n` +
+            "이모지처럼 U+FFFF 를 넘는 문자는 자체 글리프에 없어 앱에서 조용히 사라집니다.\n" +
+            "★ ▲ ● ■ ◆ ♨ ⛰ ⚑ ⊕ ✚ ㉿ 卍 같은 기호를 쓰세요.");
+          sym.value = symChar(val.icon) || "";
+          return;
+        }
+        sym.value = t;
+        val.icon = icon.checked ? (t || true) : false;
+        syncSym(); dirty();
+      };
+      icon.onchange = () => { val.icon = icon.checked ? (sym.value.trim() || true) : false; syncSym(); dirty(); };
+      sym.onchange = readSym;
+      syncSym();
       // 글자 크기 — 4단계 선택. 예전 값(8.4·9.2·10.1 등)은 가장 가까운 단계로 보여주고,
       // 저장하면 그 값으로 정규화된다(단순화가 목적이라 원래 값을 남기지 않는다).
       const size = document.createElement("select");
@@ -1107,7 +1140,7 @@ function bindDisplayCfg(apiPath, prefix, noIconCats = [], onChange = null) {
 
       row.append(
         Object.assign(document.createElement("span"), { textContent: cat, className: "cfg-cat" }),
-        ctl("줌", sel), ctl("기호", icon), ctl("크기", size), ctl("볼드", bold));
+        ctl("줌", sel), ctl("기호", icon), ctl("문자", sym), ctl("크기", size), ctl("볼드", bold));
       box.appendChild(row);
     }
   }

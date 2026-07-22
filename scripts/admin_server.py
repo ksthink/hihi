@@ -109,9 +109,27 @@ def _norm_display_cat(cat, v, default):
         if key == "zoom":
             if val is not None and not (isinstance(val, (int, float)) and 0 <= val <= 22):
                 raise ValueError(f"{cat}.zoom: 0~22 또는 null(끔)")
-        elif key in ("icon", "bold"):
+        elif key == "bold":
             if not isinstance(val, bool):
-                raise ValueError(f"{cat}.{key}: true/false 필요")
+                raise ValueError(f"{cat}.bold: true/false 필요")
+        elif key == "icon":
+            # 3상: false=끔 · true=기본 아이콘 · 문자열=그 문자를 이름 앞에.
+            # ⚠️ BMP(U+0000~FFFF) 만 허용한다 — 자체 호스팅 글리프 PBF 가 65535 에서
+            #    끝나므로 이모지는 웹·네이티브 모두 아무 경고 없이 사라진다. 화면에서
+            #    막고 있지만, 서버가 마지막 방어선이다.
+            if isinstance(val, str):
+                val = val.strip()
+                if len(val) > 2:
+                    raise ValueError(f"{cat}.icon: 기호는 2글자까지")
+                bad = next((c for c in val if ord(c) > 0xFFFF), None)
+                if bad:
+                    raise ValueError(
+                        f"{cat}.icon: '{bad}' 는 글리프가 없어 지도에 안 그려집니다 "
+                        "(이모지 불가 — ★ ▲ ● ♨ ⛰ 등 BMP 기호를 쓰세요)")
+                if not val:
+                    val = True   # 빈 문자열 = 기본 아이콘
+            elif not isinstance(val, bool):
+                raise ValueError(f"{cat}.icon: true/false 또는 기호 문자")
         elif key == "size":
             if not (isinstance(val, (int, float)) and 6 <= val <= 24):
                 raise ValueError(f"{cat}.size: 6~24 px")
