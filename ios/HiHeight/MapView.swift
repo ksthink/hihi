@@ -167,18 +167,32 @@ struct MapView: UIViewRepresentable {
             return nil
         }
 
-        // 편의시설 아이콘 등록 — 웹 makePoiIcon(캔버스) 대응. 네이티브는 SF Symbol 을 렌더한다.
-        // 이름은 웹과 동일(poi-*)해서 스타일 표현식을 양쪽이 공유한다(gen-style.mjs FACILITY_ICON).
+        // POI 아이콘 등록 — 웹 makePoiIcon(캔버스) 대응. 네이티브는 SF Symbol 을 렌더한다.
+        // 이름은 웹과 동일(poi-*)해서 스타일 표현식을 양쪽이 공유한다.
         // 흑백 지도라 잉크색 단색 + 반대색 헤일로로 어느 배경에서든 읽히게.
-        private static let facilitySymbols: [String: String] = [
+        //
+        // ⚠️ **스타일이 참조하는 이름을 하나라도 빠뜨리면 그 POI 가 통째로 사라진다.**
+        //    웹은 styleimagemissing 이벤트로 없는 아이콘을 즉석 생성하지만 네이티브엔 그
+        //    메커니즘이 없어, 아이콘이 없으면 라벨까지 함께 빠진다(2026-07-23: 전철역·주차장이
+        //    앱에만 안 나오던 원인). 스타일에 icon-image 를 추가하면 여기도 같이 채울 것.
+        //    현재 참조되는 이름:
+        //      poi-amenities  → poi-{toilets,drinking_water,parking,information}
+        //      stations       → poi-station        bus-stops → poi-bus_stop
+        //      temple-names   → poi-place_of_worship
+        //      spots-facilities → poi-{viewpoint,toilets,shelter,helipad,drinking_water,parking}
+        private static let poiSymbols: [String: String] = [
+            // 기저지도 POI
+            "poi-station": "tram.fill", "poi-bus_stop": "bus.fill",
+            "poi-place_of_worship": "building.columns.fill", "poi-information": "info.circle.fill",
+            // 팩 스팟 편의시설(기저 POI 와 이름 공유: toilets·drinking_water·parking)
             "poi-viewpoint": "binoculars.fill", "poi-toilets": "toilet.fill",
             "poi-shelter": "house.fill", "poi-helipad": "h.square.fill",
             "poi-drinking_water": "drop.fill", "poi-parking": "parkingsign",
         ]
-        func registerFacilityIcons(on style: MLNStyle) {
+        func registerPOIIcons(on style: MLNStyle) {
             let ink = dark ? UIColor.white : UIColor(white: 0.067, alpha: 1)
             let halo = dark ? UIColor.black : UIColor.white
-            for (name, symbol) in Self.facilitySymbols {
+            for (name, symbol) in Self.poiSymbols {
                 if let img = makeFacilityIcon(symbol, ink: ink, halo: halo) {
                     style.setImage(img, forName: name)
                 }
@@ -468,7 +482,7 @@ struct MapView: UIViewRepresentable {
         // 스타일 로드(초기·테마 전환)마다 현재 목표 산 오버레이 + 시종점 재적용.
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             registerBadges(on: style)            // 코스 번호 배지 이미지(테마색) 등록
-            registerFacilityIcons(on: style)     // 편의시설 아이콘(주차장·화장실 등) 등록
+            registerPOIIcons(on: style)          // POI 아이콘(전철역·주차장·사찰 등) 등록
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
             courseNosKey = ""                    // 스타일 재로드 시 배지 위치 재주입 강제
