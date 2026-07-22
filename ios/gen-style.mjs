@@ -129,13 +129,24 @@ function make(theme, baseMode) {
       } },
   );
 
-  // ── 스팟 오버레이 (점+라벨+정상) — app.js:582-660 스펙 축약 ──
-  // 편의시설(FACILITY_ICON) 아이콘 레이어는 런타임 이미지 생성이 필요 + 현재 데이터 없음 → 이월.
-  // DOT_CATS=[분기점,시종점,장소], 줌 게이트는 spot-display.json 기본값(장소14·시종점12·분기점off).
+  // ── 스팟 오버레이 (점+라벨+편의시설+정상) — app.js:582-716 대응 ──
+  // 분류별 노출 줌은 admin 이 R2 config/spot-display.json 으로 관리한다. 웹은 이를 런타임에
+  // 읽지만 네이티브는 아직 미연동이라 **현재 설정값을 여기 반영해 둔다**(2026-07-23 기준).
+  // ⚠️ admin 에서 분류 설정을 바꾸면 이 값도 같이 고쳐야 웹과 어긋나지 않는다(미해결 과제).
+  //    스팟별 오버라이드(disp_zoom·disp_size)는 팩 properties 로 오므로 자동 반영된다.
   const DOT_CATS = ["분기점", "시종점", "장소"];
-  // coalesce 오버라이드: 스팟별 disp_zoom 이 분류 기본 zoom 을 덮는다(app.js 동일). 분기점 기본 off(99).
   const dotZoomGate = [">=", ["zoom"],
-    ["coalesce", ["get", "disp_zoom"], ["match", ["get", "category"], "장소", 14, "시종점", 12, 99]]];
+    ["coalesce", ["get", "disp_zoom"], ["match", ["get", "category"], "장소", 0, "시종점", 12, 99]]];
+  // 편의시설 — 아이콘 이미지는 MapView.registerFacilityIcons 가 런타임 등록(이름 웹과 동일).
+  const FACILITY_ICON = {
+    조망점: "poi-viewpoint", 화장실: "poi-toilets", 정자: "poi-shelter",
+    헬기장: "poi-helipad", 음수대: "poi-drinking_water", 주차장: "poi-parking",
+  };
+  const FAC_ZOOM = { 조망점: 12, 화장실: 18, 정자: 12, 헬기장: 18, 음수대: 12, 주차장: 0 };
+  const FAC_CATS = Object.keys(FACILITY_ICON);
+  const facZoomGate = [">=", ["zoom"],
+    ["coalesce", ["get", "disp_zoom"],
+      ["match", ["get", "category"], ...Object.entries(FAC_ZOOM).flat(), 99]]];
   style.sources.spots = {
     type: "geojson",
     data: `${BASE}/packs/${PACK}/spots.geojson`,
@@ -150,6 +161,19 @@ function make(theme, baseMode) {
       layout: { "text-field": ["get", "name"], "text-font": ["MonaS12 Regular"],
                 "text-size": ["coalesce", ["get", "disp_size"], 11],   // disp_size 오버라이드
                 "text-offset": [0, 0.9], "text-anchor": "top", "text-max-width": 8 },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.4 } },
+    // 편의시설(조망점·화장실·정자·헬기장·음수대·주차장) — 아이콘 + 이름. 웹 spots-facilities 대응.
+    // 아이콘이 없어도 이름은 나오도록 icon-optional/text-optional 을 켠다.
+    { id: "spots-facilities", type: "symbol", source: "spots",
+      filter: ["all", ["in", ["get", "category"], ["literal", FAC_CATS]], facZoomGate],
+      layout: {
+        "icon-image": ["match", ["get", "category"], ...Object.entries(FACILITY_ICON).flat(), ""],
+        "icon-optional": true, "text-optional": true,
+        "text-field": ["coalesce", ["get", "name"], ""],
+        "text-font": ["MonaS12 Regular"],
+        "text-size": ["coalesce", ["get", "disp_size"], 8.4],
+        "text-offset": [0, 1.05], "text-anchor": "top", "text-max-width": 8,
+      },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.4 } },
     // 정상 표식 — ▲(라이트)/△(다크) 텍스트 글리프 (런타임 이미지 불필요)
     { id: "spot-peaks", type: "symbol", source: "spots",

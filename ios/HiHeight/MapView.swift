@@ -167,6 +167,42 @@ struct MapView: UIViewRepresentable {
             return nil
         }
 
+        // 편의시설 아이콘 등록 — 웹 makePoiIcon(캔버스) 대응. 네이티브는 SF Symbol 을 렌더한다.
+        // 이름은 웹과 동일(poi-*)해서 스타일 표현식을 양쪽이 공유한다(gen-style.mjs FACILITY_ICON).
+        // 흑백 지도라 잉크색 단색 + 반대색 헤일로로 어느 배경에서든 읽히게.
+        private static let facilitySymbols: [String: String] = [
+            "poi-viewpoint": "binoculars.fill", "poi-toilets": "toilet.fill",
+            "poi-shelter": "house.fill", "poi-helipad": "h.square.fill",
+            "poi-drinking_water": "drop.fill", "poi-parking": "parkingsign",
+        ]
+        func registerFacilityIcons(on style: MLNStyle) {
+            let ink = dark ? UIColor.white : UIColor(white: 0.067, alpha: 1)
+            let halo = dark ? UIColor.black : UIColor.white
+            for (name, symbol) in Self.facilitySymbols {
+                if let img = makeFacilityIcon(symbol, ink: ink, halo: halo) {
+                    style.setImage(img, forName: name)
+                }
+            }
+        }
+        private func makeFacilityIcon(_ symbol: String, ink: UIColor, halo: UIColor) -> UIImage? {
+            let cfg = UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+            guard let base = UIImage(systemName: symbol, withConfiguration: cfg) else { return nil }
+            let pad: CGFloat = 3                       // 헤일로가 잘리지 않도록 여백
+            let size = CGSize(width: base.size.width + pad * 2, height: base.size.height + pad * 2)
+            let fmt = UIGraphicsImageRendererFormat.default(); fmt.scale = 2
+            return UIGraphicsImageRenderer(size: size, format: fmt).image { _ in
+                let rect = CGRect(x: pad, y: pad, width: base.size.width, height: base.size.height)
+                // 헤일로 — 같은 심볼을 8방향으로 살짝 옮겨 그려 외곽선을 만든다
+                let h = base.withTintColor(halo, renderingMode: .alwaysOriginal)
+                for dx in [-1.2, 0, 1.2] as [CGFloat] {
+                    for dy in [-1.2, 0, 1.2] as [CGFloat] where !(dx == 0 && dy == 0) {
+                        h.draw(in: rect.offsetBy(dx: dx, dy: dy))
+                    }
+                }
+                base.withTintColor(ink, renderingMode: .alwaysOriginal).draw(in: rect)
+            }
+        }
+
         // 코스 번호 배지 이미지 등록 — 웹 makeBadge 대응. 미선택=badge-N, 선택=badge-N-sel(반전).
         // 스타일 로드/테마 전환마다 재등록. course-no-badges 레이어가 런타임 표현식으로 선택 코스만 -sel 로.
         func registerBadges(on style: MLNStyle) {
@@ -432,6 +468,7 @@ struct MapView: UIViewRepresentable {
         // 스타일 로드(초기·테마 전환)마다 현재 목표 산 오버레이 + 시종점 재적용.
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             registerBadges(on: style)            // 코스 번호 배지 이미지(테마색) 등록
+            registerFacilityIcons(on: style)     // 편의시설 아이콘(주차장·화장실 등) 등록
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
             courseNosKey = ""                    // 스타일 재로드 시 배지 위치 재주입 강제
