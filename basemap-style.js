@@ -176,7 +176,17 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
               "hillshade-highlight-color": terrain ? C.bg : C.earth,
               "hillshade-accent-color": terrain ? C.bg : C.earth }
       }] : []),
-      { id: "water", type: "fill", source: "protomaps", "source-layer": "water", paint: { "fill-color": C.water } },
+      {
+        // ⚠️ "얼룩 폴리곤"의 진짜 원인 (2026-07-10 최초 보고 → 07-22 규명).
+        // water 소스레이어에는 면뿐 아니라 **하천 중심선(LineString)과 점이 섞여 있다**
+        // (실측 z12~14: 면 32 · 선 52 · 점 4). 기하 타입을 가리지 않으면 fill 레이어가
+        // 열린 선을 삼각분할해 지도 곳곳에 쐐기·삼각형 얼룩이 생긴다. 줌마다 선의
+        // 단순화 결과가 달라져 얼룩 모양도 바뀌던 것이 이 때문.
+        // 하천 선 표현은 아래 rivers 레이어(physical_line)가 이미 담당한다.
+        id: "water", type: "fill", source: "protomaps", "source-layer": "water",
+        filter: ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
+        paint: { "fill-color": C.water }
+      },
       {
         id: "rivers", type: "line", source: "protomaps", "source-layer": "physical_line",
         filter: ["in", "kind", "river", "stream"],
