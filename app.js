@@ -311,16 +311,16 @@ const localRegistered = {};
 // 부팅 시 R2 설정을 읽고 실패하면 캐시→기본값. iOS 도 동일 JSON 을 소비 (데이터 주도 정책).
 // admin_server.py 기본값과 일치 유지. 정상의 size 는 주봉 크기(부봉은 비율 축소).
 const SPOT_DISPLAY_DEFAULT = {
-  정상: { zoom: 0, icon: true, size: 14.4, bold: true },
-  장소: { zoom: 14, icon: true, size: 8.9, bold: false },
-  조망점: { zoom: 18, icon: true, size: 8.4, bold: false },
-  화장실: { zoom: 18, icon: true, size: 8.4, bold: false },
-  정자: { zoom: 18, icon: true, size: 8.4, bold: false },
-  헬기장: { zoom: 18, icon: true, size: 8.4, bold: false },
-  음수대: { zoom: 18, icon: true, size: 8.4, bold: false },
-  주차장: { zoom: null, icon: true, size: 8.4, bold: false },
-  분기점: { zoom: null, icon: true, size: 8.9, bold: false },
-  시종점: { zoom: null, icon: true, size: 8.9, bold: false },
+  정상: { zoom: 0, icon: true, size: 14, bold: true },
+  장소: { zoom: 14, icon: true, size: 8, bold: false },
+  조망점: { zoom: 18, icon: true, size: 8, bold: false },
+  화장실: { zoom: 18, icon: true, size: 8, bold: false },
+  정자: { zoom: 18, icon: true, size: 8, bold: false },
+  헬기장: { zoom: 18, icon: true, size: 8, bold: false },
+  음수대: { zoom: 18, icon: true, size: 8, bold: false },
+  주차장: { zoom: null, icon: true, size: 8, bold: false },
+  분기점: { zoom: null, icon: true, size: 8, bold: false },
+  시종점: { zoom: null, icon: true, size: 8, bold: false },
 };
 function normSpotDisplay(raw) {
   const out = {};

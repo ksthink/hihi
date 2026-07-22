@@ -40,30 +40,30 @@ BIND = os.environ.get("ADMIN_BIND", "0.0.0.0")
 # bold: 볼드}. 레거시 파일/요청(값이 숫자|null)은 _norm_display_cat 이 zoom 으로 승격.
 # 앱(app.js SPOT_DISPLAY_DEFAULT · basemap-style.js POI_DISPLAY_DEFAULT)과 일치 유지.
 SPOT_DISPLAY_DEFAULT = {"version": 2, "categories": {
-    "정상": {"zoom": 0, "icon": True, "size": 14.4, "bold": True},
-    "장소": {"zoom": 14, "icon": True, "size": 8.9, "bold": False},
-    "조망점": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
-    "화장실": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
-    "정자": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
-    "헬기장": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
-    "음수대": {"zoom": 18, "icon": True, "size": 8.4, "bold": False},
-    "주차장": {"zoom": None, "icon": True, "size": 8.4, "bold": False},
-    "분기점": {"zoom": None, "icon": True, "size": 8.9, "bold": False},
-    "시종점": {"zoom": None, "icon": True, "size": 8.9, "bold": False},
+    "정상": {"zoom": 0, "icon": True, "size": 14, "bold": True},
+    "장소": {"zoom": 14, "icon": True, "size": 8, "bold": False},
+    "조망점": {"zoom": 18, "icon": True, "size": 8, "bold": False},
+    "화장실": {"zoom": 18, "icon": True, "size": 8, "bold": False},
+    "정자": {"zoom": 18, "icon": True, "size": 8, "bold": False},
+    "헬기장": {"zoom": 18, "icon": True, "size": 8, "bold": False},
+    "음수대": {"zoom": 18, "icon": True, "size": 8, "bold": False},
+    "주차장": {"zoom": None, "icon": True, "size": 8, "bold": False},
+    "분기점": {"zoom": None, "icon": True, "size": 8, "bold": False},
+    "시종점": {"zoom": None, "icon": True, "size": 8, "bold": False},
 }}
 
 POI_DISPLAY_DEFAULT = {"version": 2, "categories": {
-    "전철역": {"zoom": 12, "icon": True, "size": 10.1, "bold": False},
-    "버스정류장": {"zoom": 14.5, "icon": True, "size": 8.4, "bold": False},
-    "사찰": {"zoom": 13.5, "icon": True, "size": 9.7, "bold": False},
-    "편의시설": {"zoom": 14, "icon": True, "size": 8.4, "bold": False},
-    "학교": {"zoom": 14, "icon": False, "size": 9.2, "bold": False},
-    "관공서": {"zoom": 14.5, "icon": False, "size": 9.2, "bold": False},
-    "병원": {"zoom": 13.5, "icon": False, "size": 9.2, "bold": False},
-    "아파트단지": {"zoom": 14, "icon": False, "size": 9.2, "bold": False},
-    "공원": {"zoom": 14, "icon": False, "size": 9.2, "bold": False},
-    "마트·쇼핑": {"zoom": 15, "icon": False, "size": 9.2, "bold": False},
-    "문화·체육": {"zoom": 15, "icon": False, "size": 9.2, "bold": False},
+    "전철역": {"zoom": 12, "icon": True, "size": 10, "bold": False},
+    "버스정류장": {"zoom": 14, "icon": True, "size": 8, "bold": False},
+    "사찰": {"zoom": 14, "icon": True, "size": 10, "bold": False},
+    "편의시설": {"zoom": 14, "icon": True, "size": 8, "bold": False},
+    "학교": {"zoom": 14, "icon": False, "size": 10, "bold": False},
+    "관공서": {"zoom": 14, "icon": False, "size": 10, "bold": False},
+    "병원": {"zoom": 14, "icon": False, "size": 10, "bold": False},
+    "아파트단지": {"zoom": 14, "icon": False, "size": 10, "bold": False},
+    "공원": {"zoom": 14, "icon": False, "size": 10, "bold": False},
+    "마트·쇼핑": {"zoom": 15, "icon": False, "size": 10, "bold": False},
+    "문화·체육": {"zoom": 15, "icon": False, "size": 10, "bold": False},
 }}
 
 

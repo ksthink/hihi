@@ -1060,14 +1060,19 @@ const LAYOUT_KEY = "hiheight-admin-layout";   // "v"(상하) | "h"(좌우)
 
 // ── 표시 설정 (앱 전역 — 분류별 {줌, 기호, 크기, 볼드}) ──
 // 스팟(R2 config/spot-display.json)과 기저지도 POI(config/poi-display.json)가 같은 편집기 공유.
-const SPOT_ZOOM_OPTS = [
-  [null, "끔"], [0, "항상"], [10, "z10 (광역)"], [12, "z12 (산 전체)"],
-  [14, "z14"], [16, "z16"], [18, "z18 (축척 30m)"],
+// 노출 줌 — 스팟·POI 공용. 예전엔 스팟이 2단위(10·12·14·16·18), POI 가 0.5단위(12~16)로
+// 갈려 있어 같은 "z14"가 두 화면에서 다른 의미처럼 읽혔다. 정수 1단계로 통일한다.
+// 라벨의 축척은 대략치(위도 37.5° 기준) — 숫자만 보고 감이 안 오는 문제를 함께 해소.
+const ZOOM_OPTS = [
+  [null, "끔"], [0, "항상"],
+  [10, "z10 · 광역 (20km)"], [11, "z11 · 시 전체 (10km)"],
+  [12, "z12 · 산 전체 (5km)"], [13, "z13 · 산기슭 (3km)"],
+  [14, "z14 · 동네 (1km)"], [15, "z15 · 들머리 (500m)"],
+  [16, "z16 · 근접 (300m)"], [17, "z17 · 건물 (150m)"], [18, "z18 · 코앞 (70m)"],
 ];
-const POI_ZOOM_OPTS = [
-  [null, "끔"], [12, "z12 (산 전체)"], [12.5, "z12.5"], [13, "z13"], [13.5, "z13.5"],
-  [14, "z14 (동네)"], [14.5, "z14.5"], [15, "z15"], [16, "z16 (근접)"],
-];
+// 글자 크기 — 4단계로 단순화. 이전엔 6~24 를 0.1 단위로 받아 8.4·8.9·9.2·9.7·10.1 처럼
+// 미세하게 갈렸는데, 흑백 지도에서 그 차이는 읽히지 않고 관리만 어려웠다.
+const SIZE_OPTS = [8, 10, 12, 14];
 // 아이콘 자체가 없는 분류 (기저지도 도시 POI — 텍스트 전용 레이어)
 const POI_NO_ICON = ["학교", "관공서", "병원", "아파트단지", "공원", "마트·쇼핑", "문화·체육"];
 
@@ -1081,7 +1086,7 @@ function ctl(caption, el) {
 
 // 설정 섹션 바인딩 — load 함수를 돌려준다.
 // onChange(categories): 값이 바뀔 때마다(저장 전에도) 호출 — 편집 지도 라이브 미리보기용.
-function bindDisplayCfg(apiPath, prefix, zoomOpts, noIconCats = [], onChange = null) {
+function bindDisplayCfg(apiPath, prefix, noIconCats = [], onChange = null) {
   let cfg = null;
   const state = (t) => { $(`${prefix}-state`).textContent = t; };
   async function load() {
@@ -1097,8 +1102,9 @@ function bindDisplayCfg(apiPath, prefix, zoomOpts, noIconCats = [], onChange = n
       row.className = "spotcfg-row";
       // 노출 줌
       const sel = document.createElement("select");
-      const opts = zoomOpts.some(([v]) => v === val.zoom) ? zoomOpts
-        : [...zoomOpts, [val.zoom, `z${val.zoom}`]]; // 목록 밖 저장값도 보이게
+      // 목록 밖 저장값(예전 0.5 단위)도 사라지지 않게 보여준다 — 고르면 정수로 정리된다.
+      const opts = ZOOM_OPTS.some(([v]) => v === val.zoom) ? ZOOM_OPTS
+        : [...ZOOM_OPTS, [val.zoom, `z${val.zoom} (이전 값)`]];
       for (const [v, label] of opts) {
         const o = document.createElement("option");
         o.value = v === null ? "" : v;
@@ -1114,15 +1120,20 @@ function bindDisplayCfg(apiPath, prefix, zoomOpts, noIconCats = [], onChange = n
       icon.disabled = noIconCats.includes(cat);
       if (icon.disabled) icon.title = "이 분류는 텍스트 전용";
       icon.onchange = () => { val.icon = icon.checked; dirty(); };
-      // 글자 크기
-      const size = document.createElement("input");
-      size.type = "number";
-      size.min = 6; size.max = 24; size.step = 0.1; size.value = val.size;
-      size.onchange = () => {
-        const n = parseFloat(size.value);
-        if (Number.isFinite(n) && n >= 6 && n <= 24) { val.size = n; dirty(); }
-        else size.value = val.size; // 범위 밖 입력 원복
-      };
+      // 글자 크기 — 4단계 선택. 예전 값(8.4·9.2·10.1 등)은 가장 가까운 단계로 보여주고,
+      // 저장하면 그 값으로 정규화된다(단순화가 목적이라 원래 값을 남기지 않는다).
+      const size = document.createElement("select");
+      const near = SIZE_OPTS.reduce((a, b) =>
+        Math.abs(b - val.size) < Math.abs(a - val.size) ? b : a);
+      for (const px of SIZE_OPTS) {
+        const o = document.createElement("option");
+        o.value = px;
+        o.textContent = `${px}px`;
+        o.selected = px === near;
+        size.appendChild(o);
+      }
+      if (near !== val.size) val.size = near;   // 표시와 저장값을 일치시킨다
+      size.onchange = () => { val.size = +size.value; dirty(); };
       // 볼드
       const bold = document.createElement("input");
       bold.type = "checkbox";
@@ -1153,11 +1164,11 @@ function bindDisplayCfg(apiPath, prefix, zoomOpts, noIconCats = [], onChange = n
 // 라이브 미리보기: 스팟 설정 → 편집 레이어 즉시 반영, POI 설정 → 기저지도 재생성.
 // (POI 는 값이 실제로 달라졌을 때만 setStyle — 불필요한 지도 리로드 방지)
 let lastPoiJson = JSON.stringify(normPoiDisplay(null));
-const loadSpotCfg = bindDisplayCfg("/config/spots", "spotcfg", SPOT_ZOOM_OPTS, [], (cats) => {
+const loadSpotCfg = bindDisplayCfg("/config/spots", "spotcfg", [], (cats) => {
   spotCfgLive = cats;
   applySpotEditorStyle();
 });
-const loadPoiCfg = bindDisplayCfg("/config/poi", "poicfg", POI_ZOOM_OPTS, POI_NO_ICON, (cats) => {
+const loadPoiCfg = bindDisplayCfg("/config/poi", "poicfg", POI_NO_ICON, (cats) => {
   poiCfgLive = cats;
   const j = JSON.stringify(normPoiDisplay(cats));
   if (j === lastPoiJson) return;

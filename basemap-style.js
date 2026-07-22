@@ -10,17 +10,17 @@
 // 조망점)보다 시각적으로 튀지 않게 텍스트 위주로 억제한다.
 // iOS 도 동일 JSON 을 소비 (데이터 주도 정책). admin_server.py 기본값과 일치 유지.
 export const POI_DISPLAY_DEFAULT = {
-  전철역: { zoom: 12, icon: true, size: 10.1, bold: false },
-  버스정류장: { zoom: 14.5, icon: true, size: 8.4, bold: false },
-  사찰: { zoom: 13.5, icon: true, size: 9.7, bold: false },
-  편의시설: { zoom: 14, icon: true, size: 8.4, bold: false },
-  학교: { zoom: 14, icon: false, size: 9.2, bold: false },
-  관공서: { zoom: 14.5, icon: false, size: 9.2, bold: false },
-  병원: { zoom: 13.5, icon: false, size: 9.2, bold: false },
-  아파트단지: { zoom: 14, icon: false, size: 9.2, bold: false },
-  공원: { zoom: 14, icon: false, size: 9.2, bold: false },
-  "마트·쇼핑": { zoom: 15, icon: false, size: 9.2, bold: false },
-  "문화·체육": { zoom: 15, icon: false, size: 9.2, bold: false },
+  전철역: { zoom: 12, icon: true, size: 10, bold: false },
+  버스정류장: { zoom: 14, icon: true, size: 8, bold: false },
+  사찰: { zoom: 14, icon: true, size: 10, bold: false },
+  편의시설: { zoom: 14, icon: true, size: 8, bold: false },
+  학교: { zoom: 14, icon: false, size: 10, bold: false },
+  관공서: { zoom: 14, icon: false, size: 10, bold: false },
+  병원: { zoom: 14, icon: false, size: 10, bold: false },
+  아파트단지: { zoom: 14, icon: false, size: 10, bold: false },
+  공원: { zoom: 14, icon: false, size: 10, bold: false },
+  "마트·쇼핑": { zoom: 15, icon: false, size: 10, bold: false },
+  "문화·체육": { zoom: 15, icon: false, size: 10, bold: false },
 };
 
 // 설정 정규화: 카테고리 누락·레거시 숫자값을 기본값 위에 병합해 항상 완전한 객체로.
