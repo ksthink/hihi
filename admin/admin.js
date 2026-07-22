@@ -1399,8 +1399,24 @@ $("cu-save").onclick = async () => {
   }
 };
 
+// ── 배포 버전 표시 ──
+// 원격(EC2) 체크아웃에서 "git pull 이 반영됐는지"를 눈으로 확인하기 위한 것.
+// 서버가 요청 시점의 git HEAD 를 읽어 주므로 정적 파일만 pull 해도 즉시 갱신된다.
+// dirty = 추적 파일에 수정 있음 — admin_data/ 를 쓰는 서버 특성상 관리자 작업 후엔
+// 보통 켜지며, 다음 pull 이 충돌할 수 있다는 신호다.
+async function loadVersion() {
+  const el = $("app-version");
+  try {
+    const v = await api("/version");
+    if (!v.commit) { el.textContent = ""; return; }
+    el.textContent = `${v.commit}${v.dirty ? " *" : ""} · ${v.date}`;
+    el.title = `${v.subject}\n${v.date}` + (v.dirty ? "\n\n* 추적 파일에 수정 있음 (pull 충돌 주의)" : "");
+  } catch (_) { el.textContent = ""; }
+}
+
 // ── 부팅 ── (401 이면 api() 가 로그인 게이트를 띄움)
 refreshList().catch(() => {});
 loadSpotCfg().catch(() => {});
 loadPoiCfg().catch(() => {});
 loadCurations().catch(() => {});
+loadVersion().catch(() => {});

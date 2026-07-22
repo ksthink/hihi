@@ -17,6 +17,7 @@ import os
 import queue
 import re
 import secrets
+import subprocess
 import sys
 import threading
 import time
@@ -65,6 +66,36 @@ POI_DISPLAY_DEFAULT = {"version": 2, "categories": {
     "마트·쇼핑": {"zoom": 15, "icon": False, "size": 10, "bold": False},
     "문화·체육": {"zoom": 15, "icon": False, "size": 10, "bold": False},
 }}
+
+
+# ── 배포 버전 (관리자 콘솔 우상단 표시) ──
+# EC2 등 원격 체크아웃에서 "git pull 이 반영됐는지"를 눈으로 확인하기 위한 것.
+# ⚠️ 시작 시점이 아니라 **요청 시점**에 읽는다 — 정적 파일(admin/*.js·css)만 pull 한
+#    경우엔 서버를 재시작하지 않으므로, 시작 시 캐시하면 옛 커밋을 계속 보여준다.
+_VER_CACHE = {"t": 0.0, "v": None}
+
+
+def git_version():
+    """{commit, date, subject, dirty} — git 이 없거나 실패하면 빈 값."""
+    now = time.time()
+    if _VER_CACHE["v"] and now - _VER_CACHE["t"] < 5:   # 연타 방지용 짧은 캐시
+        return _VER_CACHE["v"]
+
+    def git(*args):
+        try:
+            r = subprocess.run(["git", "-C", ROOT, *args],
+                               capture_output=True, text=True, timeout=3)
+            return r.stdout.strip() if r.returncode == 0 else ""
+        except Exception:
+            return ""
+
+    v = {"commit": git("rev-parse", "--short", "HEAD"),
+         "date": git("log", "-1", "--format=%cd", "--date=format:%Y-%m-%d %H:%M"),
+         "subject": git("log", "-1", "--format=%s"),
+         # admin_data/ 가 추적 대상이라 관리자 작업 후엔 dirty 가 뜬다 — pull 충돌 예고.
+         "dirty": bool(git("status", "--porcelain"))}
+    _VER_CACHE.update(t=now, v=v)
+    return v
 
 
 def _norm_display_cat(cat, v, default):
@@ -381,6 +412,10 @@ class AdminHandler(BaseHandler):
 
     # ── 라우팅 ──
     def _dispatch(self, method, p, q):
+        # GET /api/version — 배포된 커밋(관리자 우상단 표시)
+        if method == "GET" and p == ["version"]:
+            return self._json(git_version())
+
         # GET /api/weather?op=&nx=&ny=&base_date=&base_time=  (기상청 프록시)
         if method == "GET" and p == ["weather"]:
             return self._weather(q)

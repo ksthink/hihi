@@ -116,6 +116,12 @@ body {
 
 #side-head { display: flex; align-items: baseline; justify-content: space-between; }
 .head-right { display: flex; align-items: center; gap: 8px; }
+/* 배포 버전 — 눈에 띄지 않게, 다만 언제든 확인 가능하게 */
+#app-version {
+  font-size: 10.5px; color: #999; letter-spacing: .02em;
+  white-space: nowrap; cursor: default;
+}
+#app-version:hover { color: #333; }
 #logout { font-size: 11.5px; padding: 3px 8px; color: #666; }
 #logout:hover { color: #111; }
 h1 { font-size: 17px; margin: 0 0 10px; }
