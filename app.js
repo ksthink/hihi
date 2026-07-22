@@ -118,6 +118,26 @@ window.__map = map; // 디버그·헤드리스 테스트 훅 (모듈 스코프�
 // 초기 load 발생 여부 — isStyleLoaded() 는 타일 로딩 중 false 라 이 플래그로 판별
 let mapLoadFired = false;
 map.once("load", () => { mapLoadFired = true; });
+
+// ── 레이어 숨기기 디버그 훅 — ?hide=<레이어id>[,<레이어id>…] ──
+// "얼룩 폴리곤"처럼 어느 레이어가 그리는지 눈으로 갈라야 할 때 쓴다.
+// 예) ?hide=landuse-park            공원 채움만 끄기
+//     ?hide=earth,water,buildings   여러 개
+//     ?hide=*fill                   채움(fill) 레이어 전부
+// 스타일을 갈아끼워도 유지되도록 styledata 마다 다시 적용한다.
+const HIDE = (new URLSearchParams(location.search).get("hide") || "")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+if (HIDE.length) {
+  const applyHide = () => {
+    if (!map.style?._loaded) return;
+    for (const L of map.getStyle().layers || []) {
+      const match = HIDE.includes(L.id) || (HIDE.includes("*fill") && L.type === "fill");
+      if (match) { try { map.setLayoutProperty(L.id, "visibility", "none"); } catch (_) {} }
+    }
+  };
+  map.on("styledata", applyHide);
+  console.log("[hide]", HIDE.join(", "));
+}
 // 하단 시트(232px)+탭바(72px)가 지도 아래를 상시 덮음(style.css #sheet) — 카메라 기준을
 // 가시 영역으로 보정. 최대 축소 클램프·fitBounds·flyTo 가 시트 위 영역 중심으로 동작해
 // 최남단(제주)이 시트에 가려지지 않는다. 등반 모드는 시트가 사라지므로 0 으로 전환.
