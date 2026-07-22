@@ -15,6 +15,7 @@ struct DeungView: View {
     @State private var weather: [WeatherHour] = []   // 선택된 산 시간대별 예보
     @StateObject private var packs = PackStore.shared    // 저장된 오프라인 지도 목록
     @State private var deletePackTarget: Mountain?       // 삭제 확인 대상
+    @State private var showPackPrompt = false            // 팩 없이 등반 시작 시 저장 권유
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -97,8 +98,12 @@ struct DeungView: View {
                 guard climb.course != nil else { return }
                 if auth.email == nil { loginHint = true; return }   // 저장하려면 로그인 필요(웹 동일)
                 loginHint = false
-                climb.start()
-                onStart()
+                // 등반 중에는 저장된 지도만 쓴다(신호 끊김·배터리). 팩이 없으면 저장을 권하고,
+                // 무시하면 온라인 모드로 진행한다.
+                if let m = catalog.selected, !packs.downloaded.contains(m.id) {
+                    showPackPrompt = true; return
+                }
+                beginClimb()
             } label: {
                 Text("등반 시작").font(.kakao(size: 15, weight: .bold))
                     .foregroundStyle(c == nil ? t.muted : t.onAccent)
@@ -115,6 +120,27 @@ struct DeungView: View {
                 Text("등반 기록을 저장하려면 기록 탭에서 로그인하세요.")
                     .font(.kakao(size: 11)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
             }
+            // 저장을 고른 경우 — 다운로드가 끝나면 자동으로 등반이 시작되므로 진행률을 보여준다.
+            if let m = catalog.selected, packs.downloadingCode == m.id {
+                VStack(spacing: 4) {
+                    ProgressView(value: packs.progress).tint(t.accent)
+                    Text(packs.status).font(.kakao(size: 11)).foregroundStyle(t.muted)
+                }
+            }
+        }
+        // 팩 없이 등반 시작 → 저장 권유. 무시하면 온라인 모드로 진행한다.
+        .confirmationDialog("지도 다운로드", isPresented: $showPackPrompt,
+                            titleVisibility: .visible, presenting: climb.course == nil ? nil : catalog.selected) { m in
+            Button("지도 저장") {
+                Task {
+                    if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) }
+                    beginClimb()                       // 실패해도 진행 — 온라인 모드로 등반
+                }
+            }
+            Button("무시하고 시작") { beginClimb() }
+            Button("취소", role: .cancel) {}
+        } message: { _ in
+            Text("등반 중 배터리 절약을 위해 지도 다운을 권장합니다.")
         }
         .padding(16)
         .frame(maxWidth: .infinity)
@@ -155,6 +181,12 @@ struct DeungView: View {
                 Button("삭제", role: .destructive) { packs.delete(m.id); Task { await auth.removeSavedPack(m.id) } }
             } message: { m in Text("\(m.name)의 저장된 지도를 삭제합니다.") }
         }
+    }
+
+    // 등반 시작 — 세션 시작 + 탐험 탭으로 전환. 팩 저장 여부와 무관하게 여기 한 곳으로 모은다.
+    private func beginClimb() {
+        climb.start()
+        onStart()
     }
 
     // 통계 셀 — 값(15 bold 또는 난이도 미터) + 라벨(10 muted). 웹 climb-stats > div.
