@@ -86,10 +86,16 @@ function regionGroup(region) {
 }
 
 // ── 지도 ──
+// ⚠️ baseMode 를 반드시 "city" 로 넘긴다. 기본값 "terrain" 은 TERRAIN_DROP 으로
+// stations·bus-stops·poi-urban·admin-labels 레이어를 통째로 걷어내기 때문에,
+// 표시 설정에서 전철역을 "항상"으로 바꿔도 관리자 지도에는 나타날 수가 없었다
+// (11개 분류 중 9개가 미리보기 불가였다 — 2026-07-23).
+const ADMIN_BASE_MODE = "city";
 maplibregl.addProtocol("pmtiles", new Protocol().tile);
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle(`${location.origin}/pmtiles/kr-base.pmtiles`, "light", `${location.origin}/pmtiles/kr-terrain.pmtiles`),
+  style: buildStyle(`${location.origin}/pmtiles/kr-base.pmtiles`, "light",
+    `${location.origin}/pmtiles/kr-terrain.pmtiles`, null, ADMIN_BASE_MODE),
   center: [127.5, 36.5], zoom: 6.5,
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], minZoom: 5,
   localIdeographFontFamily: "'MonaS12', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
@@ -132,7 +138,7 @@ function applySpotEditorStyle() {
 // 안 올 수 있고, 인라인 스타일 객체 교체는 로드 중에도 안전함(실측 확인).
 function applyPoiEditorStyle() {
   map.setStyle(buildStyle(`${location.origin}/pmtiles/kr-base.pmtiles`, "light",
-    `${location.origin}/pmtiles/kr-terrain.pmtiles`, poiCfgLive));
+    `${location.origin}/pmtiles/kr-terrain.pmtiles`, poiCfgLive, ADMIN_BASE_MODE));
 }
 
 // 편집 소스/레이어 부착 — 최초 styledata(초기 스타일)와 setStyle(설정 변경) 후 공용.
