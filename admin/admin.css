@@ -17,79 +17,112 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
-  display: flex;
+  display: flex; flex-direction: column;   /* 상단바 → 작업영역 */
   font: 13px/1.5 -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   color: #111; background: #fff;
 }
 [hidden] { display: none !important; }
 
-#side {
-  width: 360px; min-width: 280px; height: 100%;
-  position: relative; /* #side-resize(폭 조절 핸들) 기준 */
-  display: flex; flex-direction: column;
+/* ── 레이아웃 ── 상단바 + (편집 패널 | 지도) · 큐레이션은 전체 폭 ──
+   예전의 상하↔좌우 2단 전환·드래그 배치는 폐기(탭으로 나뉘어 필요 없어짐).
+   남긴 조작은 편집 패널 폭 조절 하나뿐. */
+#topbar {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 16px;
+  padding: 0 14px; height: 46px;
+  border-bottom: 1px solid #ddd; background: #fafafa;
+}
+#topbar h1 { font-size: 15px; margin: 0; white-space: nowrap; }
+#tabs { display: flex; gap: 4px; }
+.tab {
+  border: 0; background: transparent; color: #666;
+  padding: 6px 14px; border-radius: 7px; font-size: 13.5px; font-weight: 600;
+}
+.tab:hover { background: #eee; color: #111; }
+.tab.active { background: #111; color: #fff; }
+#topbar .head-right { margin-left: auto; }
+
+#workspace { flex: 1 1 auto; min-height: 0; display: flex; position: relative; }
+
+/* 편집 패널 — 헤드(고정) + 스크롤 본문 + 배포(고정) */
+#editor-panel {
+  width: 380px; min-width: 300px; flex: 0 0 auto;
+  position: relative; /* #panel-resize 기준 */
+  display: flex; flex-direction: column; min-height: 0;
   border-right: 1px solid #ddd; background: #fafafa;
 }
-/* 사이드 전체 폭 조절 핸들 — 지도와의 경계선 위 (상하/좌우 모드 공통) */
-#side-resize {
+#panel-head { flex: 0 0 auto; padding: 10px 16px 8px; border-bottom: 1px solid #e6e6e6; }
+#cur-mnt { display: block; font-size: 12px; margin-bottom: 7px; }
+#cur-mnt.on { color: #111; font-weight: 700; font-size: 13px; }
+#subtabs { display: flex; gap: 4px; }
+.subtab {
+  flex: 1; border: 1px solid #ddd; background: #fff; color: #666;
+  padding: 5px 0; border-radius: 6px; font-size: 12.5px;
+}
+.subtab:hover { border-color: #111; color: #111; }
+.subtab.active { background: #111; color: #fff; border-color: #111; }
+
+#panel-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px 16px 24px; }
+
+/* 배포 — 어느 서브탭에서도 닿게 패널 하단 고정 */
+#publish-box {
+  flex: 0 0 auto; padding: 10px 16px 12px;
+  border-top: 1px solid #ddd; background: #f2f2f2;
+  max-height: 46%; overflow-y: auto;
+}
+.danger-box { margin-top: 8px; }
+.danger-box summary { font-size: 12px; color: #b00020; cursor: pointer; }
+.danger-box p { margin: 6px 0 0; }
+
+/* 패널 폭 조절 핸들 */
+#panel-resize {
   position: absolute; top: 0; right: -4px; width: 9px; height: 100%;
   cursor: col-resize; z-index: 5; touch-action: none;
 }
-#side-resize:hover, #side-resize.dragging { background: rgba(0, 0, 0, .08); }
-/* 상하 2단 — 각각 독립 스크롤. 구분선을 드래그해 높이 조절(기본 상단 42%). */
-#side-top {
-  flex: 0 0 auto; height: 42%; min-height: 80px; overflow-y: auto;
-  padding: 14px 16px 10px;
-}
-#side-bottom {
-  flex: 1 1 auto; min-height: 0; min-width: 0;
+#panel-resize:hover, #panel-resize.dragging { background: rgba(0, 0, 0, .08); }
+
+.sec-mnt-empty { margin: 8px 2px; }
+#map { flex: 1 1 auto; min-width: 0; height: 100%; }
+
+/* ── 지도 표시 설정 오버레이 ── 미리보기를 보며 조절하므로 지도 위에 띄운다 */
+#mapcfg {
+  position: absolute; top: 12px; right: 12px; z-index: 10;
+  width: 330px; max-width: 42%;
   display: flex; flex-direction: column;
+  background: rgba(255, 255, 255, .97); border: 1px solid #ccc; border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .14);
 }
-#bottom-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 16px 40px; }
+#mapcfg.collapsed #mapcfg-body { display: none; }
+#mapcfg-toggle {
+  border: 0; background: transparent; text-align: left;
+  padding: 8px 12px; font-size: 12.5px; font-weight: 700; border-radius: 10px;
+}
+#mapcfg-toggle:hover { background: #f0f0f0; }
+#mapcfg-body { padding: 0 12px 10px; max-height: 62vh; overflow-y: auto; }
+#mapcfg-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.mcfg-tab {
+  flex: 1; border: 1px solid #ddd; background: #fff; color: #666;
+  padding: 4px 0; border-radius: 6px; font-size: 12px;
+}
+.mcfg-tab.active { background: #111; color: #fff; border-color: #111; }
 
-/* 편집 패널 드래그 바 (배치 변경 손잡이) */
-#bottom-bar {
-  flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
-  padding: 5px 12px; background: #f0f0f0; border-bottom: 1px solid #ddd;
-  cursor: grab; user-select: none; touch-action: none; font-size: 11.5px; color: #666;
+/* ── 큐레이션 (지도 숨김 · 전체 폭) ── */
+#curation-view { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 16px 20px 40px; }
+#curation-view .cu-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 12px;
 }
-#bottom-bar.dragging { cursor: grabbing; background: #e6e6e6; }
-#bottom-bar .grip {
-  width: 22px; height: 9px; flex: 0 0 auto;
-  background-image: radial-gradient(#adadad 1px, transparent 1.4px);
-  background-size: 5px 4px; background-position: center;
+#curation-view .cu-head h2 { margin: 0; }
+/* 넓은 화면에서 큐레이션 카드를 나란히 — renderCurations() 는 손대지 않고 CSS 로만 */
+#curation-view #cu-list {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  align-items: start;
 }
-#bottom-bar .bb-label { flex: 1; }
-#dock-toggle { padding: 1px 8px; font-size: 13px; line-height: 1.3; color: #444; }
 
-/* 드래그 구분선 (상하 모드=가로 row-resize) */
-#side-divider {
-  flex: 0 0 auto; height: 9px; cursor: row-resize;
-  background: #eee; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc;
-  display: flex; align-items: center; justify-content: center; touch-action: none;
-}
-#side-divider::before {
-  content: ""; width: 34px; height: 3px; border-radius: 2px; background: #bbb;
-}
-#side-divider:hover::before { background: #777; }
-
-/* ── 좌우 2단 모드 (side-by-side) ── #side 를 가로 배치로 뒤집는다 */
-#side.mode-h { flex-direction: row; }              /* 폭은 JS 가 인라인으로 지정 */
-.mode-h #side-top { height: auto; min-width: 0; align-self: stretch; } /* 폭은 인라인 */
-.mode-h #side-divider {
-  height: auto; width: 9px; cursor: col-resize; align-self: stretch;
-  border: 0; border-left: 1px solid #ccc; border-right: 1px solid #ccc;
-}
-.mode-h #side-divider::before { width: 3px; height: 34px; }
-
-/* 드롭 존 힌트 (드래그 중 배치 미리보기) */
-#dock-hint {
-  position: fixed; z-index: 90; pointer-events: none;
-  border: 2px dashed #111; background: rgba(0,0,0,.06); border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 700; color: #111;
-}
-#sec-mnt-empty { margin: 8px 2px; }
-#map { flex: 1; height: 100%; }
+/* 오버레이 안의 설정 행 — 폭이 좁으므로 분류명을 한 줄 위로 올려 컨트롤에 자리를 준다 */
+#mapcfg .spotcfg-row { flex-wrap: wrap; padding: 5px 0; }
+#mapcfg .cfg-cat { flex: 0 0 100%; margin-bottom: 2px; }
+#mapcfg .spotcfg-row select { max-width: 150px; }
 
 /* 지역 필터 탭 */
 #region-tabs { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 10px; }
@@ -114,7 +147,6 @@ body {
 #draft-list li.region-head:first-child { margin-top: 0; }
 #draft-list li.empty-note { padding: 10px 2px; }
 
-#side-head { display: flex; align-items: baseline; justify-content: space-between; }
 .head-right { display: flex; align-items: center; gap: 8px; }
 /* 배포 버전 — 눈에 띄지 않게, 다만 언제든 확인 가능하게 */
 #app-version {
@@ -258,8 +290,8 @@ button.active { background: #111; color: #fff; }
   font-family: "MonaS12", monospace;
 }
 
-/* GPX / 배포 박스 */
-.gpx-box, .publish-box {
+/* GPX 박스 (배포는 #publish-box 가 패널 하단 고정으로 직접 스타일) */
+.gpx-box {
   border: 1px solid #ddd; border-radius: 8px; background: #fff;
   padding: 10px; margin: 12px 0;
 }

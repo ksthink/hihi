@@ -356,8 +356,8 @@ async function selectMountain(code) {
   S.selCourse = null; S.gpx = null;
   S.draft = await api(`/mountains/${code}/draft`);
   if (renumberCourses()) markDirty(); // 레거시 초안(번호 없음·구멍)도 순서 기준으로 정규화
-  $("sec-mnt").hidden = false;
-  $("sec-mnt-empty").hidden = true;
+  setMountainVisible(true);
+  showSub("course");            // 산을 고르면 바로 편집으로 — 목록에 머물 이유가 없다
   clearGpxPreview();
   renderMountain();
   refreshList();
@@ -388,6 +388,8 @@ async function loadContours(code) {
 function renderMountain() {
   const m = S.draft.mountain;
   $("mnt-title").textContent = `${m.name} (${m.code})`;
+  $("cur-mnt").textContent = `${m.name} · ${m.code}`;   // 패널 헤드(서브탭 위) 현재 산
+  $("cur-mnt").classList.add("on");
   $("m-name").value = m.name || "";
   $("m-region").value = m.region || "";
   $("m-elev").value = m.elev ?? "";
@@ -890,8 +892,10 @@ $("prod-del").onclick = async () => {
   clearTimeout(saveTimer); // 예약된 자동저장도 취소
   const r = await api(`/mountains/${code}`, { method: "DELETE" });
   S.code = null; S.draft = null;
-  $("sec-mnt").hidden = true;
-  $("sec-mnt-empty").hidden = false;
+  setMountainVisible(false);
+  $("cur-mnt").textContent = "산을 선택하세요";
+  $("cur-mnt").classList.remove("on");
+  showSub("list");
   for (const s of ["contours", "network", "courses", "spots"]) map.getSource(s)?.setData(EMPTY);
   refreshList();
   alert(`"${nm}" 삭제 완료 — 카탈로그 ${r.catalog_deleted ? "1행" : "없음"}, R2 파일 ${r.r2_deleted ?? 0}개, 초안 ${r.draft_removed ? "제거" : "없음"}`
@@ -924,139 +928,93 @@ $("logout").onclick = () => {
   location.reload();
 };
 
-// ── 단 배치·크기 (드래그) ── 웹 전용 관리자 도구 (iOS 이식 무관)
-// 상하 2단(v) ↔ 좌우 2단(h) 전환은 #side 의 flex-direction 을 뒤집는 것.
-const SPLIT_KEY = "hiheight-admin-split";     // v 모드: 상단(목록) 높이 px
-const SPLITW_KEY = "hiheight-admin-splitw";   // h 모드: 좌측(목록) 폭 px
-const SIDEW_KEY = "hiheight-admin-sidew";     // h 모드: 사이드 전체 폭 px
-const SIDEVW_KEY = "hiheight-admin-sidevw";   // v 모드: 사이드 전체 폭 px
-const LAYOUT_KEY = "hiheight-admin-layout";   // "v"(상하) | "h"(좌우)
+// ── 화면 전환 (상단 탭 / 서브탭 / 지도 설정 오버레이) ──
+// 예전의 상하↔좌우 2단 드래그 배치(130줄)는 폐기했다 — 탭으로 나뉘어 한 번에 보이는 것이
+// 줄면서 필요 없어졌다. 남긴 조작은 편집 패널 폭 조절 하나뿐.
+const TAB_KEY = "hiheight-admin-tab";
+const PANELW_KEY = "hiheight-admin-panelw";
+
+// 지도 컨테이너 크기가 바뀌면 반드시 호출 — 빠뜨리면 지도가 잘린 채로 남는다.
+let _rz = false;
+const resizeMap = () => {
+  if (_rz) return;
+  _rz = true;
+  requestAnimationFrame(() => { _rz = false; map.resize(); });
+};
+
+// 상단 탭: 산 편집 ↔ 큐레이션(지도 숨기고 전체 폭)
+function showTab(name) {
+  const cu = name === "cu";
+  $("editor-panel").hidden = cu;
+  $("map").hidden = cu;
+  $("mapcfg").hidden = cu;
+  $("curation-view").hidden = !cu;
+  for (const b of document.querySelectorAll("#tabs .tab"))
+    b.classList.toggle("active", b.dataset.tab === name);
+  localStorage.setItem(TAB_KEY, name);
+  if (!cu) resizeMap();      // 숨김 상태에서 바뀐 컨테이너 크기를 지도에 알림
+}
+
+// 서브탭: 산 목록 / 등산로 / 스팟
+function showSub(name) {
+  for (const el of document.querySelectorAll("#panel-scroll .subpanel"))
+    el.hidden = el.dataset.sub !== name;
+  for (const b of document.querySelectorAll("#subtabs .subtab"))
+    b.classList.toggle("active", b.dataset.sub === name);
+}
+
+// 산 선택 여부에 따라 편집 영역/안내 문구 전환 (등산로·스팟 서브탭 공용)
+function setMountainVisible(on) {
+  for (const el of document.querySelectorAll("#panel-scroll .mnt-body")) el.hidden = !on;
+  for (const el of document.querySelectorAll("#panel-scroll .sec-mnt-empty")) el.hidden = on;
+  $("spotcfg-hint").hidden = on;   // 스팟 미리보기는 산이 선택돼야 보인다
+}
+
+for (const b of document.querySelectorAll("#tabs .tab")) b.onclick = () => showTab(b.dataset.tab);
+for (const b of document.querySelectorAll("#subtabs .subtab")) b.onclick = () => showSub(b.dataset.sub);
+
+// 지도 표시 설정 오버레이 — 접기/펼치기 + 스팟/기저POI 전환
+$("mapcfg-toggle").onclick = () => $("mapcfg").classList.toggle("collapsed");
+for (const b of document.querySelectorAll("#mapcfg-tabs .mcfg-tab")) {
+  b.onclick = () => {
+    for (const t of document.querySelectorAll("#mapcfg-tabs .mcfg-tab"))
+      t.classList.toggle("active", t === b);
+    for (const pane of document.querySelectorAll("#mapcfg .mapcfg-pane"))
+      pane.hidden = pane.dataset.cfg !== b.dataset.cfg;
+  };
+}
+
+// 편집 패널 폭 조절 (남긴 유일한 배치 조작)
 {
-  const side = $("side"), top = $("side-top"), divider = $("side-divider");
-  const bar = $("bottom-bar"), toggle = $("dock-toggle"), edge = $("side-resize");
-  const ls = (k) => +localStorage.getItem(k) || 0;
-  let layout = localStorage.getItem(LAYOUT_KEY) === "h" ? "h" : "v";
-
-  const clampH = (h) => Math.max(80, Math.min(side.getBoundingClientRect().height - 160, h));
-  const clampCol = (w) => Math.max(200, Math.min(side.getBoundingClientRect().width - 240, w));
-  const clampSide = (w) => Math.max(560, Math.min(window.innerWidth - 260, w));
-  const clampVSide = (w) => Math.max(280, Math.min(window.innerWidth - 260, w));
-  let raf = false;
-  const resizeMap = () => { if (!raf) { raf = true; requestAnimationFrame(() => { raf = false; map.resize(); }); } };
-
-  function applyLayout(mode) {
-    layout = mode;
-    side.classList.toggle("mode-h", mode === "h");
-    if (mode === "h") {                     // 좌우 2단: 폭을 인라인으로 지정
-      top.style.height = "";
-      side.style.width = clampSide(ls(SIDEW_KEY) || 700) + "px";
-      top.style.width = clampCol(ls(SPLITW_KEY) || 320) + "px";
-    } else {                                // 상하 2단: 높이 + 사이드 폭(기본 CSS 360)
-      top.style.width = "";
-      const w = ls(SIDEVW_KEY);
-      side.style.width = w ? clampVSide(w) + "px" : "";
-      const h = ls(SPLIT_KEY);
-      top.style.height = h ? clampH(h) + "px" : ""; // 없으면 CSS 42%
-    }
-    localStorage.setItem(LAYOUT_KEY, mode);
-    resizeMap();
-  }
-
-  // 구분선 드래그 = 크기 조절 (모드에 따라 높이/폭)
-  divider.addEventListener("pointerdown", (e) => {
+  const panel = $("editor-panel"), handle = $("panel-resize");
+  const clamp = (w) => Math.max(300, Math.min(window.innerWidth - 320, w));
+  const saved = +localStorage.getItem(PANELW_KEY) || 0;
+  if (saved) panel.style.width = clamp(saved) + "px";
+  handle.addEventListener("pointerdown", (e) => {
     e.preventDefault();
-    divider.setPointerCapture(e.pointerId);
-    const sx = e.clientX, sy = e.clientY;
-    const r0 = top.getBoundingClientRect(), sh = r0.height, sw = r0.width;
+    handle.setPointerCapture(e.pointerId);
+    handle.classList.add("dragging");
     document.body.style.userSelect = "none";
-    const onMove = (ev) => {
-      if (layout === "h") { top.style.width = clampCol(sw + ev.clientX - sx) + "px"; resizeMap(); }
-      else top.style.height = clampH(sh + ev.clientY - sy) + "px";
-    };
-    const onUp = () => {
-      divider.removeEventListener("pointermove", onMove);
-      divider.removeEventListener("pointerup", onUp);
-      document.body.style.userSelect = "";
-      const r = top.getBoundingClientRect();
-      localStorage.setItem(layout === "h" ? SPLITW_KEY : SPLIT_KEY,
-        Math.round(layout === "h" ? r.width : r.height));
-    };
-    divider.addEventListener("pointermove", onMove);
-    divider.addEventListener("pointerup", onUp);
-  });
-
-  // 지도 경계 드래그 = 사이드 전체 폭 조절 (상하/좌우 모드 공통, 모드별로 따로 기억)
-  edge.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    edge.setPointerCapture(e.pointerId);
-    edge.classList.add("dragging");
-    const sx = e.clientX, sw = side.getBoundingClientRect().width;
-    const clamp = layout === "h" ? clampSide : clampVSide;
-    document.body.style.userSelect = "none";
-    const onMove = (ev) => {
-      side.style.width = clamp(sw + ev.clientX - sx) + "px";
-      // 좌우 모드: 패널이 좁아지면 목록 열도 한도(패널-240) 안으로 당김
-      if (layout === "h") top.style.width = clampCol(top.getBoundingClientRect().width) + "px";
+    const move = (ev) => {
+      panel.style.width = clamp(ev.clientX - panel.getBoundingClientRect().left) + "px";
       resizeMap();
     };
-    const onUp = () => {
-      edge.removeEventListener("pointermove", onMove);
-      edge.removeEventListener("pointerup", onUp);
-      edge.classList.remove("dragging");
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.classList.remove("dragging");
       document.body.style.userSelect = "";
-      localStorage.setItem(layout === "h" ? SIDEW_KEY : SIDEVW_KEY,
-        Math.round(side.getBoundingClientRect().width));
-      if (layout === "h")
-        localStorage.setItem(SPLITW_KEY, Math.round(top.getBoundingClientRect().width));
+      localStorage.setItem(PANELW_KEY, parseInt(panel.style.width, 10) || 380);
     };
-    edge.addEventListener("pointermove", onMove);
-    edge.addEventListener("pointerup", onUp);
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
   });
-
-  // 편집 패널 바 드래그 → 목록 오른쪽=좌우(h) / 목록 왼쪽·아래=상하(v)
-  const hint = document.createElement("div");
-  hint.id = "dock-hint"; hint.hidden = true; document.body.appendChild(hint);
-  const zoneOf = (x) => (x > top.getBoundingClientRect().right ? "h" : "v");
-  const showHint = (zone) => {
-    if (!zone) { hint.hidden = true; return; }
-    hint.hidden = false;
-    if (zone === "h") {
-      const r = top.getBoundingClientRect();
-      hint.style.left = (r.right + 10) + "px"; hint.style.top = "88px";
-      hint.style.width = Math.min(340, window.innerWidth - r.right - 28) + "px";
-      hint.style.height = Math.round(window.innerHeight * 0.6) + "px";
-      hint.textContent = "좌우 2단";
-    } else {
-      hint.style.left = "8px"; hint.style.top = Math.round(window.innerHeight * 0.46) + "px";
-      hint.style.width = "344px"; hint.style.height = Math.round(window.innerHeight * 0.46) + "px";
-      hint.textContent = "상하 2단";
-    }
-  };
-  bar.addEventListener("pointerdown", (e) => {
-    if (e.target.closest("#dock-toggle")) return; // 토글 버튼 클릭은 드래그 아님
-    e.preventDefault();
-    bar.setPointerCapture(e.pointerId);
-    bar.classList.add("dragging");
-    document.body.style.userSelect = "none";
-    const onMove = (ev) => { const z = zoneOf(ev.clientX); showHint(z !== layout ? z : null); };
-    const onUp = (ev) => {
-      bar.removeEventListener("pointermove", onMove);
-      bar.removeEventListener("pointerup", onUp);
-      bar.classList.remove("dragging");
-      document.body.style.userSelect = "";
-      hint.hidden = true;
-      const z = zoneOf(ev.clientX);
-      if (z !== layout) applyLayout(z);
-    };
-    bar.addEventListener("pointermove", onMove);
-    bar.addEventListener("pointerup", onUp);
-  });
-  toggle.onclick = () => applyLayout(layout === "h" ? "v" : "h"); // 한 번에 전환(폴백)
-
-  let rz;
-  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => applyLayout(layout), 120); });
-  applyLayout(layout); // 저장된 배치 복원
 }
+
+window.addEventListener("resize", resizeMap);
+showTab(localStorage.getItem(TAB_KEY) === "cu" ? "cu" : "mnt");
+showSub("list");
+setMountainVisible(false);      // 부팅 시엔 산 미선택 — 안내 문구 + 스팟 미리보기 힌트
 
 // ── 표시 설정 (앱 전역 — 분류별 {줌, 기호, 크기, 볼드}) ──
 // 스팟(R2 config/spot-display.json)과 기저지도 POI(config/poi-display.json)가 같은 편집기 공유.
