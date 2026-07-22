@@ -1,9 +1,18 @@
 /* 하이하잇 관리자 콘솔 — 흑백, 데스크톱 전용(로컬 도구) */
-/* 지도 한글 라벨용(localIdeographFontFamily) — 앱과 동일 자체 호스팅 폰트 */
+/* 지도 한글 라벨용(localIdeographFontFamily) — 앱과 동일 자체 호스팅 폰트.
+   ⚠️ 폰트를 바꾸면 여기와 admin.js 의 글리프 스택(MonaS12 Regular/Bold)을 함께 고칠 것.
+   예전 Nanum Gothic Coding 참조가 fda8709(폰트 MonaS12 통일) 이후에도 남아 있어
+   /fonts/NanumGothicCoding-Regular.woff2 와 글리프가 404 → 편집 지도 라벨이 통째로
+   안 그려지고 있었다(2026-07-23 발견). */
 @font-face {
-  font-family: "Nanum Gothic Coding";
-  src: url("/fonts/NanumGothicCoding-Regular.woff2") format("woff2");
+  font-family: "MonaS12";
+  src: url("/fonts/MonaS12-subset.woff2") format("woff2");
   font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "MonaS12";
+  src: url("/fonts/MonaS12-Bold-subset.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: swap;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -240,7 +249,7 @@ button.active { background: #111; color: #fff; }
   background: #111; color: #fff; font-size: 11px; font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center; padding: 0 3px;
   line-height: 1; /* 폰트 라인박스 비대칭 제거 — 숫자 수직 정중앙 */
-  font-family: "Nanum Gothic Coding", monospace;
+  font-family: "MonaS12", monospace;
 }
 
 /* GPX / 배포 박스 */

@@ -89,10 +89,10 @@ function regionGroup(region) {
 maplibregl.addProtocol("pmtiles", new Protocol().tile);
 const map = new maplibregl.Map({
   container: "map",
-  style: buildStyle(`${location.origin}/pmtiles/v4.pmtiles`, "light", `${location.origin}/pmtiles/kr-terrain.pmtiles`),
+  style: buildStyle(`${location.origin}/pmtiles/kr-base.pmtiles`, "light", `${location.origin}/pmtiles/kr-terrain.pmtiles`),
   center: [127.5, 36.5], zoom: 6.5,
   maxBounds: [[121.0, 31.0], [135.0, 40.5]], minZoom: 5,
-  localIdeographFontFamily: "'Nanum Gothic Coding', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
+  localIdeographFontFamily: "'MonaS12', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
 });
 map.addControl(new maplibregl.NavigationControl({ showZoom: true }), "bottom-right");
 window.__adminMap = map; // 디버그·헤드리스 테스트 훅 (앱 window.__map 과 동일 관례)
@@ -107,10 +107,10 @@ let poiCfgLive = null;  // /config/poi categories
 function applySpotEditorStyle() {
   if (!map.getLayer("spot-peak")) return;
   const cfg = spotCfgLive || {
-    정상: { icon: true, size: 14.4, bold: true }, 장소: { icon: true, size: 8.9, bold: false },
+    정상: { icon: true, size: 14, bold: true }, 장소: { icon: true, size: 8, bold: false },
   };
   const pk = cfg["정상"], pl = cfg["장소"];
-  const font = (b) => [b ? "Nanum Gothic Coding Bold" : "Nanum Gothic Coding Regular"];
+  const font = (b) => [b ? "MonaS12 Bold" : "MonaS12 Regular"];
   // disp_bold 3상(true/false/없음→분류) — to-string: 없음(null)은 "" 로 떨어져 분류 폰트
   const fontExpr = (catBold) => ["match", ["to-string", ["get", "disp_bold"]],
     "true", ["literal", font(true)], "false", ["literal", font(false)], ["literal", font(catBold)]];
@@ -120,7 +120,7 @@ function applySpotEditorStyle() {
   map.setLayoutProperty("spot-peak", "text-font", fontExpr(pk.bold));
   map.setLayoutProperty("spot-peak", "text-size", // 앱과 동일: 부봉(main=false)은 비율 축소
     ["coalesce", ["get", "disp_size"],
-      ["case", ["==", ["get", "main"], false], Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]]);
+      ["case", ["==", ["get", "main"], false], Math.round(pk.size * (11 / 14) * 10) / 10, pk.size]]);
   map.setFilter("spot-place-dot", ["all", ["==", ["get", "category"], "장소"],
     ["to-boolean", ["coalesce", ["get", "disp_icon"], pl.icon]]]);
   map.setLayoutProperty("spot-place-label", "text-font", fontExpr(pl.bold));
@@ -131,7 +131,7 @@ function applySpotEditorStyle() {
 // map "load" 를 기다리지 않는다: 이 지도는 전국 뷰 타일 로딩이 길어 load 가 매우 늦거나
 // 안 올 수 있고, 인라인 스타일 객체 교체는 로드 중에도 안전함(실측 확인).
 function applyPoiEditorStyle() {
-  map.setStyle(buildStyle(`${location.origin}/pmtiles/v4.pmtiles`, "light",
+  map.setStyle(buildStyle(`${location.origin}/pmtiles/kr-base.pmtiles`, "light",
     `${location.origin}/pmtiles/kr-terrain.pmtiles`, poiCfgLive));
 }
 
@@ -163,7 +163,7 @@ function ensureEditorLayers() {
     filter: ["==", ["get", "idx"], 1],
     layout: {
       "symbol-placement": "line", "text-field": ["concat", ["to-string", ["get", "elev"]], "m"],
-      "text-font": ["Nanum Gothic Coding Regular"], "text-size": 8.4, "symbol-spacing": 300,
+      "text-font": ["MonaS12 Regular"], "text-size": 8.4, "symbol-spacing": 300,
     },
     paint: { "text-color": "#8a857c", "text-halo-color": "#ffffff", "text-halo-width": 1.4 } });
 
@@ -196,7 +196,7 @@ function ensureEditorLayers() {
     filter: ["==", ["get", "category"], "정상"],
     layout: {
       "text-field": ["concat", "▲", ["coalesce", ["get", "name"], ""]],
-      "text-font": ["Nanum Gothic Coding Regular"],
+      "text-font": ["MonaS12 Regular"],
       "text-size": 13, "text-offset": [0, -0.5], "text-anchor": "bottom",
       "text-allow-overlap": true,
     },
@@ -208,7 +208,7 @@ function ensureEditorLayers() {
   map.addLayer({ id: "spot-place-label", type: "symbol", source: "spots",
     filter: ["==", ["get", "category"], "장소"],
     layout: {
-      "text-field": ["get", "name"], "text-font": ["Nanum Gothic Coding Regular"],
+      "text-field": ["get", "name"], "text-font": ["MonaS12 Regular"],
       "text-size": 11, "text-offset": [0, 0.8], "text-anchor": "top",
       "text-allow-overlap": true,
     },
