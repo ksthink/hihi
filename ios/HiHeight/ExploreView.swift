@@ -194,6 +194,9 @@ struct ExploreView: View {
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }
             }
         }
+        // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
+        // 않으므로 여기서 이미 로드된 목록에 적용한다. (없으면 코스가 안 바뀜)
+        .onChange(of: climb.wantedCourseName) { _, _ in applyWantedCourse() }
         // 등반 종료 오터치 방지 — 확인번호가 일치할 때만 종료 + 기록 저장.
         .sheet(isPresented: $showEndConfirm) {
             ClimbEndConfirmView(code: endCode) { finishClimb() }
@@ -563,6 +566,17 @@ struct ExploreView: View {
     // 코스 선택(목록 탭·지도 탭 공통): 선택 반영 + 지도 코스 범위로 fitBounds.
     // 어느 경로로 고르든 시트를 접어 지도를 보여준다 — 코스명은 상단 오버레이가, 시종점·배지는
     // 지도가 알려주므로 목록을 펼칠 필요가 없다(목록을 보려면 손잡이 탭 한 번).
+    // 큐레이션이 지정한 코스를 이미 로드된 목록에 적용.
+    // 목록에 없으면 **소비하지 않고 남겨 둔다** — 산 전환 직후라 아직 이전 산의 목록이거나
+    // 로드 전일 수 있고, 그때 지워버리면 팩 로드 후 task 가 매칭할 값을 잃는다.
+    private func applyWantedCourse() {
+        guard let want = climb.wantedCourseName,
+              let c = courses.first(where: { $0.name == want }) else { return }
+        climb.wantedCourseName = nil
+        climb.fitRequested = false          // selectCourse 가 직접 프레이밍하므로 중복 방지
+        selectCourse(c)
+    }
+
     private func selectCourse(_ c: Course) {
         withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
         climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
