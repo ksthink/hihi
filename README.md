@@ -358,5 +358,6 @@ hihi/
 | [ios/README.md](ios/README.md) | iOS 앱 빌드·구조 상세 |
 | [CLOUDFLARE.md](CLOUDFLARE.md) | Cloudflare R2 기저 타일 자체 호스팅 **구축 순서**(처음 하는 사람용) |
 | [WORKLOG.md](WORKLOG.md) | 작업일지 (날짜별 생성·수정 기록) |
+| [ISSUE.md](ISSUE.md) | 장기 미해결 이슈의 추적 기록 — **왜 오래 걸렸나**를 서술형으로 |
 | [QA.md](QA.md) | 설계 질문/답변 기록 |
 | [CLAUDE.md](CLAUDE.md) | 개발 지침 (iOS 이식 전제 규칙 등) |
