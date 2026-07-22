@@ -953,6 +953,7 @@ function showTab(name) {
     b.classList.toggle("active", b.dataset.tab === name);
   localStorage.setItem(TAB_KEY, name);
   if (!cu) resizeMap();      // 숨김 상태에서 바뀐 컨테이너 크기를 지도에 알림
+  else growSlideFields();    // 숨겨진 동안 잰 높이는 0 — 보일 때 다시 잰다
 }
 
 // 서브탭: 산 목록 / 등산로 / 스팟
@@ -1153,6 +1154,59 @@ const cuMountainName = (cu) => {
 };
 
 const cuExpanded = new Set(); // 펼쳐서 편집 중인 지난 큐레이션 id
+
+// ── 드래그 정렬 ── 큐레이션끼리(#cu-list) · 항목끼리(각 ul.cu-items) 공통.
+// 잡이(.cu-grip)를 누르는 동안에만 draggable 을 켠다 — 안 그러면 슬라이드 위 입력의
+// 텍스트 선택이 드래그로 가로채인다. (코스 목록 .c-grip 과 같은 방식)
+function makeSortable(container, itemSel, axis, onCommit) {
+  container.addEventListener("dragover", (e) => {
+    const dragging = container.querySelector(itemSel + ".dragging");
+    if (!dragging) return; // 파일을 끌어온 경우 — 여기서 손대지 않는다 (커버 이미지 드롭)
+    e.preventDefault();
+    let best = null, bestD = Infinity;
+    for (const el of container.querySelectorAll(itemSel)) {
+      if (el === dragging) continue;
+      const r = el.getBoundingClientRect();
+      const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      if (d < bestD) { bestD = d; best = el; }
+    }
+    if (!best) return;
+    const r = best.getBoundingClientRect();
+    // 세로 목록은 위/아래로, 카드 그리드는 같은 줄이면 좌/우로 판정
+    const after = axis === "grid"
+      ? (e.clientY > r.bottom ? true : e.clientY < r.top ? false : e.clientX > r.left + r.width / 2)
+      : e.clientY > r.top + r.height / 2;
+    if (after) best.after(dragging); else best.before(dragging);
+  });
+  container.addEventListener("drop", (e) => {
+    if (container.querySelector(itemSel + ".dragging")) e.preventDefault();
+  });
+}
+
+function attachGrip(el, grip, key, onCommit) {
+  grip.addEventListener("mousedown", () => { el.draggable = true; });
+  grip.addEventListener("mouseup", () => { el.draggable = false; });
+  el.addEventListener("dragstart", (e) => {
+    el.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", key); // Firefox 는 데이터 없으면 드래그 미시작
+  });
+  el.addEventListener("dragend", () => {
+    el.draggable = false;
+    el.classList.remove("dragging");
+    onCommit();
+  });
+}
+
+// 화면에 놓인 순서를 데이터 순서로 — 맨 위 큐레이션이 앱에 노출된다
+function commitCuOrder() {
+  const order = [...$("cu-list").children].map((el) => el._cu).filter(Boolean);
+  if (order.length !== curDoc.curations.length) return; // 방어: 개수가 안 맞으면 무시
+  curDoc.curations = order;
+  renderCurations(); cuDirty();
+}
+makeSortable($("cu-list"), ".cu-entry", "y", commitCuOrder);
+
 function renderCurations() {
   const box = $("cu-list");
   box.innerHTML = "";
@@ -1160,43 +1214,180 @@ function renderCurations() {
     box.innerHTML = '<p class="dim" style="margin:6px 0">등록된 큐레이션이 없습니다. ＋ 새 큐레이션으로 시작하세요.</p>';
     return;
   }
-  // 첫 번째 = 앱에 노출 중인 매거진(항상 펼침), 나머지 = 지난 큐레이션(목록 → 클릭 시 편집)
+  // 첫 번째 = 앱에 노출 중인 매거진(항상 펼침), 나머지 = 지난 큐레이션(썸네일 행 → 클릭 시 편집)
   curDoc.curations.forEach((cu, i) => {
-    if (i === 0 || cuExpanded.has(cu.id)) box.appendChild(curationBlock(cu));
-    else box.appendChild(pastCurationRow(cu));
+    const el = (i === 0 || cuExpanded.has(cu.id)) ? curationBlock(cu) : pastCurationRow(cu);
+    el.classList.add("cu-entry");
+    el._cu = cu;
+    box.appendChild(el);
+  });
+  growSlideFields();
+}
+
+const gripEl = (title) => Object.assign(document.createElement("span"), {
+  className: "cu-grip", textContent: "⠿", title,
+});
+
+// 제목·설명 textarea 를 내용 높이에 맞춘다.
+// 숨겨진 요소는 scrollHeight 가 0 이라 그대로 쓰면 칸이 찌그러진다 — 그럴 땐 건드리지 않고
+// 탭이 보이는 시점(showTab)에 다시 잰다.
+function growField(el) {
+  if (!el.isConnected || !el.offsetParent) return;
+  el.style.height = "auto";
+  if (el.scrollHeight) el.style.height = el.scrollHeight + "px";
+}
+function growSlideFields() {
+  requestAnimationFrame(() => {
+    for (const el of document.querySelectorAll(".cu-slide textarea")) growField(el);
   });
 }
 
 function pastCurationRow(cu) {
   const row = document.createElement("div");
   row.className = "cu-past";
-  row.title = "클릭해서 편집";
-  row.innerHTML = `<span class="cu-past-title">${cu.title || "(이름 없음)"}</span>
-    <span class="cu-past-meta">${cuMountainName(cu)}</span>`;
-  row.onclick = () => { cuExpanded.add(cu.id); renderCurations(); };
+  const grip = gripEl("끌어서 순서 변경 (맨 위 = 앱 노출)");
+
+  const open = document.createElement("div");
+  open.className = "cu-past-open";
+  open.title = "클릭해서 편집";
+  open.append(
+    Object.assign(document.createElement("span"), { className: "cu-past-title", textContent: cu.title || "(이름 없음)" }),
+    Object.assign(document.createElement("span"), {
+      className: "cu-past-meta", textContent: `${cuMountainName(cu)} · ${cu.items.length}장`,
+    }));
+  open.onclick = () => { cuExpanded.add(cu.id); renderCurations(); };
+
+  // 펼치지 않고도 내용을 알아보게 — 앞 5장 커버 썸네일
+  const thumbs = document.createElement("div");
+  thumbs.className = "cu-thumbs";
+  for (const it of cu.items.slice(0, 5)) {
+    const t = document.createElement("i");
+    if (it.img) t.style.backgroundImage = `url("${it.img}")`;
+    thumbs.appendChild(t);
+  }
+
+  row.append(grip, open, thumbs);
+  attachGrip(row, grip, cu.id, commitCuOrder);
   return row;
+}
+
+// 항목 하나 = 앱 캐러셀 슬라이드와 같은 정사각 카드.
+// 글자 입력을 앱에서 놓이는 자리에 그대로 얹어, 위치를 설명할 필요가 없게 했다.
+function itemCard(cu, it, commitItems) {
+  const li = document.createElement("li");
+  li.className = "cu-card";
+  li._item = it;
+
+  const slide = document.createElement("div");
+  slide.className = "cu-slide";
+  if (it.img) slide.append(Object.assign(document.createElement("img"), { className: "cs-img", src: it.img, alt: "" }));
+  slide.append(Object.assign(document.createElement("div"), { className: "cs-shade" }));
+
+  // 전부 선택 항목 — 비우면 앱에서 그 요소를 아예 렌더하지 않는다 (app.js)
+  // 제목·설명은 앱에서 여러 줄로 감기므로 textarea 로 (한 줄 input 이면 긴 글이 잘려
+  // "본 대로 나온다"는 전제가 깨진다). 높이는 내용에 맞춰 자란다.
+  const field = (key, cls, ph, multiline) => {
+    const el = document.createElement(multiline ? "textarea" : "input");
+    Object.assign(el, { className: cls, placeholder: ph, value: it[key] || "" });
+    if (multiline) {
+      el.rows = 1;
+      el.addEventListener("input", () => growField(el));
+    }
+    el.onchange = () => { it[key] = el.value.trim(); cuDirty(); };
+    return el;
+  };
+  slide.append(
+    field("sub", "cs-sub", "부가설명"),
+    field("title", "cs-title", "제목", true),
+    field("desc", "cs-desc", "설명", true),
+    field("logo", "cs-logo", "로고"),
+    field("credit", "cs-credit", "출처"));
+
+  // 커버 이미지 → R2 images/mountains/<산코드> (같은 산 항목끼리 재사용)
+  const file = Object.assign(document.createElement("input"), {
+    type: "file", accept: "image/jpeg,image/png,image/webp", hidden: true,
+  });
+  const imgBtn = Object.assign(document.createElement("button"), {
+    className: "cs-img-btn", textContent: it.img ? "사진 교체" : "＋ 사진",
+    title: it.img ? `현재: ${it.img}` : "클릭하거나 카드에 사진 파일을 끌어 놓으세요",
+  });
+  const upload = async (f) => {
+    if (!f) return;
+    imgBtn.textContent = "올리는 중…"; imgBtn.disabled = true;
+    try {
+      const r = await api(`/mountain-image?code=${it.code}`, {
+        method: "POST", headers: { "Content-Type": f.type }, body: f,
+      });
+      it.img = r.url;
+      for (const c2 of curDoc.curations) for (const x of c2.items)
+        if (x.code === it.code && !x.img) x.img = r.url;
+      cuDirty(); renderCurations();
+    } catch (e) {
+      imgBtn.textContent = "실패"; imgBtn.title = e.message; imgBtn.disabled = false;
+    }
+  };
+  imgBtn.onclick = () => file.click();
+  file.onchange = () => upload(file.files[0]);
+
+  // 카드에 사진 파일을 끌어 놓아도 업로드 (순서 드래그와 types 로 구분)
+  const isFileDrag = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+  slide.addEventListener("dragover", (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault(); e.stopPropagation(); slide.classList.add("drop");
+  });
+  slide.addEventListener("dragleave", () => slide.classList.remove("drop"));
+  slide.addEventListener("drop", (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault(); e.stopPropagation(); slide.classList.remove("drop");
+    upload(e.dataTransfer.files[0]);
+  });
+
+  const grip = gripEl("끌어서 순서 변경");
+  const rm = Object.assign(document.createElement("button"), { textContent: "×", title: "항목 제거" });
+  rm.onclick = () => {
+    cu.items = cu.items.filter((x) => x !== it);
+    renderCurations(); cuDirty();
+  };
+  const tools = document.createElement("div");
+  tools.className = "cs-tools";
+  tools.append(grip, imgBtn, rm);
+  slide.append(tools, file);
+
+  const meta = document.createElement("div");
+  meta.className = "cs-meta";
+  meta.append(
+    Object.assign(document.createElement("span"), { className: "cu-kind", textContent: it.type === "mountain" ? "산" : "코스" }),
+    Object.assign(document.createElement("span"), {
+      className: "cu-name",
+      textContent: it.type === "course" ? `${it.mountain} · ${it.name}` : it.name,
+    }));
+
+  li.append(slide, meta);
+  attachGrip(li, grip, it.code || "", commitItems);
+  return li;
 }
 
 function curationBlock(cu) {
   const isLive = curDoc.curations[0] === cu; // 앱 노출 중 여부
   const div = document.createElement("div");
-  div.className = "cu-block";
+  div.className = "cu-block" + (isLive ? " live" : "");
 
-  // 제목 + (노출 배지 | 노출로 지정·접기) + 삭제
+  // 제목 + (노출 배지 | 맨 위로·접기) + 삭제
   const head = document.createElement("div");
   head.className = "cu-head";
+  const grip = gripEl("끌어서 순서 변경 (맨 위 = 앱 노출)");
   const title = Object.assign(document.createElement("input"), {
     className: "cu-title", placeholder: "큐레이션 이름 (예: 가을 단풍 추천)", value: cu.title || "",
   });
   title.onchange = () => { cu.title = title.value.trim(); cuDirty(); };
-  head.append(title);
+  head.append(grip, title);
   if (isLive) {
     head.append(Object.assign(document.createElement("span"), {
-      className: "cu-live", textContent: "노출 중", title: "앱 추천 탭 캐러셀에 노출되는 매거진",
+      className: "cu-live", textContent: "앱에 노출 중", title: "앱 추천 탭 캐러셀에 노출되는 매거진",
     }));
   } else {
     const promote = Object.assign(document.createElement("button"), {
-      textContent: "노출로 지정", title: "이 큐레이션을 앱 캐러셀 매거진으로",
+      textContent: "맨 위로", title: "이 큐레이션을 앱 캐러셀 매거진으로 (끌어 올려도 됩니다)",
     });
     promote.onclick = () => {
       curDoc.curations = [cu, ...curDoc.curations.filter((x) => x !== cu)];
@@ -1215,71 +1406,18 @@ function curationBlock(cu) {
   };
   head.append(del);
 
-  // 항목 목록 (산·코스) — 2행: [분류·이름·제거] + [추천 설명·커버 이미지]
+  // 항목 카드 그리드 — 순서가 곧 캐러셀 순서
   const ul = document.createElement("ul");
   ul.className = "cu-items";
-  for (const it of cu.items) {
-    const li = document.createElement("li");
-    const row1 = document.createElement("div");
-    row1.className = "cu-row1";
-    row1.innerHTML = `<span class="cu-kind">${it.type === "mountain" ? "산" : "코스"}</span>
-      <span class="cu-name">${it.type === "course" ? `${it.mountain} · ` : ""}${it.name}</span>`;
-    const rm = Object.assign(document.createElement("button"), { textContent: "×", title: "항목 제거" });
-    rm.onclick = () => {
-      cu.items = cu.items.filter((x) => x !== it);
-      div.replaceWith(curationBlock(cu)); cuDirty();
-    };
-    row1.appendChild(rm);
-
-    // 슬라이드 요소 입력 — 전부 선택(비면 앱에서 미표시)
-    const field = (key, ph, cls = "cu-desc") => {
-      const el = Object.assign(document.createElement("input"), {
-        className: cls, placeholder: ph, value: it[key] || "",
-      });
-      el.onchange = () => { it[key] = el.value.trim(); cuDirty(); };
-      return el;
-    };
-    const row2 = document.createElement("div");
-    row2.className = "cu-row2";
-    row2.append(
-      field("sub", "부가설명 (좌상단 반투명 배지)"),
-      field("title", "제목 (큰 글자)"));
-    const row3 = document.createElement("div");
-    row3.className = "cu-row2";
-    row3.append(field("desc", "설명 (중앙 하단 · 가운데 정렬)"));
-    const row4 = document.createElement("div");
-    row4.className = "cu-row2";
-    row4.append(
-      field("logo", "로고 (좌하단 · 예: © 하이하잇)", "cu-desc cu-logo"),
-      field("credit", "출처 (우하단 · 사진 저작자)", "cu-desc cu-logo"));
-    // 산 커버 이미지 업로드 → R2 images/mountains/<산코드> (같은 산 항목끼리 재사용)
-    const file = Object.assign(document.createElement("input"), { type: "file", accept: "image/jpeg,image/png,image/webp", hidden: true });
-    const imgBtn = Object.assign(document.createElement("button"), {
-      className: "cu-img-btn", textContent: it.img ? "이미지 ✓" : "이미지",
-      title: it.img ? `교체: ${it.img}` : "커버 이미지 업로드 (배경)",
-    });
-    imgBtn.onclick = () => file.click();
-    file.onchange = async () => {
-      const f = file.files[0];
-      if (!f) return;
-      imgBtn.textContent = "올리는 중…"; imgBtn.disabled = true;
-      try {
-        const r = await api(`/mountain-image?code=${it.code}`, {
-          method: "POST", headers: { "Content-Type": f.type }, body: f,
-        });
-        it.img = r.url;
-        // 같은 산의 다른 항목에도 커버 공유 (같은 R2 객체)
-        for (const c2 of curDoc.curations) for (const x of c2.items)
-          if (x.code === it.code && !x.img) x.img = r.url;
-        cuDirty();
-        div.replaceWith(curationBlock(cu));
-      } catch (e) {
-        imgBtn.textContent = "실패: " + e.message; imgBtn.disabled = false;
-      }
-    };
-    row4.append(imgBtn, file);
-    li.append(row1, row2, row3, row4);
-    ul.appendChild(li);
+  const commitItems = () => {
+    const order = [...ul.children].map((el) => el._item).filter(Boolean);
+    if (order.length !== cu.items.length) return;
+    cu.items = order; cuDirty(); // DOM 은 이미 새 순서 — 다시 그리지 않는다(깜빡임 방지)
+  };
+  for (const it of cu.items) ul.appendChild(itemCard(cu, it, commitItems));
+  makeSortable(ul, ".cu-card", "grid", commitItems);
+  if (!cu.items.length) {
+    ul.innerHTML = '<p class="dim" style="margin:2px">아래에서 산·코스를 검색해 추가하세요.</p>';
   }
 
   // 항목 추가 — 산·코스 통합 검색 (관리 중인 산 이름 + 초안 코스명)
@@ -1315,7 +1453,7 @@ function curationBlock(cu) {
           const img = curDoc.curations.flatMap((c2) => c2.items)
             .find((x) => x.code === item.code && x.img)?.img;
           cu.items.push({ ...item, logo: "© 하이하잇", ...(img ? { img } : {}) });
-          div.replaceWith(curationBlock(cu)); cuDirty();
+          renderCurations(); cuDirty();
         };
       }
       res.appendChild(li);
@@ -1339,7 +1477,7 @@ $("cu-new").onclick = () => {
   if (!curDoc) curDoc = { version: 1, curations: [] };
   const cu = { id: "cu-" + Math.random().toString(36).slice(2, 10), title: "", items: [] };
   curDoc.curations.push(cu);
-  cuExpanded.add(cu.id); // 새 큐레이션은 바로 펼쳐 편집 (노출 전환은 "노출로 지정")
+  cuExpanded.add(cu.id); // 새 큐레이션은 바로 펼쳐 편집 (노출 전환은 맨 위로 끌기)
   renderCurations(); cuDirty();
 };
 $("cu-save").onclick = async () => {
