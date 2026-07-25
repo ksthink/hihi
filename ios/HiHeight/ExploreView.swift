@@ -32,6 +32,7 @@ struct ExploreView: View {
     @State private var deletePackTarget: Mountain?        // 저장된 지도 삭제 확인 대상
     @State private var dlLoginHint = false                // 지도 다운 — 비로그인 시 로그인 안내
     @State private var showEndConfirm = false             // 등반 종료 오터치 방지 확인 팝업
+    @State private var showShortConfirm = false           // 100m 이하 짧은 등반 저장 확인 팝업
     @State private var endCode = ""                       // 팝업에 제시할 랜덤 2자리 확인번호
 
     // 국가지점번호 — 등반 중(GPS 위치 기준)에만 표시. 탐험(지도) 상태에선 숨김.
@@ -232,10 +233,25 @@ struct ExploreView: View {
         .sheet(isPresented: $showEndConfirm) {
             ClimbEndConfirmView(code: endCode) { finishClimb() }
         }
+        // 100m 이하 짧은 등반 — 저장 여부 확인(저장=기존대로, 취소=저장 않고 종료).
+        .overlay {
+            if showShortConfirm {
+                ShortClimbConfirmView(
+                    distanceM: climb.distance,
+                    onSave: { showShortConfirm = false; saveAndEnd() },
+                    onCancel: { showShortConfirm = false; climb.stop() })
+            }
+        }
     }
 
-    // 등반 종료 + 기록 저장 (확인 팝업 통과 후 호출).
+    // 등반 종료 — 확인번호 통과 후. 100m 이하면 저장 여부를 한 번 더 묻는다.
     private func finishClimb() {
+        if climb.distance <= 100 { showShortConfirm = true; return }
+        saveAndEnd()
+    }
+
+    // 실제 종료 + 기록 저장.
+    private func saveAndEnd() {
         guard let draft = climb.finish() else { climb.stop(); return }
         Task { climb.saveResult = await auth.saveClimb(draft) }
     }
