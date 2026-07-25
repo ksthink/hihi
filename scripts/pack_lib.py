@@ -203,6 +203,50 @@ def ascent_descent(prof):
     return int(asc), int(desc)
 
 
+def elev_along(coords, elev_fn, step_m=25.0):
+    """트랙(이미 조밀 리샘플됨)을 step_m 간격으로 재표본해 고도 시퀀스 반환.
+    DEM 격자(~30m)보다 촘촘히 뽑으면 이중선형보간 잔물결이 상승에 누적되므로
+    격자 수준으로만 표본한다(과대추정 방지). 양 끝점은 항상 포함."""
+    if len(coords) < 2:
+        return [elev_fn(*coords[0])] if coords else []
+    out = [elev_fn(*coords[0])]
+    acc = 0.0
+    for p, q in zip(coords, coords[1:]):
+        acc += hav(p, q)
+        if acc >= step_m:
+            out.append(elev_fn(*q))
+            acc = 0.0
+    if acc > 1e-6:                       # 마지막 자투리 구간의 끝점 보장
+        out.append(elev_fn(*coords[-1]))
+    return out
+
+
+def smooth_series(xs, win=3):
+    """1차원 이동평균 — 실측(기압계/GPS) 고도의 뾰족 잡음 완화."""
+    if len(xs) <= win:
+        return list(xs)
+    h = win // 2
+    return [sum(xs[max(0, i-h):min(len(xs), i+h+1)]) / (min(len(xs), i+h+1) - max(0, i-h))
+            for i in range(len(xs))]
+
+
+def cum_gain(elevs, thresh=3.0):
+    """소임계값(히스테리시스) 누적 상승/하강 — DEM·GPS 잡음이 상승고도로 새는 것 차단.
+    마지막 확정점(ref) 대비 변동이 thresh 초과할 때만 반영하되, 연속 완경사도
+    ref 대비 누적이라 정상 집계된다(그냥 전 구간 합산의 과대추정을 막는 표준 기법)."""
+    if len(elevs) < 2:
+        return 0, 0
+    asc = desc = 0.0
+    ref = elevs[0]
+    for e in elevs[1:]:
+        d = e - ref
+        if d > thresh:
+            asc += d; ref = e
+        elif d < -thresh:
+            desc += -d; ref = e
+    return int(round(asc)), int(round(desc))
+
+
 def load_forest_spots(code, keep=SPOT_KEEP):
     """산림청 스팟 → Feature 목록. keep=None 이면 전 분류(관리자 편집용)."""
     _, spot_f, _ = forest_files(code)

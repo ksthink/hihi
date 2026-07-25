@@ -717,18 +717,21 @@ async function runMatch() {
     map.getSource("gpx-raw").setData(r.preview.raw);
     map.getSource("gpx-matched").setData(r.preview.matched);
     const rep = r.report;
+    // 고도 출처 — 실측 녹화 GPX(포인트별 time) 면 GPS, 아니면 지형(DEM) 샘플링.
+    const es = rep.elev_src === "gps"
+      ? ` · <span class="dim">고도 실측GPS</span>` : ` · <span class="dim">고도 지형DEM</span>`;
     if (rep.raw_passthrough) {
       // 산림청 구간망 없는 산(수동 등록) — GPX 원본을 그대로 코스로 사용
       const parts = (rep.parts ?? 1) > 1
         ? `<div class="dim">끊긴 ${rep.parts}개 구간을 분리(직선 연결 없음)</div>` : "";
       $("gpx-report").innerHTML =
-        `<div>GPX 원본 그대로 사용 <span class="dim">(구간망 없는 산 — 스냅 없음)</span></div>${rep.distance_km}km · ↑${rep.ascent}m${parts}`;
+        `<div>GPX 원본 그대로 사용 <span class="dim">(구간망 없는 산 — 스냅 없음)</span></div>${rep.distance_km}km · ↑${rep.ascent}m${es}${parts}`;
     } else {
       const fb = rep.fallbacks.length
         ? `<div class="warn">구간망 밖 ${rep.fallbacks.length}곳 (GPX 원 좌표 유지): ${rep.fallbacks.map((f) => f.km + "km").join(", ")}</div>`
         : "<div>전 구간 구간망 매칭 ✓</div>";
       $("gpx-report").innerHTML =
-        `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> · ${rep.distance_km}km · ↑${rep.ascent}m · 최대이탈 ${Math.round(rep.max_dev_m)}m ${fb}`;
+        `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> · ${rep.distance_km}km · ↑${rep.ascent}m${es} · 최대이탈 ${Math.round(rep.max_dev_m)}m ${fb}`;
     }
     $("gpx-actions").hidden = false;
     // 모든 파트(LineString·MultiLineString)를 감싸도록 화면 맞춤

@@ -489,16 +489,52 @@ def _course_bbox(lines):
     return [min(xs), min(ys), max(xs), max(ys)]
 
 
-def compute_stats(lines, dem):
+def gpx_elevation(raw):
+    """GPX 트랙포인트 실측 고도 시퀀스 + '실제 녹화' 여부.
+    포인트마다 <time> 이 있으면 기기 녹화(실측)로 본다 — 길찾기 경로 export 는 보통
+    포인트별 time 이 없고 ele 도 DEM 합성값이라(예: 네이버 ww.gpx) 신뢰하지 않는다.
+    반환: (ele[list]|None, is_recording[bool])."""
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        return None, False
+    ele, npts, ntime = [], 0, 0
+    for el in root.iter():
+        if el.tag.rsplit("}", 1)[-1] != "trkpt":
+            continue
+        npts += 1
+        e = None
+        for ch in el:
+            ct = ch.tag.rsplit("}", 1)[-1]
+            if ct == "ele" and ch.text:
+                try:
+                    e = float(ch.text)
+                except ValueError:
+                    pass
+            elif ct == "time":
+                ntime += 1
+        if e is not None:
+            ele.append(e)
+    if npts < 2 or len(ele) < npts:          # 전 포인트에 ele 가 있어야 사용
+        return None, False
+    return ele, (ntime >= npts * 0.5)        # 절반 이상 time → 녹화로 간주
+
+
+def compute_stats(lines, dem, gpx_elev=None):
     coords = []
     for ln in lines:
         coords += ln if not coords else ln[1:]
     # 거리는 파트별 합산 — 수작업 코스의 비연결 파트 갭을 직선으로 가산하지 않음 (부록 D)
     km = sum(_polyline_km(ln) for ln in lines)
-    prof = pl.profile48(coords, dem.elev)
-    asc, desc = pl.ascent_descent(prof)
+    prof = pl.profile48(coords, dem.elev)               # 표시용 스파이크(모양)
+    # 누적상승·최저/최고 — 실측 녹화 고도가 있으면 우선(스무딩), 없으면 DEM 을 격자
+    # 수준(25m)으로 표본. 둘 다 소임계값(3m) 히스테리시스로 잡음 과대추정 차단.
+    dense = pl.smooth_series(gpx_elev, 3) if (gpx_elev and len(gpx_elev) >= 2) \
+        else pl.elev_along(coords, dem.elev, 25.0)
+    asc, desc = pl.cum_gain(dense, 3.0)
     return {"distance_km": round(km, 2), "time_hr": pl.naismith_time(km, asc),
-            "profile": prof, "min_elev": min(prof), "max_elev": max(prof),
+            "profile": prof,
+            "min_elev": int(round(min(dense))), "max_elev": int(round(max(dense))),
             "ascent": asc, "descent": desc}
 
 
@@ -508,7 +544,15 @@ def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
     has_net = os.path.isdir(os.path.join(pl.ROOT, "mountain", code))
     m = match(code, raw, tau, detour, upload_name) if has_net else match_raw(raw, upload_name)
     dem = _dem_for([draft["mountain"]["bbox"], _course_bbox(m["lines"])])
-    computed = compute_stats(m["lines"], dem)
+    # 실측 녹화 GPX(포인트별 time)면 그 고도로 누적상승 계산, 아니면 DEM.
+    gele = None
+    try:
+        e, rec = gpx_elevation(raw)
+        if rec and e:
+            gele = e
+    except Exception:
+        gele = None
+    computed = compute_stats(m["lines"], dem, gpx_elev=gele)
 
     # 업로드 원본 보존 (확장자는 원본 파일명 기준 — gpx/geojson/json/zip/shp)
     gdir = os.path.join(pl.ROOT, "admin_data", code, "gpx")
@@ -529,7 +573,8 @@ def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
         "lines": m["lines"],
         "computed": computed,
     }
-    report = dict(m["report"], ascent=computed["ascent"])
+    report = dict(m["report"], ascent=computed["ascent"],
+                  elev_src=("gps" if gele else "dem"))   # 고도 출처(실측 녹화/DEM)
     return {"course": course, "report": report,
             "preview": {"raw": m["preview_raw"], "matched": m["preview_matched"]}}
 
