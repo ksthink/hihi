@@ -29,13 +29,13 @@ struct ContentView: View {
             // (네비를 TabView 에 safeAreaInset 으로 달면 페이지 스크롤엔 공간이 전파되지
             //  않아 마지막 항목이 네비에 가려짐 — 짧은 화면에서 잘림. 페이지별로 인셋을 준다.)
             RecoView(catalog: catalog, onOpen: openCuration).tag(1).toolbar(.hidden, for: .tabBar)
-                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve) }
+                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve).allowsHitTesting(false) }
             DeungView(climb: climb, auth: auth, catalog: catalog, onStart: { tab = 0 },
                       onOpenMap: { m in catalog.selected = m; climb.recordTrack = nil; tab = 0 })
                 .tag(2).toolbar(.hidden, for: .tabBar)
-                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve) }
+                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve).allowsHitTesting(false) }
             RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute).tag(3).toolbar(.hidden, for: .tabBar)
-                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve) }
+                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve).allowsHitTesting(false) }
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
