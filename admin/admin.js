@@ -719,8 +719,10 @@ async function runMatch() {
     const rep = r.report;
     if (rep.raw_passthrough) {
       // 산림청 구간망 없는 산(수동 등록) — GPX 원본을 그대로 코스로 사용
+      const parts = (rep.parts ?? 1) > 1
+        ? `<div class="dim">끊긴 ${rep.parts}개 구간을 분리(직선 연결 없음)</div>` : "";
       $("gpx-report").innerHTML =
-        `<div>GPX 원본 그대로 사용 <span class="dim">(구간망 없는 산 — 스냅 없음)</span></div>${rep.distance_km}km · ↑${rep.ascent}m`;
+        `<div>GPX 원본 그대로 사용 <span class="dim">(구간망 없는 산 — 스냅 없음)</span></div>${rep.distance_km}km · ↑${rep.ascent}m${parts}`;
     } else {
       const fb = rep.fallbacks.length
         ? `<div class="warn">구간망 밖 ${rep.fallbacks.length}곳 (GPX 원 좌표 유지): ${rep.fallbacks.map((f) => f.km + "km").join(", ")}</div>`
@@ -729,8 +731,13 @@ async function runMatch() {
         `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> · ${rep.distance_km}km · ↑${rep.ascent}m · 최대이탈 ${Math.round(rep.max_dev_m)}m ${fb}`;
     }
     $("gpx-actions").hidden = false;
-    const pts = r.preview.raw.features[0].geometry.coordinates;
-    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    // 모든 파트(LineString·MultiLineString)를 감싸도록 화면 맞춤
+    const all = [];
+    for (const f of r.preview.matched.features) {
+      const g = f.geometry;
+      all.push(...(g.type === "MultiLineString" ? g.coordinates.flat() : g.coordinates));
+    }
+    const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]],
       { padding: 60, duration: 500 });
   } catch (err) {
