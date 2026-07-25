@@ -673,7 +673,8 @@ async function handleTrackFiles(fileList) {
       });
       S.draft.courses.push(r.course);
       ok++;
-      results.push(`✓ ${f.name} → ${r.course.name} · 매칭 ${Math.round((r.report.matched_ratio ?? 0) * 100)}% · ${r.report.distance_km}km`);
+      const q = r.report.raw_passthrough ? "원본 그대로" : `매칭 ${Math.round((r.report.matched_ratio ?? 0) * 100)}%`;
+      results.push(`✓ ${f.name} → ${r.course.name} · ${q} · ${r.report.distance_km}km`);
     } catch (err) {
       results.push(`<span class="warn">✗ ${f.name} — ${err.message}</span>`);
     }
@@ -716,11 +717,17 @@ async function runMatch() {
     map.getSource("gpx-raw").setData(r.preview.raw);
     map.getSource("gpx-matched").setData(r.preview.matched);
     const rep = r.report;
-    const fb = rep.fallbacks.length
-      ? `<div class="warn">구간망 밖 ${rep.fallbacks.length}곳 (GPX 원 좌표 유지): ${rep.fallbacks.map((f) => f.km + "km").join(", ")}</div>`
-      : "<div>전 구간 구간망 매칭 ✓</div>";
-    $("gpx-report").innerHTML =
-      `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> · ${rep.distance_km}km · ↑${rep.ascent}m · 최대이탈 ${Math.round(rep.max_dev_m)}m ${fb}`;
+    if (rep.raw_passthrough) {
+      // 산림청 구간망 없는 산(수동 등록) — GPX 원본을 그대로 코스로 사용
+      $("gpx-report").innerHTML =
+        `<div>GPX 원본 그대로 사용 <span class="dim">(구간망 없는 산 — 스냅 없음)</span></div>${rep.distance_km}km · ↑${rep.ascent}m`;
+    } else {
+      const fb = rep.fallbacks.length
+        ? `<div class="warn">구간망 밖 ${rep.fallbacks.length}곳 (GPX 원 좌표 유지): ${rep.fallbacks.map((f) => f.km + "km").join(", ")}</div>`
+        : "<div>전 구간 구간망 매칭 ✓</div>";
+      $("gpx-report").innerHTML =
+        `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> · ${rep.distance_km}km · ↑${rep.ascent}m · 최대이탈 ${Math.round(rep.max_dev_m)}m ${fb}`;
+    }
     $("gpx-actions").hidden = false;
     const pts = r.preview.raw.features[0].geometry.coordinates;
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);

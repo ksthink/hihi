@@ -389,6 +389,28 @@ def match(code, raw, tau=25.0, detour=1.6, fname=""):
     }
 
 
+def match_raw(raw, fname=""):
+    """구간망이 없는 산(수동 등록) — GPX 원본을 스냅 없이 그대로 코스로.
+    리샘플·스무딩만 적용하고 전체를 단일 gpx 파트로 반환한다(match 와 동일 스키마)."""
+    gpx_pts, gpx_name = parse_track(raw, fname)
+    coords = _dedupe([tuple(p) for p in smooth(resample(gpx_pts))])
+    if len(coords) < 2:
+        raise ValueError("트랙 좌표가 2개 미만")
+    line = [[round(x, 6), round(y, 6)] for x, y in coords]
+    fc = lambda src: {"type": "FeatureCollection", "features": [{
+        "type": "Feature", "properties": ({"src": src} if src else {}),
+        "geometry": {"type": "LineString", "coordinates": line}}]}
+    return {
+        "lines": [line],
+        "segments": [{"src": "gpx", "n": len(coords)}],
+        "gpx_name": gpx_name,
+        "report": {"matched_ratio": 0.0, "distance_km": round(_polyline_km(coords), 2),
+                   "max_dev_m": 0.0, "fallbacks": [], "raw_passthrough": True},
+        "preview_raw": fc(None),
+        "preview_matched": fc("gpx"),
+    }
+
+
 # ── DEM 통계 ──
 def _dem_for(bboxes):
     xs = [b[0] for b in bboxes] + [b[2] for b in bboxes]
@@ -420,7 +442,9 @@ def compute_stats(lines, dem):
 
 # ── admin_server 진입점 ──
 def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
-    m = match(code, raw, tau, detour, upload_name)
+    # 산림청 구간망(mountain/<code>/)이 있는 산만 스냅, 없으면(수동 등록) 원본 그대로.
+    has_net = os.path.isdir(os.path.join(pl.ROOT, "mountain", code))
+    m = match(code, raw, tau, detour, upload_name) if has_net else match_raw(raw, upload_name)
     dem = _dem_for([draft["mountain"]["bbox"], _course_bbox(m["lines"])])
     computed = compute_stats(m["lines"], dem)
 
