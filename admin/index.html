@@ -50,6 +50,24 @@
         <section id="sec-search">
           <input id="mnt-q" type="search" placeholder="산 이름·산코드 검색 (산림청 원본 보유분)" autocomplete="off" />
           <ul id="mnt-results" hidden></ul>
+          <button id="manual-toggle">＋ 목록에 없는 산 직접 추가</button>
+          <div id="manual-form" hidden>
+            <input id="man-name" placeholder="산 이름 (예: 용왕산)" autocomplete="off" />
+            <div class="row">
+              <input id="man-elev" type="number" placeholder="높이(m)" />
+              <input id="man-region" placeholder="지역 (예: 서울 양천구)" autocomplete="off" />
+            </div>
+            <div class="row">
+              <button id="man-pick">지도에서 중심 위치 클릭</button>
+              <span id="man-coord" class="dim">위치 미지정</span>
+            </div>
+            <div class="row">
+              <button id="man-create" class="primary" disabled>산 만들기</button>
+              <button id="man-cancel">취소</button>
+            </div>
+            <p class="dim">산림청 등산로 데이터가 없는 산(도심·소규모)을 직접 등록합니다.
+              코스는 이후 <b>GPX 업로드</b>, 스팟은 <b>지도 클릭</b>으로 채웁니다.</p>
+          </div>
         </section>
         <h2>관리 중인 산</h2>
         <div id="region-tabs"></div>

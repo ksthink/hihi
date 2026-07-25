@@ -134,6 +134,39 @@ def new_draft(code, mnt_meta=None):
     return draft
 
 
+def new_manual_draft(code, name, center, elev=None, region=None, margin=0.03):
+    """산림청 원본 없는 산(도심·소규모)의 초안 — 운영자 입력만으로 생성.
+
+    산림청 등산로 데이터가 없어 mountain/ 스캔에 안 잡히는 산을 직접 등록하는 경로.
+    코스는 이후 GPX 업로드, 스팟은 지도 클릭으로 채운다. bbox 는 중심 ± margin(도) —
+    DEM·등고선·기저타일 추출 범위(publish_pack 은 이 bbox 만 사용). elev 가 있으면
+    중심에 '정상' 스팟 1점을 자동 시드(주봉 ▲)해 앱에서 봉우리가 바로 보이게 한다.
+    code 는 '9'+8자리 예약 대역(산림청 코드는 1~4로 시작 — 충돌 없음)."""
+    lon, lat = round(center[0], 6), round(center[1], 6)
+    bbox = [round(lon - margin, 3), round(lat - margin, 3),
+            round(lon + margin, 3), round(lat + margin, 3)]
+    spots = []
+    if elev:
+        spots = [{"id": f"sp-peak-{code}", "category": "정상", "name": name,
+                  "coord": [lon, lat], "detail": f"{int(elev)}m", "etc": None,
+                  "origin": "manual", "moved": False, "deleted": False, "main": True}]
+    return {
+        "version": 1,
+        "mountain": {
+            "code": code,
+            "name": name,
+            "region": region or None,
+            "elev": int(elev) if elev else None,
+            "center": [round(lon, 3), round(lat, 3)],
+            "zoom": 13.0, "bbox": bbox,
+            "sort_order": 100, "famous": False, "published": True,
+        },
+        "courses": [],
+        "spots": spots,
+        "publish": None,
+    }
+
+
 def seed_auto_courses(draft, dem, max_courses=12, log=print):
     """산림청 그래프 자동추출 코스를 draft 에 시드 (build_forest_pack 코어 재사용)."""
     from build_forest_pack import extract_courses

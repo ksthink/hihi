@@ -297,6 +297,56 @@ async function addMountain(code) {
   });
 }
 
+// ── 산 직접 추가 (산림청 원본 없는 산: 이름·중심·높이만 입력) ──
+let manualMarker = null;
+function setManualCenter(lon, lat) {
+  S.manualCenter = [lon, lat];
+  if (!manualMarker) manualMarker = new maplibregl.Marker({ color: "#e11" });
+  manualMarker.setLngLat([lon, lat]).addTo(map);
+  $("man-coord").textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  $("man-create").disabled = false;
+}
+function closeManualForm() {
+  S.pickingCenter = false; S.manualCenter = null;
+  map.getCanvas().style.cursor = "";
+  manualMarker?.remove();
+  $("manual-form").hidden = true;
+  $("man-pick").classList.remove("active");
+  $("man-name").value = ""; $("man-elev").value = ""; $("man-region").value = "";
+  $("man-coord").textContent = "위치 미지정";
+  $("man-create").disabled = true;
+}
+$("manual-toggle").onclick = () => {
+  if ($("manual-form").hidden) $("manual-form").hidden = false;  // 열기
+  else closeManualForm();                                       // 닫기(입력 초기화)
+};
+$("man-pick").onclick = () => {
+  S.pickingCenter = !S.pickingCenter;
+  $("man-pick").classList.toggle("active", S.pickingCenter);
+  map.getCanvas().style.cursor = S.pickingCenter ? "crosshair" : "";
+};
+$("man-cancel").onclick = closeManualForm;
+$("man-create").onclick = async () => {
+  const name = $("man-name").value.trim();
+  if (!name) { alert("산 이름을 입력하세요."); return; }
+  if (!S.manualCenter) { alert("지도에서 중심 위치를 클릭하세요."); return; }
+  const [lon, lat] = S.manualCenter;
+  const elev = $("man-elev").value.trim(), region = $("man-region").value.trim();
+  $("man-create").disabled = true;
+  try {
+    const r = await api("/mountains/manual", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, lat, lon, elev: elev || null, region }),
+    });
+    closeManualForm();
+    await refreshList();
+    await selectMountain(r.code);  // 바로 편집(등산로 서브탭)으로 이동
+  } catch (e) {
+    alert("추가 실패: " + e.message);
+    $("man-create").disabled = false;
+  }
+};
+
 // ── 초안 목록 (지역 필터 + 권역별 그룹) ──
 async function refreshList() {
   S.list = await api("/mountains");
@@ -833,9 +883,18 @@ $("pk-add-coord").onclick = () => {
 
 // ── 지도 이벤트 (코스 클릭·정상 추가/드래그) ──
 function wireMapEvents() {
-  // 코스 선택 — 정상 추가 모드 중엔 무시 (등록 순서상 이 가드가 먼저 실행됨)
+  // 산 직접 추가 — 중심 위치 클릭 (draft 없이도 동작하는 일회성 픽)
+  map.on("click", (e) => {
+    if (!S.pickingCenter) return;
+    S.pickingCenter = false;
+    $("man-pick").classList.remove("active");
+    map.getCanvas().style.cursor = "";
+    setManualCenter(e.lngLat.lng, e.lngLat.lat);
+  });
+
+  // 코스 선택 — 정상 추가·중심 픽 모드 중엔 무시 (등록 순서상 이 가드가 먼저 실행됨)
   map.on("click", "courses-hit", (e) => {
-    if (S.addingPeak) return;
+    if (S.addingPeak || S.pickingCenter) return;
     selectCourse(e.features[0].properties.id, false);
     e.preventDefault?.();
   });

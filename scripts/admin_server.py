@@ -243,6 +243,16 @@ def create_draft(code):
     return draft, JOBS.submit(f"{draft['mountain']['name']} DEM 준비", seed, code=code)
 
 
+def _next_manual_code():
+    """수동 등록 산의 산코드 — '9'+8자리 예약 대역.
+    산림청 코드는 전부 1~4로 시작하므로 9-접두는 절대 충돌하지 않는다.
+    admin_data 의 기존 9######## 중 최대+1, 없으면 900000001."""
+    base = draft_store.ADMIN_DATA
+    used = [int(c) for c in (os.listdir(base) if os.path.isdir(base) else [])
+            if re.fullmatch(r"9\d{8}", c)]
+    return str((max(used) + 1) if used else 900000001)
+
+
 _MNT_CACHE = None
 _TOP100_CACHE = None
 
@@ -574,6 +584,35 @@ class AdminHandler(BaseHandler):
                     raise ValueError("9자리 산코드 필요")
                 draft, jid = create_draft(code)
                 return self._json({"code": code, "job_id": jid}, 201)
+
+        # POST /api/mountains/manual — 산림청 원본 없는 산 직접 등록 (이름·중심·높이)
+        # 코스 자동 시드/DEM 프리페치 없음(코스는 GPX 업로드) → 즉시 초안만 생성.
+        if method == "POST" and p == ["mountains", "manual"]:
+            data = json.loads(self._body() or b"{}")
+            name = str(data.get("name", "")).strip()
+            if not name:
+                raise ValueError("산 이름이 필요합니다")
+            try:
+                lat, lon = float(data["lat"]), float(data["lon"])
+            except (KeyError, TypeError, ValueError):
+                raise ValueError("중심 좌표(lat·lon)가 필요합니다")
+            if not (32 <= lat <= 44 and 123 <= lon <= 133):
+                raise ValueError("좌표가 한반도 범위(위도 32~44, 경도 123~133)를 벗어났습니다")
+            elev = data.get("elev")
+            if elev in (None, ""):
+                elev = None
+            else:
+                try:
+                    elev = int(float(elev))
+                except (TypeError, ValueError):
+                    raise ValueError("높이는 숫자여야 합니다")
+            region = str(data.get("region", "")).strip() or None
+            code = _next_manual_code()
+            if draft_store.load(code):
+                raise ValueError(f"{code} 초안이 이미 있음")
+            draft = draft_store.new_manual_draft(code, name, [lon, lat], elev, region)
+            draft_store.save(code, draft)
+            return self._json({"code": code, "name": name}, 201)
 
         # /api/mountains/<code>/...
         if len(p) >= 2 and p[0] == "mountains" and re.fullmatch(r"\d{9}", p[1]):

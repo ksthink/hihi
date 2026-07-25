@@ -200,6 +200,13 @@ button.active { background: #111; color: #fff; }
 #mnt-results .no-src { color: #bbb; }
 #mnt-results button { padding: 2px 8px; font-size: 12px; }
 
+/* 산 직접 추가 (산림청 원본 없는 산) */
+#manual-toggle { width: 100%; margin-top: 6px; font-size: 12px; color: #555; border-style: dashed; }
+#manual-form { margin-top: 6px; padding: 9px; border: 1px solid #ddd; border-radius: 7px; background: #fafafa; }
+#manual-form > input { width: 100%; box-sizing: border-box; }
+#manual-form .row input { flex: 1; min-width: 0; }
+#man-coord { font-size: 12px; }
+
 /* 초안 목록 */
 #draft-list { list-style: none; margin: 0; padding: 0; }
 #draft-list li {
