@@ -6,7 +6,7 @@
 //   산출:  HiHeight/Resources/basemap-light.json, basemap-dark.json (gitignore — 재생성)
 //
 // 계약(§8-2): 스타일 로직의 단일 출처는 basemap-style.js. 이 스크립트는 URL 절대화만 한다.
-import { buildStyle } from "../basemap-style.js";
+import { buildStyle, symChar } from "../basemap-style.js";
 import { writeFileSync, mkdirSync, cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -38,19 +38,66 @@ for (const stack of ["MonaS12 Regular", "MonaS12 Bold"]) {
   cpSync(join(ROOT, "fonts", stack), join(RES, "glyphs", stack), { recursive: true });
 }
 
+// ── 관리자 표시 설정 (R2 config/*.json) — 웹과 같은 소스를 빌드 시점에 구워 넣는다. ──
+// 웹은 이 설정을 런타임에 fetch 하지만, 네이티브 스타일은 빌드 산출물이라 여기서 한 번
+// 읽어 반영한다. 따라서 각 빌드가 그 시점의 관리자 설정과 일치한다.
+//   ⚠️ 관리자에서 설정을 바꾸면 재빌드·재배포해야 앱에 반영된다(네이티브의 다른 모든
+//      빌드 산출물과 동일). 실시간 반영이 필요하면 런타임 fetch 로 전환해야 한다.
+// 스팟 분류 기본값 — fetch 실패(오프라인 빌드) 시 폴백. admin_server SPOT_DISPLAY_DEFAULT 와 일치.
+const SPOT_DEFAULT = {
+  정상: { zoom: 0, icon: true, size: 14, bold: true },
+  장소: { zoom: 14, icon: true, size: 8, bold: false },
+  조망점: { zoom: 18, icon: true, size: 8, bold: false },
+  화장실: { zoom: 18, icon: true, size: 8, bold: false },
+  정자: { zoom: 18, icon: true, size: 8, bold: false },
+  헬기장: { zoom: 18, icon: true, size: 8, bold: false },
+  음수대: { zoom: 18, icon: true, size: 8, bold: false },
+  주차장: { zoom: null, icon: true, size: 8, bold: false },
+  분기점: { zoom: null, icon: true, size: 8, bold: false },
+  시종점: { zoom: null, icon: true, size: 8, bold: false },
+};
+async function fetchCfg(name) {
+  try {
+    const r = await fetch(`${BASE}/config/${name}`, { cache: "no-cache" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (!j?.categories) throw new Error("no categories");
+    console.log(`config: ${name} 반영`);
+    return j.categories;
+  } catch (e) {
+    console.warn(`config: ${name} 실패(${e.message}) — 기본값 사용`);
+    return null;
+  }
+}
+const poiCfg = await fetchCfg("poi-display.json");                 // null → buildStyle 이 기본값
+const spotRaw = await fetchCfg("spot-display.json");
+// 누락 분류는 기본값으로 채워 항상 완전 객체 (웹 normSpotDisplay 대응)
+const spotCfg = Object.fromEntries(Object.keys(SPOT_DEFAULT)
+  .map((c) => [c, { ...SPOT_DEFAULT[c], ...(spotRaw?.[c] || {}) }]));
+
+// ── 스팟 GL 표현식 (app.js 310-323 미러) — 우선순위: 스팟별 오버라이드(disp_*) > 분류 전역 ──
+const SPOT_FONT = (b) => [b ? "MonaS12 Bold" : "MonaS12 Regular"];
+const spotZoomGate = (cats) => [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"],
+  ["match", ["get", "category"], ...cats.flatMap((c) => [c, spotCfg[c].zoom ?? 99]), 99]]];
+const spotSize = (cats) => ["coalesce", ["get", "disp_size"],
+  ["match", ["get", "category"], ...cats.flatMap((c) => [c, spotCfg[c].size]), 8.9]];
+const spotFont = (cats) => ["match", ["to-string", ["get", "disp_bold"]],
+  "true", ["literal", SPOT_FONT(true)], "false", ["literal", SPOT_FONT(false)],
+  ["match", ["get", "category"], ...cats.flatMap((c) => [c, ["literal", SPOT_FONT(spotCfg[c].bold)]]),
+    ["literal", SPOT_FONT(false)]]];
+const spotIconGate = (cats) => ["to-boolean", ["coalesce", ["get", "disp_icon"],
+  ["match", ["get", "category"], ...cats.flatMap((c) => [c, spotCfg[c].icon]), false]]];
+
 function make(theme, baseMode) {
   const style = buildStyle(
     `${BASE}/kr-base.pmtiles`,        // R2 버킷 루트에 객체 존재(프록시의 /pmtiles/ 접두사 없음)
     theme,
     `${BASE}/kr-terrain.pmtiles`,
-    // poiDisplay 기본값 (스파이크). 본 이식에선 R2 config/poi-display.json 반영.
-    // ⚠️ 이때 Bold 문제를 반드시 같이 볼 것 — 웹 스타일은 POI 분류별 bold 플래그를 지원하고
-    //    (basemap-style.js FONT(P.<분류>.bold): 사찰·전철역·편의시설·버스정류장),
-    //    켜지는 순간 **한글 라벨에 Bold 글리프가 필요**해진다. 현재 null=전부 bold:false 라
-    //    Bold 를 쓰는 레이어가 하나도 없다(위 글리프 주석 참조). 설정을 반영하면서 Bold
-    //    글리프를 줄이면 라벨이 □ 로 조용히 깨지므로, 줄일 거면 "Bold 가 실제로 쓰이면
-    //    빌드 실패" 가드를 함께 넣을 것.
-    null,
+    // R2 config/poi-display.json (위에서 fetch). null 이면 buildStyle 이 기본값 사용.
+    //   Bold 참고: 전철역 등 bold:true 분류는 MonaS12 Bold 를 쓴다. Bold 글리프는 번들에
+    //   포함(위 cpSync)되므로 안전하다. Bold 글리프를 줄이려면 그 전에 "Bold 실사용 시 빌드
+    //   실패" 가드를 넣을 것(위 글리프 주석 참조).
+    poiCfg,
     baseMode, // "terrain"(지형 전용) | "osm"(전체 basemap) — 앱 지도 컨트롤 토글이 파일명으로 선택.
   );
   // 글리프: 앱 번들 포함(오프라인, §3.2). 번들 상대경로 → MapLibre 가 스타일 URL 기준으로 해석.
@@ -129,58 +176,63 @@ function make(theme, baseMode) {
       } },
   );
 
-  // ── 스팟 오버레이 (점+라벨+편의시설+정상) — app.js:582-716 대응 ──
-  // 분류별 노출 줌은 admin 이 R2 config/spot-display.json 으로 관리한다. 웹은 이를 런타임에
-  // 읽지만 네이티브는 아직 미연동이라 **현재 설정값을 여기 반영해 둔다**(2026-07-23 기준).
-  // ⚠️ admin 에서 분류 설정을 바꾸면 이 값도 같이 고쳐야 웹과 어긋나지 않는다(미해결 과제).
-  //    스팟별 오버라이드(disp_zoom·disp_size)는 팩 properties 로 오므로 자동 반영된다.
+  // ── 스팟 오버레이 (점+라벨+편의시설+정상) — app.js:579-651 미러 ──
+  // 분류별 노출 줌·크기·기호·볼드는 R2 config/spot-display.json(위 spotCfg)이 관리한다.
+  // 스팟별 오버라이드(disp_zoom·disp_size·disp_icon·disp_bold)는 팩 properties 로 와서
+  // 위 표현식(spotZoomGate 등)이 coalesce/match 로 분류 전역보다 우선 반영한다.
   const DOT_CATS = ["분기점", "시종점", "장소"];
-  const dotZoomGate = [">=", ["zoom"],
-    ["coalesce", ["get", "disp_zoom"], ["match", ["get", "category"], "장소", 0, "시종점", 12, 99]]];
-  // 편의시설 — 아이콘 이미지는 MapView.registerFacilityIcons 가 런타임 등록(이름 웹과 동일).
+  // 편의시설 — 아이콘 이미지는 MapView.registerPOIIcons 가 런타임 등록(이름 웹과 동일).
   const FACILITY_ICON = {
     조망점: "poi-viewpoint", 화장실: "poi-toilets", 정자: "poi-shelter",
     헬기장: "poi-helipad", 음수대: "poi-drinking_water", 주차장: "poi-parking",
   };
-  const FAC_ZOOM = { 조망점: 12, 화장실: 18, 정자: 12, 헬기장: 18, 음수대: 12, 주차장: 0 };
   const FAC_CATS = Object.keys(FACILITY_ICON);
-  const facZoomGate = [">=", ["zoom"],
-    ["coalesce", ["get", "disp_zoom"],
-      ["match", ["get", "category"], ...Object.entries(FAC_ZOOM).flat(), 99]]];
+  const pk = spotCfg["정상"];
   style.sources.spots = {
     type: "geojson",
     data: `${BASE}/packs/${PACK}/spots.geojson`,
   };
   style.layers.push(
+    // 점(분기점·시종점·장소) — 기호(점) on/off + 노출 줌 게이트
     { id: "spots-dots", type: "circle", source: "spots",
-      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], dotZoomGate],
+      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]],
+               spotIconGate(DOT_CATS), spotZoomGate(DOT_CATS)],
       paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 2.4, 16, 3.8],
                "circle-color": tc.line, "circle-stroke-color": tc.casing, "circle-stroke-width": 1.4 } },
     { id: "spots-labels", type: "symbol", source: "spots",
-      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], ["has", "name"], dotZoomGate],
-      layout: { "text-field": ["get", "name"], "text-font": ["MonaS12 Regular"],
-                "text-size": ["coalesce", ["get", "disp_size"], 11],   // disp_size 오버라이드
+      filter: ["all", ["in", ["get", "category"], ["literal", DOT_CATS]], ["has", "name"],
+               spotZoomGate(DOT_CATS)],
+      layout: { "text-field": ["get", "name"], "text-font": spotFont(DOT_CATS),
+                "text-size": spotSize(DOT_CATS),
                 "text-offset": [0, 0.9], "text-anchor": "top", "text-max-width": 8 },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.4 } },
-    // 편의시설(조망점·화장실·정자·헬기장·음수대·주차장) — 아이콘 + 이름. 웹 spots-facilities 대응.
-    // 아이콘이 없어도 이름은 나오도록 icon-optional/text-optional 을 켠다.
+    // 편의시설(조망점·화장실·정자·헬기장·음수대·주차장) — 기호 on 이면 아이콘, 아니면 이름만.
     { id: "spots-facilities", type: "symbol", source: "spots",
-      filter: ["all", ["in", ["get", "category"], ["literal", FAC_CATS]], facZoomGate],
+      filter: ["all", ["in", ["get", "category"], ["literal", FAC_CATS]], spotZoomGate(FAC_CATS)],
       layout: {
-        "icon-image": ["match", ["get", "category"], ...Object.entries(FACILITY_ICON).flat(), ""],
+        "icon-image": ["case", spotIconGate(FAC_CATS),
+          ["match", ["get", "category"], ...Object.entries(FACILITY_ICON).flat(), ""], ""],
         "icon-optional": true, "text-optional": true,
         "text-field": ["coalesce", ["get", "name"], ""],
-        "text-font": ["MonaS12 Regular"],
-        "text-size": ["coalesce", ["get", "disp_size"], 8.4],
+        "text-font": spotFont(FAC_CATS),
+        "text-size": spotSize(FAC_CATS),
         "text-offset": [0, 1.05], "text-anchor": "top", "text-max-width": 8,
       },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.4 } },
-    // 정상 표식 — ▲(라이트)/△(다크) 텍스트 글리프 (런타임 이미지 불필요)
+    // 정상 — 접두 기호(설정 문자 또는 ▲/△) + 이름. 부봉(main:false)은 주봉 대비 11/14.4 축소.
     { id: "spot-peaks", type: "symbol", source: "spots",
-      filter: ["==", ["get", "category"], "정상"],
-      layout: { "text-field": ["concat", theme === "dark" ? "△" : "▲", ["coalesce", ["get", "name"], ""]],
-                "text-font": ["MonaS12 Regular"], "text-size": 14,
-                "text-offset": [0, -0.6], "text-anchor": "bottom" },
+      filter: ["all", ["==", ["get", "category"], "정상"],
+               [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"], pk.zoom ?? 99]]],
+      layout: {
+        "text-field": ["concat",
+          ["case", ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]],
+            symChar(pk.icon) ?? (theme === "dark" ? "△" : "▲"), ""],
+          ["coalesce", ["get", "name"], ""]],
+        "text-font": spotFont(["정상"]),
+        "text-size": ["coalesce", ["get", "disp_size"],
+          ["case", ["==", ["get", "main"], false],
+            Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]],
+        "text-offset": [0, -0.6], "text-anchor": "bottom" },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.8 } },
   );
 
