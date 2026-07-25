@@ -70,28 +70,33 @@ struct MapView: UIViewRepresentable {
     }
 
     private func applyStyle(_ mv: MLNMapView) {
-        // 팩이 다운로드돼 있으면 로컬 base 를 쓰는 오프라인 스타일, 아니면 번들(원격) 스타일.
-        let url = offlineBaseURL.flatMap { Self.offlineStyleURL(resource: styleResource, base: $0) }
-                  ?? Bundle.main.url(forResource: styleResource, withExtension: "json")
-        guard let url else { return }
+        // 항상 런타임 스타일로 — 글리프 URL 을 절대 file:// 로 재작성한다.
+        // ⚠️ 번들 스타일의 glyphs 는 상대경로("glyphs/{fontstack}/{range}.pbf")인데, MapLibre Native
+        //    가 이를 번들 file:// 로 resolve 하지 못해 "unsupported URL"(-1002)로 글리프 로드가
+        //    전부 실패한다 → 지도 라벨(전철역·지명·POI)이 통째로 안 그려진다(2026-07-25 확인).
+        //    번들 절대 경로로 바꾸면 해결. (오프라인이면 base 소스도 로컬 pmtiles 로 교체.)
+        guard let url = Self.runtimeStyle(resource: styleResource, offlineBase: offlineBaseURL) else { return }
         if mv.styleURL != url { mv.styleURL = url }
     }
 
-    // 오프라인 스타일 — 번들 스타일의 base 벡터소스(protomaps) URL 을 로컬 pmtiles 로 치환해 캐시에 기록.
-    // 산코드별 파일명이라 산 전환 시 styleURL 이 달라져 재로딩된다. (오버레이 geojson 은 applyOverlay 가 로컬로 교체.)
-    static func offlineStyleURL(resource: String, base: URL) -> URL? {
-        let code = base.deletingLastPathComponent().lastPathComponent
-        let out = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("offline-\(resource)-\(code).json")
-        if FileManager.default.fileExists(atPath: out.path) { return out }
+    static func runtimeStyle(resource: String, offlineBase: URL?) -> URL? {
         guard let src = Bundle.main.url(forResource: resource, withExtension: "json"),
               let data = try? Data(contentsOf: src),
-              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              var sources = json["sources"] as? [String: Any],
-              var proto = sources["protomaps"] as? [String: Any] else { return nil }
-        proto["url"] = "pmtiles://\(base.absoluteString)"     // 로컬 base 타일 (pmtiles://file:///…)
-        sources["protomaps"] = proto
-        json["sources"] = sources
+              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        // 글리프 → 번들 절대 file:// (상대경로는 native 에서 로드 실패)
+        let glyphsBase = Bundle.main.bundleURL.appendingPathComponent("glyphs").absoluteString
+        json["glyphs"] = "\(glyphsBase)/{fontstack}/{range}.pbf"
+        // 오프라인이면 base 벡터소스를 로컬 pmtiles 로 교체
+        let code = offlineBase?.deletingLastPathComponent().lastPathComponent ?? "bundle"
+        if let base = offlineBase,
+           var sources = json["sources"] as? [String: Any],
+           var proto = sources["protomaps"] as? [String: Any] {
+            proto["url"] = "pmtiles://\(base.absoluteString)"
+            sources["protomaps"] = proto
+            json["sources"] = sources
+        }
+        let out = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("runtime-\(resource)-\(code).json")
         guard let outData = try? JSONSerialization.data(withJSONObject: json) else { return nil }
         try? outData.write(to: out)
         return out

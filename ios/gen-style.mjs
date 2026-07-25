@@ -34,8 +34,13 @@ mkdirSync(OUT, { recursive: true });
 //   착수 적기: poi-display 볼드 설정 반영 작업 / 용량 민원 발생 / App Store 정식 출시.
 const ROOT = fileURLToPath(new URL("../", import.meta.url));   // 저장소 루트(ios/ 의 상위)
 const RES = fileURLToPath(OUT);
-for (const stack of ["MonaS12 Regular", "MonaS12 Bold"]) {
-  cpSync(join(ROOT, "fonts", stack), join(RES, "glyphs", stack), { recursive: true });
+// 글리프 폴더는 **공백 없는 이름**으로 번들한다(MonaS12Regular). fontstack 에 공백이 있으면
+// file:// 글리프 URL 이 깨질 수 있다. 스타일의 text-font 도 아래에서 공백 없는 이름으로 바꾼다.
+// (⚠️ 글리프 URL 은 MapView.runtimeStyle 이 런타임에 번들 절대 file:// 로 재작성한다 — 상대경로는
+//  MapLibre Native 가 resolve 못 해 "unsupported URL"로 라벨이 통째로 안 그려진다, 2026-07-25.)
+const GLYPH_STACKS = [["MonaS12 Regular", "MonaS12Regular"], ["MonaS12 Bold", "MonaS12Bold"]];
+for (const [src, dst] of GLYPH_STACKS) {
+  cpSync(join(ROOT, "fonts", src), join(RES, "glyphs", dst), { recursive: true });
 }
 
 // ── 관리자 표시 설정 (R2 config/*.json) — 웹과 같은 소스를 빌드 시점에 구워 넣는다. ──
@@ -315,7 +320,10 @@ function make(theme, baseMode) {
       paint: { "circle-radius": 4.5, "circle-color": tc.line } },
   );
 
-  return JSON.stringify(style, null, 2);
+  // text-font 의 폰트 스택 이름을 공백 없는 이름으로(위 글리프 폴더명과 일치). 네이티브 전용.
+  return JSON.stringify(style, null, 2)
+    .replaceAll("MonaS12 Regular", "MonaS12Regular")
+    .replaceAll("MonaS12 Bold", "MonaS12Bold");
 }
 
 // 테마 2 × 모드 2 = 4벌. 지형 전용은 접미사 없음(기본), OSM 은 "-osm".
