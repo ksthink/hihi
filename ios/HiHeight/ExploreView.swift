@@ -103,7 +103,7 @@ struct ExploreView: View {
                     ctrlImageButton(scheme == .dark ? "ctrl-sun" : "ctrl-moon", t) {   // 웹 달/해 아이콘(크기 통일)
                         themePref = scheme == .dark ? "light" : "dark"
                     }
-                    ctrlImageButton("ctrl-locate", t, active: headingOn) { locateTick += 1 }   // ◎ 현재위치 — 나침반 추적 중이면 강조
+                    ctrlImageButton("ctrl-locate", t, active: headingOn, beam: true) { locateTick += 1 }   // ◎ 현재위치 — 나침반 추적 중이면 강조+빔
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
@@ -297,7 +297,7 @@ struct ExploreView: View {
     // 우측 지도 컨트롤 버튼 — 웹과 동일한 커스텀 아이콘(번들 PNG, template 틴트).
     // 프레임 36 / 아이콘 20 (웹 컨트롤 비율에 맞춰 아이콘이 프레임을 적당히 채우도록).
     // active=true 면 반전(강조) — 나침반 추적 중 위치 버튼 같은 토글 상태 표시.
-    private func ctrlImageButton(_ image: String, _ t: Theme, active: Bool = false, _ act: @escaping () -> Void) -> some View {
+    private func ctrlImageButton(_ image: String, _ t: Theme, active: Bool = false, beam: Bool = false, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             Image(uiImage: (UIImage(named: image) ?? UIImage()).withRenderingMode(.alwaysTemplate))
                 .resizable().scaledToFit()
@@ -305,7 +305,29 @@ struct ExploreView: View {
                 .foregroundStyle(active ? t.onAccent : t.text)
                 .frame(width: 36, height: 36)
                 .background(active ? t.accent : t.elevated.opacity(0.92), in: Circle())
+                // 나침반 모드 표시 — 위치 점에서 위로 뻗는 빛 원뿔(지도 헤딩 빔 축소판)
+                .overlay {
+                    if beam && active {
+                        HeadingCone()
+                            .fill(LinearGradient(colors: [t.onAccent.opacity(0.85), t.onAccent.opacity(0)],
+                                                 startPoint: .bottom, endPoint: .top))
+                            .frame(width: 36, height: 36).clipShape(Circle())
+                            .allowsHitTesting(false)
+                    }
+                }
                 .overlay(Circle().strokeBorder(active ? Color.clear : t.line))
+        }
+    }
+
+    // 위치 버튼 나침반 빔 — 중심(현위치 점)에서 위로 벌어지는 원뿔.
+    private struct HeadingCone: Shape {
+        func path(in r: CGRect) -> Path {
+            var p = Path()
+            p.move(to: CGPoint(x: r.midX, y: r.midY))
+            p.addLine(to: CGPoint(x: r.midX - r.width * 0.30, y: r.minY + r.height * 0.12))
+            p.addLine(to: CGPoint(x: r.midX + r.width * 0.30, y: r.minY + r.height * 0.12))
+            p.closeSubpath()
+            return p
         }
     }
 
@@ -466,7 +488,9 @@ struct ExploreView: View {
         }
         return VStack(spacing: 0) {
             // 드래그 손잡이 — 전폭 밴드로 히트영역을 크게. 탭하면 올림/내림 토글(드래그와 병행).
-            Capsule().fill(t.line).frame(width: 40, height: 5)
+            // 접힘(peek)=위 꺾쇠(끌어올림 안내) / 펼침(large)=아래 꺾쇠(내림 안내).
+            Image(systemName: detent == .peek ? "chevron.compact.up" : "chevron.compact.down")
+                .font(.system(size: 26, weight: .medium)).foregroundStyle(t.muted)
                 .frame(maxWidth: .infinity).frame(height: 26)
                 .contentShape(Rectangle())
                 .onTapGesture {

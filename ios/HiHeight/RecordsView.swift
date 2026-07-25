@@ -121,6 +121,7 @@ struct RecordsView: View {
         .listStyle(.plain)
         .listRowSpacing(10)          // 카드 간 여백 — 행 밖이라 삭제 버튼 높이가 카드와 정확히 일치
         .padding(.horizontal, 20)    // 좌우 여백을 List 에 줘서 행 폭 = 카드 폭
+        .scrollIndicators(.hidden)   // List 에 가로 패딩을 줘 인디케이터가 카드 위로 겹침 → 숨김
         .scrollContentBackground(.hidden)
         .background(t.bg)
     }

@@ -10,6 +10,7 @@ TestFlight 로 빌드 205~211 을 반복 배포하며 실기기 확인. 지도 �
 개발자 모드 HUD 를 손봤다. 이 날 작업은 대부분 **실기 배포 → 피드백 → 수정** 사이클.
 
 ### 생성 / 추가
+- **기록 탭 스크롤바 겹침·바텀시트 그래버·나침반 버튼 빔(`RecordsView`·`ExploreView`)**: ① 기록 List 에 가로 패딩(20)을 줘 스크롤 인디케이터가 카드 위로 겹치던 것 → `.scrollIndicators(.hidden)`. ② 탐험 바텀시트 손잡이(`-` 캡슐)를 상태별 꺾쇠로 — 접힘(peek)=`chevron.compact.up`(끌어올림), 펼침(large)=`chevron.compact.down`(내림). ③ 위치 버튼이 나침반 모드일 때 아이콘(현위치 점)에서 위로 뻗는 빛 원뿔(`HeadingCone`) 오버레이 추가(지도 헤딩 빔 축소판). 12 mini 로 그래버 꺾쇠·버튼 빔 시각 확인. 지도 위 헤딩 빔은 기존 `showsUserHeadingIndicator` 배선 유지(실기 나침반 필요 — 시뮬레이터 검증 불가).
 - **네이티브 목록 하단 잘림 수정(`ContentView.swift`) — 짧은 화면**: 추천·등반·기록 탭 목록의 마지막 항목이 하단 네비바에 가려 잘렸다(사용자 실기=812pt급 짧은 화면에서만, iPhone 17 Pro 큰 화면은 정상). 원인: 하단 네비를 `TabView` 에 `safeAreaInset` 으로 다는데 이 공간이 **페이지(각 탭) 스크롤 콘텐츠엔 전파되지 않음**(12 mini 측정: 페이지가 잡는 하단 인셋=34pt=홈 인디케이터뿐, 네비 높이 누락). 수정: 네비 높이를 `GeometryReader` 로 실측(`navBarH`) → 스크롤 3탭에 `safeAreaInset(edge:.bottom){ Color.clear.frame(height:navReserve) }` 로 페이지별 하단 공간 확보(검색·등반 중 네비 숨김 시 0). 탐험(지도)은 map 이 전체를 채우므로 제외. 12 mini 재현→수정 검증(끝 마커가 네비 위로 완전 노출).
   - **후속: 하단에서 위로 끌어올리는 스크롤이 간헐적으로 안 되던 문제 수정**: 위 하단 인셋 스페이서(`Color.clear`)가 화면 아래쪽 터치를 가로채(=SwiftUI `Color` 는 기본 히트테스트 대상), 그 영역에서 시작하는 스크롤 드래그를 먹었다. `.allowsHitTesting(false)` 추가 — 레이아웃(하단 공간 확보)은 그대로 두고 터치만 스크롤뷰로 통과.
 
