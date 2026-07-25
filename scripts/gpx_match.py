@@ -490,15 +490,16 @@ def _course_bbox(lines):
 
 
 def gpx_elevation(raw):
-    """GPX 트랙포인트 실측 고도 시퀀스 + '실제 녹화' 여부.
-    포인트마다 <time> 이 있으면 기기 녹화(실측)로 본다 — 길찾기 경로 export 는 보통
-    포인트별 time 이 없고 ele 도 DEM 합성값이라(예: 네이버 ww.gpx) 신뢰하지 않는다.
-    반환: (ele[list]|None, is_recording[bool])."""
+    """GPX 트랙포인트 (lon,lat,ele) 트랙 + '실제 녹화' 여부.
+    ele 가 있으면 그 값을 쓴다 — 네이버·카카오 export 는 자사 정밀 지형모델 기반이라
+    우리 코퍼니쿠스 DSM(다리·건물 포함해 강변에서 튐)보다 매끄럽고 정확하다.
+    포인트별 <time> 이 있으면 기기 실측 녹화(있으면 '실측GPS', 없으면 'GPX값').
+    반환: (track[(lon,lat,ele)]|None, is_recording[bool])."""
     try:
         root = ET.fromstring(raw)
     except ET.ParseError:
         return None, False
-    ele, npts, ntime = [], 0, 0
+    track, npts, ntime = [], 0, 0
     for el in root.iter():
         if el.tag.rsplit("}", 1)[-1] != "trkpt":
             continue
@@ -514,23 +515,29 @@ def gpx_elevation(raw):
             elif ct == "time":
                 ntime += 1
         if e is not None:
-            ele.append(e)
-    if npts < 2 or len(ele) < npts:          # 전 포인트에 ele 가 있어야 사용
+            try:
+                track.append((float(el.attrib["lon"]), float(el.attrib["lat"]), e))
+            except (KeyError, ValueError):
+                pass
+    if npts < 2 or len(track) < npts:        # 전 포인트에 ele 가 있어야 사용
         return None, False
-    return ele, (ntime >= npts * 0.5)        # 절반 이상 time → 녹화로 간주
+    return track, (ntime >= npts * 0.5)      # 절반 이상 time → 실측 녹화
 
 
-def compute_stats(lines, dem, gpx_elev=None):
+def compute_stats(lines, dem, gpx_track=None):
     coords = []
     for ln in lines:
         coords += ln if not coords else ln[1:]
     # 거리는 파트별 합산 — 수작업 코스의 비연결 파트 갭을 직선으로 가산하지 않음 (부록 D)
     km = sum(_polyline_km(ln) for ln in lines)
-    prof = pl.profile48(coords, dem.elev)               # 표시용 스파이크(모양)
-    # 누적상승·최저/최고 — 실측 녹화 고도가 있으면 우선(스무딩), 없으면 DEM 을 격자
-    # 수준(25m)으로 표본. 둘 다 소임계값(3m) 히스테리시스로 잡음 과대추정 차단.
-    dense = pl.smooth_series(gpx_elev, 3) if (gpx_elev and len(gpx_elev) >= 2) \
-        else pl.elev_along(coords, dem.elev, 25.0)
+    # 고도 — GPX 자체 고도가 있으면 프로필·누적상승 모두 그것으로(DSM 스파이크 회피).
+    # 없으면 DEM 을 격자 수준(25m)으로 표본. 둘 다 소임계값(3m) 히스테리시스로 잡음 차단.
+    if gpx_track and len(gpx_track) >= 2:
+        prof = pl.profile_from_track(gpx_track, 48)
+        dense = pl.smooth_series(pl.ele_series_by_dist(gpx_track, 25.0), 3)
+    else:
+        prof = pl.profile48(coords, dem.elev)
+        dense = pl.elev_along(coords, dem.elev, 25.0)
     asc, desc = pl.cum_gain(dense, 3.0)
     return {"distance_km": round(km, 2), "time_hr": pl.naismith_time(km, asc),
             "profile": prof,
@@ -544,15 +551,16 @@ def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
     has_net = os.path.isdir(os.path.join(pl.ROOT, "mountain", code))
     m = match(code, raw, tau, detour, upload_name) if has_net else match_raw(raw, upload_name)
     dem = _dem_for([draft["mountain"]["bbox"], _course_bbox(m["lines"])])
-    # 실측 녹화 GPX(포인트별 time)면 그 고도로 누적상승 계산, 아니면 DEM.
-    gele = None
+    # GPX 에 고도가 있으면 그걸 우선(네이버·카카오 export·실측 녹화), 없으면 DEM.
+    gtrack, esrc = None, "dem"
     try:
-        e, rec = gpx_elevation(raw)
-        if rec and e:
-            gele = e
+        trk, rec = gpx_elevation(raw)
+        if trk:
+            gtrack = trk
+            esrc = "gps" if rec else "gpx"       # 실측 녹화 / GPX 값(export)
     except Exception:
-        gele = None
-    computed = compute_stats(m["lines"], dem, gpx_elev=gele)
+        gtrack = None
+    computed = compute_stats(m["lines"], dem, gpx_track=gtrack)
 
     # 업로드 원본 보존 (확장자는 원본 파일명 기준 — gpx/geojson/json/zip/shp)
     gdir = os.path.join(pl.ROOT, "admin_data", code, "gpx")
@@ -573,8 +581,7 @@ def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
         "lines": m["lines"],
         "computed": computed,
     }
-    report = dict(m["report"], ascent=computed["ascent"],
-                  elev_src=("gps" if gele else "dem"))   # 고도 출처(실측 녹화/DEM)
+    report = dict(m["report"], ascent=computed["ascent"], elev_src=esrc)  # 고도 출처
     return {"course": course, "report": report,
             "preview": {"raw": m["preview_raw"], "matched": m["preview_matched"]}}
 

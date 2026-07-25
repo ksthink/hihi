@@ -717,9 +717,9 @@ async function runMatch() {
     map.getSource("gpx-raw").setData(r.preview.raw);
     map.getSource("gpx-matched").setData(r.preview.matched);
     const rep = r.report;
-    // 고도 출처 — 실측 녹화 GPX(포인트별 time) 면 GPS, 아니면 지형(DEM) 샘플링.
-    const es = rep.elev_src === "gps"
-      ? ` · <span class="dim">고도 실측GPS</span>` : ` · <span class="dim">고도 지형DEM</span>`;
+    // 고도 출처 — 실측 녹화(GPS)·GPX 자체값(네이버 등 export)·지형(DEM) 샘플링.
+    const esLabel = { gps: "고도 실측GPS", gpx: "고도 GPX값", dem: "고도 지형DEM" }[rep.elev_src] || "고도 지형DEM";
+    const es = ` · <span class="dim">${esLabel}</span>`;
     if (rep.raw_passthrough) {
       // 산림청 구간망 없는 산(수동 등록) — GPX 원본을 그대로 코스로 사용
       const parts = (rep.parts ?? 1) > 1

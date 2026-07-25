@@ -221,6 +221,37 @@ def elev_along(coords, elev_fn, step_m=25.0):
     return out
 
 
+def profile_from_track(pts, n=48):
+    """(lon,lat,ele) 트랙 → 등거리 n점 고도(표시 스파이크용). GPX 자체 고도 사용."""
+    cum = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        cum.append(cum[-1] + hav(a[:2], b[:2]))
+    total = cum[-1] or 1.0
+    out, j = [], 0
+    for i in range(n):
+        dd = total * i / (n - 1)
+        while j < len(cum) - 1 and cum[j+1] < dd:
+            j += 1
+        out.append(int(round(pts[min(j, len(pts)-1)][2])))
+    return out
+
+
+def ele_series_by_dist(pts, step_m=25.0):
+    """(lon,lat,ele) 트랙을 step_m 간격으로 재표본한 고도 시퀀스(누적상승용)."""
+    if len(pts) < 2:
+        return [pts[0][2]] if pts else []
+    out = [pts[0][2]]
+    acc = 0.0
+    for a, b in zip(pts, pts[1:]):
+        acc += hav(a[:2], b[:2])
+        if acc >= step_m:
+            out.append(b[2])
+            acc = 0.0
+    if acc > 1e-6:
+        out.append(pts[-1][2])
+    return out
+
+
 def smooth_series(xs, win=3):
     """1차원 이동평균 — 실측(기압계/GPS) 고도의 뾰족 잡음 완화."""
     if len(xs) <= win:
