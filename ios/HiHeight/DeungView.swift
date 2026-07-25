@@ -95,7 +95,7 @@ struct DeungView: View {
             VStack(spacing: 8) {
                 HStack(spacing: 0) {
                     statCell("거리(km)", t) { statValue(c?.distance_km.map(fmtNum), t) }
-                    statCell("예상(시간)", t) { statValue(c?.time_hr.map(fmtNum), t) }
+                    statCell("예상", t) { statValue(c?.timeLabel, t) }
                     statCell("난이도", t) {
                         if let c { difMeter(c.difLevel, t) } else { statValue(nil, t) }
                     }

@@ -708,7 +708,7 @@ struct ExploreView: View {
                         HStack(spacing: 10) {
                             if let pk = c.peak, !pk.isEmpty { Text(pk) }
                             if let km = c.distance_km { Text("\(fmtNum(km))km") }
-                            if let h = c.time_hr { Text("\(fmtNum(h))h") }
+                            if let tl = c.timeLabel { Text(tl) }
                             if let sf = c.surface, !sf.isEmpty { Text(sf) }
                         }
                         .font(.kakao(size: 12)).foregroundStyle(t.muted)

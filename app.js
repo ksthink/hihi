@@ -67,6 +67,12 @@ const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
 // 데이터 값(초급/중급/고급) → 화면 표시 라벨
 const DIFF_LABEL = { 초급: "보통", 중급: "어려움", 고급: "매우 어려움" };
 const difLabel = (d) => DIFF_LABEL[d] || d;
+// 소수 시간(time_hr) → "42분"/"1시간 30분". 데이터 계약은 소수 시간 그대로, 표시만 변환(iOS Course.timeLabel 과 동일 규칙).
+const fmtTime = (hr) => {
+  const m = Math.round(Number(hr) * 60);
+  if (!isFinite(m) || m <= 0) return "";
+  return m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ""}`;
+};
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
 // ── 테마 (흑백 화이트 / 다크) ────────────────────────
@@ -978,7 +984,7 @@ function renderTrailList(geojson) {
     li.innerHTML = `
       <div class="t-left">
         <div class="t-name"><span class="t-title"><span class="t-no">${courseNo(p, i)}</span>${p.name}</span> <span class="badge">${difLabel(p.difficulty)} ${difMeter(p.difficulty)}</span></div>
-        <div class="t-meta">${p.peak ? `<span>${p.peak}</span>` : ""}<span>${p.distance_km}km</span>${p.time_hr ? `<span>${p.time_hr}h</span>` : ""}${p.surface ? `<span>${p.surface}</span>` : ""}</div>
+        <div class="t-meta">${p.peak ? `<span>${p.peak}</span>` : ""}<span>${p.distance_km}km</span>${fmtTime(p.time_hr) ? `<span>${fmtTime(p.time_hr)}</span>` : ""}${p.surface ? `<span>${p.surface}</span>` : ""}</div>
         <div class="t-desc">${p.desc || ""}</div>
       </div>
       ${p.profile ? `<div class="t-prof">${profileSVG(p.profile, 96, 44)}</div>` : ""}`;
@@ -1301,7 +1307,7 @@ function updateClimb(feature) {
   if (div) div.hidden = !mtn;
   document.getElementById("climb-course").textContent = p.name;
   document.getElementById("climb-dist").textContent = p.distance_km;
-  document.getElementById("climb-time").textContent = p.time_hr || "–";
+  document.getElementById("climb-time").textContent = fmtTime(p.time_hr) || "–";
   document.getElementById("climb-diff").innerHTML = difMeter(p.difficulty);
   const hasElev = p.max_elev != null;
   document.getElementById("climb-emax").textContent = hasElev ? p.max_elev : "–";
