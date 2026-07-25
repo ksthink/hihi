@@ -4,61 +4,61 @@
   "정상": {
    "zoom": 0,
    "icon": true,
-   "size": 14.4,
+   "size": 14,
    "bold": true
   },
   "장소": {
-   "zoom": 14,
+   "zoom": 0,
    "icon": true,
-   "size": 8.9,
+   "size": 8,
    "bold": false
   },
   "조망점": {
    "zoom": 12,
    "icon": true,
-   "size": 8.4,
+   "size": 8,
    "bold": false
   },
   "화장실": {
    "zoom": 18,
    "icon": true,
-   "size": 8.4,
+   "size": 8,
    "bold": false
   },
   "정자": {
    "zoom": 12,
    "icon": true,
-   "size": 8.4,
+   "size": 8,
    "bold": false
   },
   "헬기장": {
-   "zoom": 18,
+   "zoom": 0,
    "icon": true,
-   "size": 8.4,
-   "bold": false
+   "size": 10,
+   "bold": true
   },
   "음수대": {
    "zoom": 12,
    "icon": true,
-   "size": 8.4,
+   "size": 8,
    "bold": false
   },
   "주차장": {
-   "zoom": 12,
+   "zoom": 0,
    "icon": true,
-   "size": 8.4,
+   "size": 8,
    "bold": false
   },
   "분기점": {
    "zoom": null,
    "icon": true,
-   "size": 8.9,
+   "size": 8,
    "bold": false
   },
   "시종점": {
    "zoom": 12,
    "icon": true,
-   "size": 8.9,
+   "size": 8,
    "bold": false
   }
  }

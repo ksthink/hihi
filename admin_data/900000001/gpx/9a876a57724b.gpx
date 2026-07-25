@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="네이버지도" xmlns="http://www.topografix.com/GPX/1/1" xmlns:nmap="https://map.naver.com/gpx/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>서울 양천구 용왕정길 43-서울 양천구 목동 569_260725</name>
+    <desc>서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 32-서울 양천구 용왕정길 19-용왕산달빛거리-서울 양천구 목동 560-서울 양천구 목동 569</desc>
+    <author><name>네이버지도</name></author>
+    <link href="https://map.naver.com"><text>네이버지도</text></link>
+    <time>2026-07-25T09:00:18.630Z</time>
+    <bounds minlat="37.5422671" minlon="126.8737197" maxlat="37.5468789" maxlon="126.8799643"/>
+    <extensions>
+      <nmap:walkCourse schemaVersion="1.0">
+        <nmap:distance>1566</nmap:distance>
+        <nmap:duration>1926.7</nmap:duration>
+        <nmap:stepCount>2446</nmap:stepCount>
+        <nmap:calories>86</nmap:calories>
+        <nmap:totalAscent>59</nmap:totalAscent>
+        <nmap:totalDescent>60</nmap:totalDescent>
+        <nmap:altMin>15</nmap:altMin>
+        <nmap:altMax>60</nmap:altMax>
+      </nmap:walkCourse>
+    </extensions>
+  </metadata>
+  <wpt lat="37.5456402" lon="126.8799643">
+    <name>출발지</name>
+    <desc>서울 양천구 용왕정길 43</desc>
+  </wpt>
+  <wpt lat="37.5456469" lon="126.8795194">
+    <name>경유지 #1</name>
+    <desc>서울 양천구 용왕정길 43</desc>
+  </wpt>
+  <wpt lat="37.5448116" lon="126.8790486">
+    <name>경유지 #2</name>
+    <desc>서울 양천구 용왕정길 43</desc>
+  </wpt>
+  <wpt lat="37.5439277" lon="126.8782465">
+    <name>경유지 #3</name>
+    <desc>서울 양천구 용왕정길 43</desc>
+  </wpt>
+  <wpt lat="37.5428846" lon="126.875989">
+    <name>경유지 #4</name>
+    <desc>서울 양천구 용왕정길 32</desc>
+  </wpt>
+  <wpt lat="37.5424954" lon="126.8739784">
+    <name>경유지 #5</name>
+    <desc>서울 양천구 용왕정길 19</desc>
+  </wpt>
+  <wpt lat="37.5466736" lon="126.8737284">
+    <name>용왕산달빛거리</name>
+    <desc>서울 양천구 목동 565</desc>
+  </wpt>
+  <wpt lat="37.5468788" lon="126.8765681">
+    <name>경유지 #7</name>
+    <desc>서울 양천구 목동 560</desc>
+  </wpt>
+  <wpt lat="37.5461103" lon="126.87663">
+    <name>도착지</name>
+    <desc>서울 양천구 목동 569</desc>
+  </wpt>
+  <rte>
+    <name>서울 양천구 용왕정길 43-서울 양천구 목동 569_260725</name>
+    <desc>서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 32-서울 양천구 용왕정길 19-용왕산달빛거리-서울 양천구 목동 560-서울 양천구 목동 569</desc>
+    <type>walking</type>
+    <rtept lat="37.5456402" lon="126.8799643">
+      <name>출발지</name>
+      <desc>서울 양천구 용왕정길 43</desc>
+      <type>start</type>
+    </rtept>
+    <rtept lat="37.5456469" lon="126.8795194">
+      <name>경유지 #1</name>
+      <desc>서울 양천구 용왕정길 43</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5448116" lon="126.8790486">
+      <name>경유지 #2</name>
+      <desc>서울 양천구 용왕정길 43</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5439277" lon="126.8782465">
+      <name>경유지 #3</name>
+      <desc>서울 양천구 용왕정길 43</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5428846" lon="126.875989">
+      <name>경유지 #4</name>
+      <desc>서울 양천구 용왕정길 32</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5424954" lon="126.8739784">
+      <name>경유지 #5</name>
+      <desc>서울 양천구 용왕정길 19</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5466736" lon="126.8737284">
+      <name>용왕산달빛거리</name>
+      <desc>서울 양천구 목동 565</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5468788" lon="126.8765681">
+      <name>경유지 #7</name>
+      <desc>서울 양천구 목동 560</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5461103" lon="126.87663">
+      <name>도착지</name>
+      <desc>서울 양천구 목동 569</desc>
+      <type>goal</type>
+    </rtept>
+  </rte>
+  <trk>
+    <name>서울 양천구 용왕정길 43-서울 양천구 목동 569_260725</name>
+    <desc>서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 43-서울 양천구 용왕정길 32-서울 양천구 용왕정길 19-용왕산달빛거리-서울 양천구 목동 560-서울 양천구 목동 569</desc>
+    <type>walking</type>
+    <trkseg>
+      <trkpt lat="37.5456402" lon="126.8799643"><ele>16.08</ele></trkpt>
+      <trkpt lat="37.5457111" lon="126.8798958"><ele>17.21</ele></trkpt>
+      <trkpt lat="37.5458419" lon="126.8797408"><ele>20.02</ele></trkpt>
+      <trkpt lat="37.5458614" lon="126.8796897"><ele>20.58</ele></trkpt>
+      <trkpt lat="37.5458477" lon="126.8796558"><ele>21.81</ele></trkpt>
+      <trkpt lat="37.5457292" lon="126.8795753"><ele>25.33</ele></trkpt>
+      <trkpt lat="37.5456469" lon="126.8795194"><ele>29.07</ele></trkpt>
+      <trkpt lat="37.5456442" lon="126.8795183"><ele>29.18</ele></trkpt>
+      <trkpt lat="37.5453837" lon="126.8793404"><ele>41.03</ele></trkpt>
+      <trkpt lat="37.5453231" lon="126.8793126"><ele>43.68</ele></trkpt>
+      <trkpt lat="37.5452717" lon="126.8793051"><ele>44.69</ele></trkpt>
+      <trkpt lat="37.5451734" lon="126.8792912"><ele>45</ele></trkpt>
+      <trkpt lat="37.5451138" lon="126.8792691"><ele>44.77</ele></trkpt>
+      <trkpt lat="37.5450966" lon="126.8792568"><ele>44.21</ele></trkpt>
+      <trkpt lat="37.5449365" lon="126.8791494"><ele>38.88</ele></trkpt>
+      <trkpt lat="37.5449049" lon="126.8791282"><ele>37.78</ele></trkpt>
+      <trkpt lat="37.5448143" lon="126.8790508"><ele>37.52</ele></trkpt>
+      <trkpt lat="37.5448116" lon="126.8790486"><ele>37.58</ele></trkpt>
+      <trkpt lat="37.5448107" lon="126.8790475"><ele>37.6</ele></trkpt>
+      <trkpt lat="37.5445861" lon="126.8788557"><ele>42.93</ele></trkpt>
+      <trkpt lat="37.5441516" lon="126.8784892"><ele>57.08</ele></trkpt>
+      <trkpt lat="37.5440176" lon="126.878376"><ele>60</ele></trkpt>
+      <trkpt lat="37.5439513" lon="126.8782803"><ele>60</ele></trkpt>
+      <trkpt lat="37.5439277" lon="126.8782465"><ele>60</ele></trkpt>
+      <trkpt lat="37.5439267" lon="126.8782443"><ele>60</ele></trkpt>
+      <trkpt lat="37.5438723" lon="126.8781666"><ele>60</ele></trkpt>
+      <trkpt lat="37.5434806" lon="126.8775711"><ele>59.52</ele></trkpt>
+      <trkpt lat="37.5433661" lon="126.8773965"><ele>59.04</ele></trkpt>
+      <trkpt lat="37.5432798" lon="126.877266"><ele>58.46</ele></trkpt>
+      <trkpt lat="37.5432043" lon="126.8771251"><ele>58.14</ele></trkpt>
+      <trkpt lat="37.5431549" lon="126.8769919"><ele>57.07</ele></trkpt>
+      <trkpt lat="37.5431082" lon="126.8768621"><ele>56.18</ele></trkpt>
+      <trkpt lat="37.5430748" lon="126.8766745"><ele>53.08</ele></trkpt>
+      <trkpt lat="37.5431287" lon="126.876468"><ele>49.11</ele></trkpt>
+      <trkpt lat="37.5431325" lon="126.8763367"><ele>46.72</ele></trkpt>
+      <trkpt lat="37.5431247" lon="126.8762304"><ele>45.53</ele></trkpt>
+      <trkpt lat="37.5430891" lon="126.8761457"><ele>44.94</ele></trkpt>
+      <trkpt lat="37.5430184" lon="126.876058"><ele>42.48</ele></trkpt>
+      <trkpt lat="37.542891" lon="126.8760116"><ele>40.24</ele></trkpt>
+      <trkpt lat="37.5428846" lon="126.875989"><ele>40.34</ele></trkpt>
+      <trkpt lat="37.5428837" lon="126.8759879"><ele>40.35</ele></trkpt>
+      <trkpt lat="37.5425891" lon="126.8749998"><ele>45</ele></trkpt>
+      <trkpt lat="37.542447" lon="126.8748765"><ele>45</ele></trkpt>
+      <trkpt lat="37.5424059" lon="126.8747738"><ele>44.79</ele></trkpt>
+      <trkpt lat="37.5422671" lon="126.874432"><ele>39.99</ele></trkpt>
+      <trkpt lat="37.5424814" lon="126.8742219"><ele>34.98</ele></trkpt>
+      <trkpt lat="37.5425127" lon="126.8741866"><ele>34.52</ele></trkpt>
+      <trkpt lat="37.5425351" lon="126.8741524"><ele>31.72</ele></trkpt>
+      <trkpt lat="37.5425452" lon="126.8740233"><ele>31.55</ele></trkpt>
+      <trkpt lat="37.5425514" lon="126.8739995"><ele>30.25</ele></trkpt>
+      <trkpt lat="37.5425577" lon="126.8739972"><ele>30.25</ele></trkpt>
+      <trkpt lat="37.5424954" lon="126.8739784"><ele>33.07</ele></trkpt>
+      <trkpt lat="37.5424945" lon="126.8739784"><ele>33.11</ele></trkpt>
+      <trkpt lat="37.5425577" lon="126.8739972"><ele>30.25</ele></trkpt>
+      <trkpt lat="37.5425694" lon="126.8739903"><ele>30.25</ele></trkpt>
+      <trkpt lat="37.5426981" lon="126.8739586"><ele>28.65</ele></trkpt>
+      <trkpt lat="37.5427324" lon="126.8739742"><ele>28.08</ele></trkpt>
+      <trkpt lat="37.5429362" lon="126.873977"><ele>25.14</ele></trkpt>
+      <trkpt lat="37.5429776" lon="126.8739733"><ele>25</ele></trkpt>
+      <trkpt lat="37.543183" lon="126.8739489"><ele>24.71</ele></trkpt>
+      <trkpt lat="37.543338" lon="126.8739408"><ele>23.46</ele></trkpt>
+      <trkpt lat="37.5436245" lon="126.8739249"><ele>21.3</ele></trkpt>
+      <trkpt lat="37.5440831" lon="126.8738905"><ele>19.71</ele></trkpt>
+      <trkpt lat="37.5444407" lon="126.873849"><ele>17.63</ele></trkpt>
+      <trkpt lat="37.5446696" lon="126.8738357"><ele>16.13</ele></trkpt>
+      <trkpt lat="37.5448579" lon="126.873824"><ele>15</ele></trkpt>
+      <trkpt lat="37.5450237" lon="126.8738158"><ele>15</ele></trkpt>
+      <trkpt lat="37.5451535" lon="126.8738091"><ele>15</ele></trkpt>
+      <trkpt lat="37.5453328" lon="126.8737996"><ele>15</ele></trkpt>
+      <trkpt lat="37.5456059" lon="126.8737906"><ele>15</ele></trkpt>
+      <trkpt lat="37.5458256" lon="126.8737627"><ele>15</ele></trkpt>
+      <trkpt lat="37.5462248" lon="126.8737367"><ele>15</ele></trkpt>
+      <trkpt lat="37.5465826" lon="126.8737371"><ele>15</ele></trkpt>
+      <trkpt lat="37.5466736" lon="126.8737284"><ele>15</ele></trkpt>
+      <trkpt lat="37.5466727" lon="126.8737284"><ele>15</ele></trkpt>
+      <trkpt lat="37.5467619" lon="126.8737197"><ele>15</ele></trkpt>
+      <trkpt lat="37.5467586" lon="126.8741081"><ele>15</ele></trkpt>
+      <trkpt lat="37.5467619" lon="126.874391"><ele>15</ele></trkpt>
+      <trkpt lat="37.5467796" lon="126.8748528"><ele>15.08</ele></trkpt>
+      <trkpt lat="37.5467849" lon="126.8749999"><ele>15.16</ele></trkpt>
+      <trkpt lat="37.5467851" lon="126.8750372"><ele>15.18</ele></trkpt>
+      <trkpt lat="37.5468038" lon="126.8753258"><ele>15.05</ele></trkpt>
+      <trkpt lat="37.5468357" lon="126.8759074"><ele>15</ele></trkpt>
+      <trkpt lat="37.5468577" lon="126.8763192"><ele>15</ele></trkpt>
+      <trkpt lat="37.5468788" lon="126.8765681"><ele>15</ele></trkpt>
+      <trkpt lat="37.5468788" lon="126.8765659"><ele>15</ele></trkpt>
+      <trkpt lat="37.5468789" lon="126.8765828"><ele>15</ele></trkpt>
+      <trkpt lat="37.546341" lon="126.8766122"><ele>15</ele></trkpt>
+      <trkpt lat="37.5461499" lon="126.876624"><ele>15</ele></trkpt>
+      <trkpt lat="37.5461292" lon="126.8766276"><ele>15</ele></trkpt>
+      <trkpt lat="37.5461103" lon="126.87663"><ele>15</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

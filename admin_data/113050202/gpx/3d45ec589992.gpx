@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="네이버지도" xmlns="http://www.topografix.com/GPX/1/1" xmlns:nmap="https://map.naver.com/gpx/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>경기 고양시 덕양구 신원동 613-2-경기 고양시 덕양구 신원동 613-1_260720</name>
+    <desc>경기 고양시 덕양구 신원동 613-2-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 596-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 신원동 613-3-경기 고양시 덕양구 신원동 670-경기 고양시 덕양구 신원동 613-1</desc>
+    <author><name>네이버지도</name></author>
+    <link href="https://map.naver.com"><text>네이버지도</text></link>
+    <time>2026-07-20T10:51:48.108Z</time>
+    <bounds minlat="37.6596653" minlon="126.8935219" maxlat="37.6655003" maxlon="126.9009797"/>
+    <extensions>
+      <nmap:walkCourse schemaVersion="1.0">
+        <nmap:distance>1975</nmap:distance>
+        <nmap:duration>1798.4</nmap:duration>
+        <nmap:stepCount>3083</nmap:stepCount>
+        <nmap:calories>108</nmap:calories>
+        <nmap:totalAscent>18</nmap:totalAscent>
+        <nmap:totalDescent>16</nmap:totalDescent>
+        <nmap:altMin>38</nmap:altMin>
+        <nmap:altMax>48</nmap:altMax>
+      </nmap:walkCourse>
+    </extensions>
+  </metadata>
+  <wpt lat="37.6655003" lon="126.8938899">
+    <name>출발지</name>
+    <desc>경기 고양시 덕양구 신원동 613-2</desc>
+  </wpt>
+  <wpt lat="37.6600245" lon="126.9007222">
+    <name>경유지 #1</name>
+    <desc>경기 고양시 덕양구 오금동 693</desc>
+  </wpt>
+  <wpt lat="37.6597573" lon="126.9006382">
+    <name>경유지 #2</name>
+    <desc>경기 고양시 덕양구 오금동 693</desc>
+  </wpt>
+  <wpt lat="37.6598765" lon="126.8999887">
+    <name>경유지 #3</name>
+    <desc>경기 고양시 덕양구 오금동 693</desc>
+  </wpt>
+  <wpt lat="37.6602118" lon="126.8994418">
+    <name>경유지 #4</name>
+    <desc>경기 고양시 덕양구 오금동 693</desc>
+  </wpt>
+  <wpt lat="37.6614057" lon="126.8970932">
+    <name>경유지 #5</name>
+    <desc>경기 고양시 덕양구 오금동 693</desc>
+  </wpt>
+  <wpt lat="37.6622113" lon="126.8959949">
+    <name>경유지 #6</name>
+    <desc>경기 고양시 덕양구 오금동 693</desc>
+  </wpt>
+  <wpt lat="37.6634721" lon="126.8954382">
+    <name>경유지 #7</name>
+    <desc>경기 고양시 덕양구 오금동 596</desc>
+  </wpt>
+  <wpt lat="37.6635565" lon="126.8955486">
+    <name>경유지 #8</name>
+    <desc>경기 고양시 덕양구 오금동 693</desc>
+  </wpt>
+  <wpt lat="37.6640497" lon="126.8952237">
+    <name>경유지 #9</name>
+    <desc>경기 고양시 덕양구 신원동 613-3</desc>
+  </wpt>
+  <wpt lat="37.6646943" lon="126.894384">
+    <name>경유지 #10</name>
+    <desc>경기 고양시 덕양구 신원동 670</desc>
+  </wpt>
+  <wpt lat="37.6652965" lon="126.8935219">
+    <name>도착지</name>
+    <desc>경기 고양시 덕양구 신원동 613-1</desc>
+  </wpt>
+  <rte>
+    <name>경기 고양시 덕양구 신원동 613-2-경기 고양시 덕양구 신원동 613-1_260720</name>
+    <desc>경기 고양시 덕양구 신원동 613-2-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 596-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 신원동 613-3-경기 고양시 덕양구 신원동 670-경기 고양시 덕양구 신원동 613-1</desc>
+    <type>walking</type>
+    <rtept lat="37.6655003" lon="126.8938899">
+      <name>출발지</name>
+      <desc>경기 고양시 덕양구 신원동 613-2</desc>
+      <type>start</type>
+    </rtept>
+    <rtept lat="37.6600245" lon="126.9007222">
+      <name>경유지 #1</name>
+      <desc>경기 고양시 덕양구 오금동 693</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6597573" lon="126.9006382">
+      <name>경유지 #2</name>
+      <desc>경기 고양시 덕양구 오금동 693</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6598765" lon="126.8999887">
+      <name>경유지 #3</name>
+      <desc>경기 고양시 덕양구 오금동 693</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6602118" lon="126.8994418">
+      <name>경유지 #4</name>
+      <desc>경기 고양시 덕양구 오금동 693</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6614057" lon="126.8970932">
+      <name>경유지 #5</name>
+      <desc>경기 고양시 덕양구 오금동 693</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6622113" lon="126.8959949">
+      <name>경유지 #6</name>
+      <desc>경기 고양시 덕양구 오금동 693</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6634721" lon="126.8954382">
+      <name>경유지 #7</name>
+      <desc>경기 고양시 덕양구 오금동 596</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6635565" lon="126.8955486">
+      <name>경유지 #8</name>
+      <desc>경기 고양시 덕양구 오금동 693</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6640497" lon="126.8952237">
+      <name>경유지 #9</name>
+      <desc>경기 고양시 덕양구 신원동 613-3</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6646943" lon="126.894384">
+      <name>경유지 #10</name>
+      <desc>경기 고양시 덕양구 신원동 670</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.6652965" lon="126.8935219">
+      <name>도착지</name>
+      <desc>경기 고양시 덕양구 신원동 613-1</desc>
+      <type>goal</type>
+    </rtept>
+  </rte>
+  <trk>
+    <name>경기 고양시 덕양구 신원동 613-2-경기 고양시 덕양구 신원동 613-1_260720</name>
+    <desc>경기 고양시 덕양구 신원동 613-2-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 오금동 596-경기 고양시 덕양구 오금동 693-경기 고양시 덕양구 신원동 613-3-경기 고양시 덕양구 신원동 670-경기 고양시 덕양구 신원동 613-1</desc>
+    <type>walking</type>
+    <trkseg>
+      <trkpt lat="37.6655003" lon="126.8938899"><ele>38.27</ele></trkpt>
+      <trkpt lat="37.6654886" lon="126.8938911"><ele>38.36</ele></trkpt>
+      <trkpt lat="37.665412" lon="126.8938918"><ele>38.83</ele></trkpt>
+      <trkpt lat="37.6653076" lon="126.8939187"><ele>39.41</ele></trkpt>
+      <trkpt lat="37.6652195" lon="126.8939704"><ele>39.67</ele></trkpt>
+      <trkpt lat="37.6651181" lon="126.8940597"><ele>39.93</ele></trkpt>
+      <trkpt lat="37.6650503" lon="126.894194"><ele>39.99</ele></trkpt>
+      <trkpt lat="37.6649883" lon="126.8944054"><ele>40</ele></trkpt>
+      <trkpt lat="37.6649153" lon="126.8945931"><ele>40</ele></trkpt>
+      <trkpt lat="37.6647942" lon="126.8947018"><ele>40</ele></trkpt>
+      <trkpt lat="37.6647576" lon="126.8947667"><ele>40</ele></trkpt>
+      <trkpt lat="37.6647012" lon="126.8948398"><ele>40</ele></trkpt>
+      <trkpt lat="37.6646583" lon="126.8949183"><ele>40</ele></trkpt>
+      <trkpt lat="37.6646039" lon="126.8950254"><ele>40</ele></trkpt>
+      <trkpt lat="37.6645163" lon="126.8951746"><ele>40.02</ele></trkpt>
+      <trkpt lat="37.6643543" lon="126.8953868"><ele>40.12</ele></trkpt>
+      <trkpt lat="37.6641963" lon="126.8955128"><ele>40.32</ele></trkpt>
+      <trkpt lat="37.664066" lon="126.8955853"><ele>40.59</ele></trkpt>
+      <trkpt lat="37.6640003" lon="126.8956062"><ele>40.34</ele></trkpt>
+      <trkpt lat="37.6639931" lon="126.8956086"><ele>40.34</ele></trkpt>
+      <trkpt lat="37.6638961" lon="126.8956728"><ele>40.59</ele></trkpt>
+      <trkpt lat="37.6638486" lon="126.8957322"><ele>41.49</ele></trkpt>
+      <trkpt lat="37.6636427" lon="126.8958268"><ele>41.62</ele></trkpt>
+      <trkpt lat="37.663512" lon="126.8958302"><ele>41.03</ele></trkpt>
+      <trkpt lat="37.6634688" lon="126.895843"><ele>40.82</ele></trkpt>
+      <trkpt lat="37.6634418" lon="126.8958511"><ele>40.61</ele></trkpt>
+      <trkpt lat="37.6631541" lon="126.895985"><ele>40.48</ele></trkpt>
+      <trkpt lat="37.6627998" lon="126.89615"><ele>40.43</ele></trkpt>
+      <trkpt lat="37.6626658" lon="126.8962168"><ele>40.71</ele></trkpt>
+      <trkpt lat="37.6625552" lon="126.896271"><ele>40.83</ele></trkpt>
+      <trkpt lat="37.6623071" lon="126.8964011"><ele>41.01</ele></trkpt>
+      <trkpt lat="37.6621698" lon="126.8965168"><ele>40.88</ele></trkpt>
+      <trkpt lat="37.6619245" lon="126.8968351"><ele>42.25</ele></trkpt>
+      <trkpt lat="37.661621" lon="126.8972332"><ele>42.3</ele></trkpt>
+      <trkpt lat="37.6614759" lon="126.8974226"><ele>43.97</ele></trkpt>
+      <trkpt lat="37.6613748" lon="126.8975697"><ele>44.92</ele></trkpt>
+      <trkpt lat="37.6612585" lon="126.8977384"><ele>45</ele></trkpt>
+      <trkpt lat="37.6611256" lon="126.8980014"><ele>45</ele></trkpt>
+      <trkpt lat="37.6609315" lon="126.8984701"><ele>45</ele></trkpt>
+      <trkpt lat="37.6606973" lon="126.8992044"><ele>45.1</ele></trkpt>
+      <trkpt lat="37.6605072" lon="126.8997535"><ele>45.05</ele></trkpt>
+      <trkpt lat="37.6604992" lon="126.899774"><ele>45.09</ele></trkpt>
+      <trkpt lat="37.6604493" lon="126.8998991"><ele>45.17</ele></trkpt>
+      <trkpt lat="37.6603528" lon="126.9000597"><ele>45.09</ele></trkpt>
+      <trkpt lat="37.660249" lon="126.9002"><ele>45.06</ele></trkpt>
+      <trkpt lat="37.6601145" lon="126.9005197"><ele>45.11</ele></trkpt>
+      <trkpt lat="37.6600334" lon="126.9007029"><ele>45.12</ele></trkpt>
+      <trkpt lat="37.6600245" lon="126.9007222"><ele>45.12</ele></trkpt>
+      <trkpt lat="37.6600254" lon="126.9007222"><ele>45.12</ele></trkpt>
+      <trkpt lat="37.6600334" lon="126.9007029"><ele>45.12</ele></trkpt>
+      <trkpt lat="37.6600096" lon="126.9009797"><ele>45.51</ele></trkpt>
+      <trkpt lat="37.6598026" lon="126.9008748"><ele>45</ele></trkpt>
+      <trkpt lat="37.6596653" lon="126.9008056"><ele>48.2</ele></trkpt>
+      <trkpt lat="37.6597118" lon="126.9007293"><ele>47.1</ele></trkpt>
+      <trkpt lat="37.6597529" lon="126.9006621"><ele>46.1</ele></trkpt>
+      <trkpt lat="37.6597572" lon="126.9006359"><ele>45.88</ele></trkpt>
+      <trkpt lat="37.6597572" lon="126.9006359"><ele>45.88</ele></trkpt>
+      <trkpt lat="37.6597713" lon="126.9005735"><ele>45.35</ele></trkpt>
+      <trkpt lat="37.6597784" lon="126.9005405"><ele>45.48</ele></trkpt>
+      <trkpt lat="37.6598484" lon="126.9001296"><ele>45.27</ele></trkpt>
+      <trkpt lat="37.6598765" lon="126.8999887"><ele>45.39</ele></trkpt>
+      <trkpt lat="37.6598765" lon="126.8999887"><ele>45.39</ele></trkpt>
+      <trkpt lat="37.6598801" lon="126.8999751"><ele>45.4</ele></trkpt>
+      <trkpt lat="37.6599917" lon="126.8997803"><ele>45.27</ele></trkpt>
+      <trkpt lat="37.6601581" lon="126.899525"><ele>45.47</ele></trkpt>
+      <trkpt lat="37.6602082" lon="126.8994487"><ele>45.17</ele></trkpt>
+      <trkpt lat="37.6602118" lon="126.8994418"><ele>45.17</ele></trkpt>
+      <trkpt lat="37.6602118" lon="126.8994418"><ele>45.17</ele></trkpt>
+      <trkpt lat="37.6605174" lon="126.8989269"><ele>45</ele></trkpt>
+      <trkpt lat="37.6607796" lon="126.8982071"><ele>45</ele></trkpt>
+      <trkpt lat="37.6609791" lon="126.8977316"><ele>45</ele></trkpt>
+      <trkpt lat="37.6609933" lon="126.8976975"><ele>45</ele></trkpt>
+      <trkpt lat="37.6610414" lon="126.8975837"><ele>45.01</ele></trkpt>
+      <trkpt lat="37.6614057" lon="126.8970932"><ele>43.27</ele></trkpt>
+      <trkpt lat="37.6614057" lon="126.8970921"><ele>43.27</ele></trkpt>
+      <trkpt lat="37.6615087" lon="126.896953"><ele>42.78</ele></trkpt>
+      <trkpt lat="37.6618964" lon="126.8964476"><ele>41.78</ele></trkpt>
+      <trkpt lat="37.6621316" lon="126.8960885"><ele>41.64</ele></trkpt>
+      <trkpt lat="37.6621907" lon="126.89602"><ele>41.37</ele></trkpt>
+      <trkpt lat="37.6622113" lon="126.8959949"><ele>41.31</ele></trkpt>
+      <trkpt lat="37.6622104" lon="126.8959949"><ele>41.32</ele></trkpt>
+      <trkpt lat="37.6622337" lon="126.8959698"><ele>41.26</ele></trkpt>
+      <trkpt lat="37.6623144" lon="126.8958886"><ele>41.29</ele></trkpt>
+      <trkpt lat="37.6624276" lon="126.8958185"><ele>40.86</ele></trkpt>
+      <trkpt lat="37.662648" lon="126.8957181"><ele>43.52</ele></trkpt>
+      <trkpt lat="37.6626668" lon="126.8957089"><ele>42.97</ele></trkpt>
+      <trkpt lat="37.6628674" lon="126.8956324"><ele>41.42</ele></trkpt>
+      <trkpt lat="37.6629475" lon="126.8956012"><ele>42.63</ele></trkpt>
+      <trkpt lat="37.6631511" lon="126.8955802"><ele>42.17</ele></trkpt>
+      <trkpt lat="37.6632816" lon="126.8955497"><ele>41.09</ele></trkpt>
+      <trkpt lat="37.6634318" lon="126.8954725"><ele>41.08</ele></trkpt>
+      <trkpt lat="37.6634721" lon="126.8954382"><ele>41.16</ele></trkpt>
+      <trkpt lat="37.6634721" lon="126.8954382"><ele>41.16</ele></trkpt>
+      <trkpt lat="37.6634928" lon="126.895421"><ele>41.21</ele></trkpt>
+      <trkpt lat="37.6635565" lon="126.8955486"><ele>40.65</ele></trkpt>
+      <trkpt lat="37.6635556" lon="126.8955475"><ele>40.66</ele></trkpt>
+      <trkpt lat="37.6634928" lon="126.895421"><ele>41.21</ele></trkpt>
+      <trkpt lat="37.6634682" lon="126.8953736"><ele>41.44</ele></trkpt>
+      <trkpt lat="37.6636127" lon="126.8952602"><ele>41.35</ele></trkpt>
+      <trkpt lat="37.6636529" lon="126.8953528"><ele>40.9</ele></trkpt>
+      <trkpt lat="37.6637367" lon="126.895351"><ele>40.65</ele></trkpt>
+      <trkpt lat="37.6638078" lon="126.8953425"><ele>40.42</ele></trkpt>
+      <trkpt lat="37.6638816" lon="126.8953135"><ele>40.4</ele></trkpt>
+      <trkpt lat="37.6640245" lon="126.8952421"><ele>40.2</ele></trkpt>
+      <trkpt lat="37.6640497" lon="126.8952237"><ele>40.2</ele></trkpt>
+      <trkpt lat="37.6640497" lon="126.8952237"><ele>40.2</ele></trkpt>
+      <trkpt lat="37.6641341" lon="126.8951618"><ele>40.19</ele></trkpt>
+      <trkpt lat="37.6642193" lon="126.8950716"><ele>40.14</ele></trkpt>
+      <trkpt lat="37.6642916" lon="126.8949417"><ele>40.18</ele></trkpt>
+      <trkpt lat="37.6644378" lon="126.8946355"><ele>40.15</ele></trkpt>
+      <trkpt lat="37.6643789" lon="126.8945725"><ele>40.25</ele></trkpt>
+      <trkpt lat="37.6644604" lon="126.8944698"><ele>40.17</ele></trkpt>
+      <trkpt lat="37.6645021" lon="126.894516"><ele>40.09</ele></trkpt>
+      <trkpt lat="37.6645111" lon="126.8945011"><ele>40.1</ele></trkpt>
+      <trkpt lat="37.6645371" lon="126.8944851"><ele>40.06</ele></trkpt>
+      <trkpt lat="37.6645641" lon="126.8944758"><ele>40.06</ele></trkpt>
+      <trkpt lat="37.6646181" lon="126.8944561"><ele>40</ele></trkpt>
+      <trkpt lat="37.6646648" lon="126.8944262"><ele>40</ele></trkpt>
+      <trkpt lat="37.6646943" lon="126.894384"><ele>40</ele></trkpt>
+      <trkpt lat="37.6646943" lon="126.894384"><ele>40</ele></trkpt>
+      <trkpt lat="37.6647033" lon="126.8943715"><ele>40</ele></trkpt>
+      <trkpt lat="37.6647603" lon="126.8942338"><ele>40</ele></trkpt>
+      <trkpt lat="37.6648189" lon="126.8940633"><ele>40</ele></trkpt>
+      <trkpt lat="37.6648786" lon="126.8939346"><ele>40</ele></trkpt>
+      <trkpt lat="37.6649331" lon="126.8938424"><ele>40</ele></trkpt>
+      <trkpt lat="37.6650013" lon="126.8937749"><ele>40</ele></trkpt>
+      <trkpt lat="37.6650776" lon="126.8937176"><ele>40</ele></trkpt>
+      <trkpt lat="37.6651719" lon="126.8936579"><ele>40</ele></trkpt>
+      <trkpt lat="37.665224" lon="126.8936268"><ele>39.99</ele></trkpt>
+      <trkpt lat="37.6652546" lon="126.8936016"><ele>40</ele></trkpt>
+      <trkpt lat="37.6652752" lon="126.8935799"><ele>40</ele></trkpt>
+      <trkpt lat="37.6652841" lon="126.8935561"><ele>40</ele></trkpt>
+      <trkpt lat="37.6652956" lon="126.8935253"><ele>40</ele></trkpt>
+      <trkpt lat="37.6652965" lon="126.8935219"><ele>40</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

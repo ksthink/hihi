@@ -2,19 +2,27 @@
  "version": 1,
  "curations": [
   {
+   "id": "cu-1djv017i",
+   "title": "러닝러닝 테스트",
+   "items": [
+    {
+     "type": "course",
+     "code": "113050202",
+     "name": "아인쌤 야호~",
+     "mountain": "북한산",
+     "sub": "길냥이와 핫둘핫둘",
+     "title": "아인쌤의 러닝 코스",
+     "desc": "안녕, 오늘도 반가워",
+     "logo": "© 하이하잇",
+     "credit": "leeAin",
+     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/113050202.jpg"
+    }
+   ]
+  },
+  {
    "id": "cu-e5bvt54x",
    "title": "HI^HIKE 이달의 매거진",
    "items": [
-    {
-     "type": "mountain",
-     "code": "282600201",
-     "name": "계양산",
-     "sub": "서울, 수도권 근교산 특집",
-     "title": "인천시민들의 산뷰",
-     "desc": "인천에서 가장 높은 산(395m) — 도심에서 바로 오르는 정상 조망",
-     "logo": "© 하이하잇",
-     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/282600201.jpg"
-    },
     {
      "type": "course",
      "code": "411900201",
@@ -23,19 +31,8 @@
      "sub": "부천의 유일무이 산",
      "title": "원미산 · 소사역 - 원미도서관",
      "desc": "소사역에서 시립도서관까지",
-     "logo": "© 하이하잇"
-    }
-   ]
-  },
-  {
-   "id": "cu-ki93w6sj",
-   "title": "우리나라만세 최고의 산",
-   "items": [
-    {
-     "type": "mountain",
-     "code": "411900201",
-     "name": "원미산",
-     "logo": "© 하이하잇"
+     "logo": "© 하이하잇",
+     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/411900201.jpg"
     }
    ]
   }
