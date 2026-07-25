@@ -116,11 +116,9 @@ struct ExploreView: View {
                     .opacity(searching ? 0 : 1)                       // 검색 중엔 숨김
                     .allowsHitTesting(!searching)
 
-                // 상단: 검색 버튼(좌) + 산이름 | 코스명(우상단) + 국가지점번호 — 웹 title-block/npn-box
+                // 상단: 산이름 | 코스명(좌상단) + 검색 버튼(우) + 국가지점번호 — 웹 title-block/npn-box
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack(alignment: .top) {
-                        searchBar(t)
-                        Spacer()
                         if let m = catalog.selected, !searching {   // 검색 중엔 산이름 숨김(확장 공간 확보)
                             overlayBox(t) {
                                 HStack(alignment: .firstTextBaseline, spacing: 7) {
@@ -134,9 +132,11 @@ struct ExploreView: View {
                             }
                             .padding(.top, 6)
                         }
+                        Spacer()
+                        searchBar(t)
                     }
-                    if searching && hasQuery {                      // 입력 후 관련 산만 (웹과 동일)
-                        HStack { searchResults(t); Spacer() }
+                    if searching && hasQuery {                      // 입력 후 관련 산만 (검색바 아래 우측 정렬)
+                        HStack { Spacer(); searchResults(t) }
                     }
                     if let npn = npnCode {
                         overlayBox(t) {
