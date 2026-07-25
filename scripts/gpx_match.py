@@ -151,35 +151,49 @@ def parse_track(raw, fname=""):
 
 
 def parse_gpx_parts(raw):
-    """raw → (segments[[ (lon,lat),... ], ...], name).
-    trkseg/트랙 경계를 파트로 보존 — 끊긴 구간을 직선으로 잇지 않기 위함."""
+    """raw → (parts[[ (lon,lat),... ], ...], name).
+
+    trk(상세 기록) 우선 — trk 가 있으면 rte·wpt 는 무시한다. 네이버지도 등은 같은
+    경로를 wpt/rte(성긴 요약)/trk(상세) 3중으로 담는데, 이를 함께 그리면 성긴 rte 가
+    큰 직선으로 상세선 위에 겹친다(=경로가 끊겨 보이던 근본 원인). trk 가 없을 때만
+    rte, 그마저 없으면 wpt 시퀀스를 쓴다. trkseg 경계는 파트로 보존(끊긴 구간을
+    직선으로 잇지 않음) — 단, 한 trkseg 안의 성긴 점들은 그대로 이어 실제 경로를 그린다."""
     root = ET.fromstring(raw)
-    parts, cur, name = [], [], None
+    trk_parts, cur = [], []
+    rte, wpts, name = [], [], None
 
     def flush():
         nonlocal cur
         if len(cur) >= 2:
-            parts.append(cur)
+            trk_parts.append(cur)
         cur = []
 
     for el in root.iter():
         tag = el.tag.rsplit("}", 1)[-1]
-        if tag in ("trkseg", "rte"):
-            flush()                       # 새 세그/루트 시작 → 이전 파트 확정
-        elif tag in ("trkpt", "rtept"):
+        if tag == "trkseg":
+            flush()                       # 새 세그 시작 → 이전 파트 확정
+        elif tag == "trkpt":
             cur.append((float(el.attrib["lon"]), float(el.attrib["lat"])))
+        elif tag == "rtept":
+            rte.append((float(el.attrib["lon"]), float(el.attrib["lat"])))
+        elif tag == "wpt":
+            wpts.append((float(el.attrib["lon"]), float(el.attrib["lat"])))
         elif tag == "name" and name is None and el.text and el.text.strip():
             name = el.text.strip()
     flush()
-    if not parts:
-        raise ValueError("GPX 에 트랙포인트가 2개 미만")
-    return parts, name
+
+    if trk_parts:
+        return trk_parts, name
+    if len(rte) >= 2:
+        return [rte], name
+    if len(wpts) >= 2:
+        return [wpts], name
+    raise ValueError("GPX 에 트랙포인트가 2개 미만")
 
 
 def parse_track_segments(raw, fname=""):
-    """parse_track 과 같은 포맷 판별. GPX 는 trkseg 경계를 파트로 보존,
-    그 외 포맷(GeoJSON·SHP)은 파서가 준 플랫 좌표를 단일 파트로. → (segments, name).
-    (파트 내부의 큰 점프는 _split_gaps 가 다시 분할한다.)"""
+    """parse_track 과 같은 포맷 판별. GPX 는 trk 우선 + trkseg 경계를 파트로 보존,
+    그 외 포맷(GeoJSON·SHP)은 파서가 준 플랫 좌표를 단일 파트로. → (parts, name)."""
     ext = os.path.splitext((fname or "").lower())[1]
     head = raw.lstrip()[:1]
     if ext in (".geojson", ".json") or (not ext and head in (b"{", b"[")):
@@ -189,27 +203,6 @@ def parse_track_segments(raw, fname=""):
         pts, name = parse_shp(raw)
         return [pts], name
     return parse_gpx_parts(raw)
-
-
-# 연속 트랙포인트 간격이 이보다 크면 수집 끊김(또는 파트 경계)으로 보고 분할한다.
-# 리샘플은 점 사이를 5m 간격 직선으로 채우므로, 큰 갭은 리샘플 전에 끊어야
-# 지도에 긴 직선 연결선이 그려지지 않는다.
-RAW_GAP_M = 100.0
-
-
-def _split_gaps(pts, gap_m=RAW_GAP_M):
-    """연속 점 간격이 gap_m 초과인 지점에서 파트를 끊어 리스트로 반환."""
-    if len(pts) < 2:
-        return [pts] if pts else []
-    runs, cur = [], [pts[0]]
-    for p, q in zip(pts, pts[1:]):
-        if pl.hav(p, q) > gap_m:
-            runs.append(cur)
-            cur = [q]
-        else:
-            cur.append(q)
-    runs.append(cur)
-    return runs
 
 
 def resample(pts, step=RESAMPLE_M):
@@ -453,15 +446,15 @@ def match(code, raw, tau=25.0, detour=1.6, fname=""):
 
 def match_raw(raw, fname=""):
     """구간망이 없는 산(수동 등록) — GPX 원본을 스냅 없이 그대로 코스로.
-    trkseg 경계·큰 갭에서 파트를 나눠 MultiLineString 으로 반환한다(끊긴 구간을
-    직선으로 잇지 않음). 각 파트는 리샘플·스무딩만 적용. match 와 동일 스키마."""
+    trk 우선 파싱(성긴 rte 요약선 겹침 방지) + trkseg 경계로만 파트 분리 →
+    MultiLineString 반환(끊긴 세그먼트만 분리, 한 세그 안의 성긴 점은 이어 그림).
+    각 파트는 리샘플·스무딩만 적용. match 와 동일 스키마."""
     segs, gpx_name = parse_track_segments(raw, fname)
     lines = []
     for seg in segs:
-        for run in _split_gaps(seg):
-            coords = _dedupe([tuple(p) for p in smooth(resample(run))])
-            if len(coords) >= 2:
-                lines.append([[round(x, 6), round(y, 6)] for x, y in coords])
+        coords = _dedupe([tuple(p) for p in smooth(resample(seg))])
+        if len(coords) >= 2:
+            lines.append([[round(x, 6), round(y, 6)] for x, y in coords])
     if not lines:
         raise ValueError("트랙 좌표가 2개 미만")
     total_km = sum(_polyline_km([tuple(p) for p in ln]) for ln in lines)
