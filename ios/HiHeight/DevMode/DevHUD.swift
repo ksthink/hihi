@@ -1,13 +1,16 @@
 import SwiftUI
+import UIKit   // UIPasteboard (탭 복사)
 
 // 개발자 모드 HUD — 모든 탭 위에 뜨는 드래그 가능한 플로팅 패널. (DevMode/ — 삭제 대상)
-// 접으면 작은 알약(⚙), 펼치면 지도·GPS·콘솔·빌드 4구획.
+// 접으면 작은 알약(⚙), 펼치면 지도·GPS·콘솔·빌드 4구획. 각 값을 탭하면 복사된다.
+// 개발자 모드가 켜져 있으면 HUD 는 항상 표시(닫기 없음) — 끄기는 프로필 토글에서.
 struct DevHUD: View {
     @ObservedObject var dev = DevStore.shared
     @Environment(\.colorScheme) private var scheme
     @State private var expanded = true
     @State private var offset = CGSize.zero
     @State private var drag = CGSize.zero
+    @State private var copied: String?     // 방금 복사한 행 id (짧게 "복사됨 ✓" 표시)
 
     var body: some View {
         // 표시 여부를 여기서 판단 — ContentView 삽입점을 `.overlay { DevHUD() }` 한 줄로 유지.
@@ -32,7 +35,7 @@ struct DevHUD: View {
                 .frame(maxHeight: 340)
             }
         }
-        .frame(width: expanded ? 260 : 132)
+        .frame(width: expanded ? 260 : 64)
         .background(t.elevated.opacity(0.96), in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
         .shadow(color: .black.opacity(0.25), radius: 10, y: 3)
@@ -44,17 +47,14 @@ struct DevHUD: View {
         .transition(.opacity)
     }
 
-    // 상단 손잡이 — 접기/펴기 + 닫기(HUD 만 숨김)
+    // 상단 손잡이 — 아이콘(드래그) + 접기/펴기. (닫기 없음: 개발자 모드가 켜지면 항상 표시)
     private func handle(_ t: Theme) -> some View {
         HStack(spacing: 6) {
-            Text("⚙ DEV").font(.kakao(size: 11, weight: .bold)).foregroundStyle(t.text)
+            Image(systemName: "gearshape.fill").font(.system(size: 11)).foregroundStyle(t.muted)
             Spacer()
             Button { expanded.toggle() } label: {
                 Image(systemName: expanded ? "chevron.up" : "chevron.down")
                     .font(.system(size: 11, weight: .bold)).foregroundStyle(t.muted)
-            }
-            Button { dev.hudVisible = false } label: {
-                Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).foregroundStyle(t.muted)
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 7)
@@ -95,13 +95,15 @@ struct DevHUD: View {
             if dev.logs.isEmpty {
                 Text("출력 없음").font(.kakao(size: 11)).foregroundStyle(t.muted)
             } else {
-                // 최근 아래로 — 최신 40줄만(HUD 가벼움 유지)
-                ForEach(Array(dev.logs.suffix(40).enumerated()), id: \.offset) { _, line in
-                    Text(line)
+                // 최근 아래로 — 최신 40줄만(HUD 가벼움 유지). 줄을 탭하면 그 줄 복사.
+                ForEach(Array(dev.logs.suffix(40).enumerated()), id: \.offset) { i, line in
+                    let id = "log-\(i)"
+                    Text(copied == id ? "복사됨 ✓" : line)
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(t.text)
+                        .foregroundStyle(copied == id ? t.accent : t.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
+                        .contentShape(Rectangle())
+                        .onTapGesture { copy(id, line) }
                 }
             }
         }
@@ -125,11 +127,26 @@ struct DevHUD: View {
         }
     }
 
+    // 값 행 — 탭하면 값 복사(라벨은 행마다 유일해 복사 id 로 쓴다).
     private func row(_ t: Theme, _ k: String, _ v: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text(k).font(.kakao(size: 11)).foregroundStyle(t.muted).frame(width: 48, alignment: .leading)
-            Text(v).font(.system(size: 11, design: .monospaced)).foregroundStyle(t.text)
-                .frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+            Text(copied == k ? "복사됨 ✓" : v)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(copied == k ? t.accent : t.text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { copy(k, v) }
+    }
+
+    // 클립보드 복사 + 짧은 피드백(0.8s). reduced-motion 과 무관(텍스트 교체뿐).
+    private func copy(_ id: String, _ value: String) {
+        UIPasteboard.general.string = value
+        copied = id
+        Task {
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            if copied == id { copied = nil }
         }
     }
 }
