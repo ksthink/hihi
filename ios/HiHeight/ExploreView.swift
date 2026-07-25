@@ -319,6 +319,22 @@ struct ExploreView: View {
         }
     }
 
+    // 바텀시트 손잡이 꺾쇠 — 위(^)⇄아래(⌄)를 progress 로 부드럽게 모프(detent 전환 애니와 함께).
+    private struct Chevron: Shape {
+        var progress: CGFloat                                   // 0=위(^), 1=아래(⌄)
+        var animatableData: CGFloat { get { progress } set { progress = newValue } }
+        init(up: Bool) { progress = up ? 0 : 1 }
+        func path(in r: CGRect) -> Path {
+            let midY = r.minY + r.height * progress             // 꼭짓점 y (위→top, 아래→bottom)
+            let endY = r.maxY - r.height * progress             // 양끝 y (반대)
+            var p = Path()
+            p.move(to: CGPoint(x: r.minX, y: endY))
+            p.addLine(to: CGPoint(x: r.midX, y: midY))
+            p.addLine(to: CGPoint(x: r.maxX, y: endY))
+            return p
+        }
+    }
+
     // 위치 버튼 나침반 빔 — 중심(현위치 점)에서 위로 벌어지는 원뿔.
     private struct HeadingCone: Shape {
         func path(in r: CGRect) -> Path {
@@ -489,8 +505,11 @@ struct ExploreView: View {
         return VStack(spacing: 0) {
             // 드래그 손잡이 — 전폭 밴드로 히트영역을 크게. 탭하면 올림/내림 토글(드래그와 병행).
             // 접힘(peek)=위 꺾쇠(끌어올림 안내) / 펼침(large)=아래 꺾쇠(내림 안내).
-            Image(systemName: detent == .peek ? "chevron.compact.up" : "chevron.compact.down")
-                .font(.system(size: 26, weight: .medium)).foregroundStyle(t.muted)
+            // GPU 도형(Path stroke)로 그린다 — 시트가 매 프레임 재구성될 때 SF Symbol 비트맵보다 가볍고
+            // 함께 부드럽게 움직인다.
+            Chevron(up: detent == .peek)
+                .stroke(t.muted, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                .frame(width: 32, height: 8)
                 .frame(maxWidth: .infinity).frame(height: 26)
                 .contentShape(Rectangle())
                 .onTapGesture {

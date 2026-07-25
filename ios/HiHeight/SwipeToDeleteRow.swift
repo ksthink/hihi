@@ -40,7 +40,10 @@ struct SwipeToDeleteRow<Content: View>: View {
                     }
                 }
                 .offset(x: offset)
-                .gesture(
+                // simultaneousGesture — 세로 스크롤과 '동시 인식'. .gesture 로 붙이면 세로 드래그도
+                // 이 제스처가 선점한 뒤 아래 가드로 무시해버려, 그 터치가 List 스크롤로 넘어가지 못하고
+                // 세로 스크롤이 간헐적으로 막혔다(가로 우세일 때만 카드 이동, 스크롤은 항상 살아있게).
+                .simultaneousGesture(
                     DragGesture(minimumDistance: 12)
                         .onChanged { v in
                             guard abs(v.translation.width) > abs(v.translation.height) else { return }
