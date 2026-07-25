@@ -139,13 +139,15 @@ struct ExploreView: View {
                         HStack { Spacer(); searchResults(t) }
                     }
                     if let npn = npnCode {
-                        // 산|코스 라벨 아래(좌측)에. 라벨 텍스트 없이 코드만, 크기 절반(14→7·여백도 절반).
+                        // 산|코스 라벨 아래(좌측)에. "국가지점번호" 라벨 + 코드, 크기 7→8.4pt(현재보다 ~20% ↑).
                         HStack {
-                            Text(npn)
-                                .font(.kakao(size: 7, weight: .bold)).foregroundStyle(t.text).monospacedDigit()
-                                .padding(.horizontal, 6).padding(.vertical, 3)
-                                .background(scheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.6))
-                                .overlay(scheme == .dark ? Rectangle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) : nil)
+                            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                                Text("국가지점번호").font(.kakao(size: 6.5)).foregroundStyle(t.muted)
+                                Text(npn).font(.kakao(size: 8.4, weight: .bold)).foregroundStyle(t.text).monospacedDigit()
+                            }
+                            .padding(.horizontal, 7).padding(.vertical, 4)
+                            .background(scheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.6))
+                            .overlay(scheme == .dark ? Rectangle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) : nil)
                             Spacer()
                         }
                     }
