@@ -116,7 +116,7 @@ struct ExploreView: View {
                     .opacity(searching ? 0 : 1)                       // 검색 중엔 숨김
                     .allowsHitTesting(!searching)
 
-                // 상단: 산이름 | 코스명(좌상단) + 검색 버튼(우) + 국가지점번호 — 웹 title-block/npn-box
+                // 상단: 산이름 | 코스명(좌상단) + 검색 버튼(우) + 국가지점번호(라벨 아래 좌측·라벨텍스트 없이 코드만) — 웹 title-block/npn-box
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack(alignment: .top) {
                         if let m = catalog.selected, !searching {   // 검색 중엔 산이름 숨김(확장 공간 확보)
@@ -139,11 +139,14 @@ struct ExploreView: View {
                         HStack { Spacer(); searchResults(t) }
                     }
                     if let npn = npnCode {
-                        overlayBox(t) {
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text("국가지점번호").font(.kakao(size: 10.5)).foregroundStyle(t.muted)
-                                Text(npn).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text).monospacedDigit()
-                            }
+                        // 산|코스 라벨 아래(좌측)에. 라벨 텍스트 없이 코드만, 크기 절반(14→7·여백도 절반).
+                        HStack {
+                            Text(npn)
+                                .font(.kakao(size: 7, weight: .bold)).foregroundStyle(t.text).monospacedDigit()
+                                .padding(.horizontal, 6).padding(.vertical, 3)
+                                .background(scheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.6))
+                                .overlay(scheme == .dark ? Rectangle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1) : nil)
+                            Spacer()
                         }
                     }
                     if let msg = climb.saveResult {
