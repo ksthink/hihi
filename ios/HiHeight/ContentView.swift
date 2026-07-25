@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var auth = AuthStore()
     @StateObject private var climb = ClimbStore()
     @State private var tab = 0
+    @State private var navBarH: CGFloat = 56   // 하단 네비 실측 높이 — 스크롤 탭 하단 공간 확보용
     @State private var searching = false                            // 탐험 검색 모드 — 켜지면 하단 네비바 숨김
     @State private var showSplash = true                            // 인트로 스플래시
     @AppStorage("hiheight-theme") private var themePref = "system"   // system·light·dark (지도 컨트롤 토글)
@@ -16,16 +17,25 @@ struct ContentView: View {
         ("safari", "탐험"), ("star", "추천"), ("mountain.2", "등반"), ("clock", "기록"),
     ]
 
+    // 스크롤 탭이 확보할 하단 공간 — 네비가 떠 있을 때만(검색·등반 중엔 네비가 없으니 0).
+    private var navReserve: CGFloat { (searching || climb.tracking) ? 0 : navBarH }
+
     var body: some View {
         // 네이티브 탭바(iOS 26 글래스 플로팅) 숨기고 웹식 평평·불투명 하단 네비를 직접 그린다.
         // safeAreaInset 으로 공간을 확보해 각 탭 콘텐츠(지도 시트 포함)가 네비 위에 놓인다.
         TabView(selection: $tab) {
             ExploreView(catalog: catalog, climb: climb, auth: auth, searching: $searching).tag(0).toolbar(.hidden, for: .tabBar)
+            // 스크롤 탭(추천·등반·기록)은 하단 네비 높이만큼 콘텐츠 하단을 확보한다.
+            // (네비를 TabView 에 safeAreaInset 으로 달면 페이지 스크롤엔 공간이 전파되지
+            //  않아 마지막 항목이 네비에 가려짐 — 짧은 화면에서 잘림. 페이지별로 인셋을 준다.)
             RecoView(catalog: catalog, onOpen: openCuration).tag(1).toolbar(.hidden, for: .tabBar)
+                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve) }
             DeungView(climb: climb, auth: auth, catalog: catalog, onStart: { tab = 0 },
                       onOpenMap: { m in catalog.selected = m; climb.recordTrack = nil; tab = 0 })
                 .tag(2).toolbar(.hidden, for: .tabBar)
+                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve) }
             RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute).tag(3).toolbar(.hidden, for: .tabBar)
+                .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve) }
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
@@ -89,6 +99,10 @@ struct ContentView: View {
         .padding(.top, 4)
         .background(t.surface.ignoresSafeArea(edges: .bottom))   // 배경만 홈 인디케이터까지 확장
         .overlay(alignment: .top) { Rectangle().fill(t.line).frame(height: 0.5) }
+        // 네비 실측 높이 → 스크롤 탭 하단 확보값(navReserve)에 반영 (안전영역 위 콘텐츠 높이)
+        .background(GeometryReader { g in Color.clear
+            .onAppear { navBarH = g.size.height }
+            .onChange(of: g.size.height) { navBarH = $0 } })
     }
 
     // 큐레이션 슬라이드 탭 → 해당 산 + 코스를 선택하고 탐험 탭으로 이동.
