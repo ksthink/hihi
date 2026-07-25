@@ -25,6 +25,7 @@ struct MapView: UIViewRepresentable {
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
     var onScaleChanged: ((Double) -> Void)? = nil    // 지도 이동 시 축척(m/point) 통지 → 커스텀 스케일바
     var onCourseTapped: ((String) -> Void)? = nil    // 지도에서 등산로/배지 탭 → 코스명 통지(웹 selectByName)
+    var onHeadingChanged: ((Bool) -> Void)? = nil    // 나침반(헤딩) 추적 on/off 통지 → 위치 버튼 아이콘 상태
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -54,6 +55,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.onCenterChanged = onCenterChanged
         context.coordinator.onScaleChanged = onScaleChanged
         context.coordinator.onCourseTapped = onCourseTapped
+        context.coordinator.onHeadingChanged = onHeadingChanged
         // 오버레이 출처(로컬/원격) 판단 — apply(mountain:) 가 applyOverlay 를 부르므로 그 전에.
         context.coordinator.useLocalPack = offlineBaseURL != nil
         context.coordinator.apply(mountain: mountain, on: mv)
@@ -110,6 +112,7 @@ struct MapView: UIViewRepresentable {
         var dark = false                    // 현재 테마 (코스 번호 배지 색)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
         var onScaleChanged: ((Double) -> Void)?
+        var onHeadingChanged: ((Bool) -> Void)?
 
         // 현재위치 점 표시 + 추적 카메라(등반 중 tracking, 또는 위치 버튼 locateTick).
         // 위치 버튼은 나침반도 통합 — 누를 때마다 정북 추적 ⇄ 나침반(헤딩) 추적을 순환한다.
@@ -165,6 +168,16 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
             if annotation is MLNUserLocation, tracking { return EmptyUserDot() }
             return nil
+        }
+
+        // 추적 모드 변경(버튼 순환·사용자 팬으로 .none 낙하 등)마다 호출된다.
+        // ⚠️ 손전등(헤딩) 빔은 followWithHeading 이라도 showsUserHeadingIndicator 를 켜야 그려진다.
+        //    등반은 켜져 있었지만 탐험은 이 설정이 없어 빔이 안 나왔다(2026-07-25). 여기서 모드에
+        //    맞춰 켜고, 위치 버튼 아이콘 상태도 함께 통지한다(탐험·등반 공통 경로).
+        func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
+            let heading = mode == .followWithHeading
+            mapView.showsUserHeadingIndicator = heading
+            onHeadingChanged?(heading)
         }
 
         // POI 아이콘 등록 — 웹 makePoiIcon(캔버스) 대응. 네이티브는 SF Symbol 을 렌더한다.

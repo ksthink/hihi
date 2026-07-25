@@ -14,6 +14,7 @@ struct ExploreView: View {
     @AppStorage("hiheight-basemode") private var baseMode = "terrain"
 
     @State private var locateTick = 0
+    @State private var headingOn = false                             // 나침반(헤딩) 추적 중 — 위치 버튼 강조
     @State private var courseFitTick = 0              // 코스 탭 → 지도 fitBounds
     @State private var metersPerPoint: Double = 0     // 커스텀 스케일바 축척
     @Binding var searching: Bool                     // 검색 모드 — ContentView 가 하단 네비바 숨김에 사용
@@ -79,7 +80,8 @@ struct ExploreView: View {
                         onScaleChanged: { metersPerPoint = $0 },
                         onCourseTapped: { name in                       // 지도에서 등산로/배지 탭 → 코스 선택 + 목록 노출·스크롤
                             if let c = courses.first(where: { $0.name == name }) { selectCourse(c) }
-                        })
+                        },
+                        onHeadingChanged: { headingOn = $0 })           // 나침반 추적 on/off → 위치 버튼 강조
                     .ignoresSafeArea()
 
                 // 스케일바 (좌하단, 시트 위) — 웹 ScaleControl 식 단일 눈금 바. 검색 중엔 숨김.
@@ -100,7 +102,7 @@ struct ExploreView: View {
                     ctrlImageButton(scheme == .dark ? "ctrl-sun" : "ctrl-moon", t) {   // 웹 달/해 아이콘(크기 통일)
                         themePref = scheme == .dark ? "light" : "dark"
                     }
-                    ctrlImageButton("ctrl-locate", t) { locateTick += 1 }   // ◎ 현재위치(웹 geolocate 아이콘)
+                    ctrlImageButton("ctrl-locate", t, active: headingOn) { locateTick += 1 }   // ◎ 현재위치 — 나침반 추적 중이면 강조
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
@@ -278,15 +280,16 @@ struct ExploreView: View {
 
     // 우측 지도 컨트롤 버튼 — 웹과 동일한 커스텀 아이콘(번들 PNG, template 틴트).
     // 프레임 36 / 아이콘 20 (웹 컨트롤 비율에 맞춰 아이콘이 프레임을 적당히 채우도록).
-    private func ctrlImageButton(_ image: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
+    // active=true 면 반전(강조) — 나침반 추적 중 위치 버튼 같은 토글 상태 표시.
+    private func ctrlImageButton(_ image: String, _ t: Theme, active: Bool = false, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             Image(uiImage: (UIImage(named: image) ?? UIImage()).withRenderingMode(.alwaysTemplate))
                 .resizable().scaledToFit()
                 .frame(width: 20, height: 20)
-                .foregroundStyle(t.text)
+                .foregroundStyle(active ? t.onAccent : t.text)
                 .frame(width: 36, height: 36)
-                .background(t.elevated.opacity(0.92), in: Circle())
-                .overlay(Circle().strokeBorder(t.line))
+                .background(active ? t.accent : t.elevated.opacity(0.92), in: Circle())
+                .overlay(Circle().strokeBorder(active ? Color.clear : t.line))
         }
     }
 
