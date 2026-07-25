@@ -221,8 +221,11 @@ def elev_along(coords, elev_fn, step_m=25.0):
     return out
 
 
-def profile_from_track(pts, n=48):
-    """(lon,lat,ele) 트랙 → 등거리 n점 고도(표시 스파이크용). GPX 자체 고도 사용."""
+def profile_from_track(pts, n=48, smooth_win=5):
+    """(lon,lat,ele) 트랙 → 등거리 n점 고도(표시 스파이크용). GPX 자체 고도 사용.
+    원 해상도에서 이동평균(smooth_win)으로 GPS 고주파 잡음 완화 — 지도앱 export 처럼
+    이미 매끈한 값엔 영향이 거의 없고, 실제 봉우리는 여러 점에 걸쳐 있어 보존된다."""
+    eles = smooth_series([p[2] for p in pts], smooth_win)
     cum = [0.0]
     for a, b in zip(pts, pts[1:]):
         cum.append(cum[-1] + hav(a[:2], b[:2]))
@@ -232,7 +235,7 @@ def profile_from_track(pts, n=48):
         dd = total * i / (n - 1)
         while j < len(cum) - 1 and cum[j+1] < dd:
             j += 1
-        out.append(int(round(pts[min(j, len(pts)-1)][2])))
+        out.append(int(round(eles[min(j, len(pts)-1)])))
     return out
 
 
