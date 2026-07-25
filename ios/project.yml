@@ -25,6 +25,7 @@ targets:
       - path: HiHeight
         excludes:
           - "Resources/glyphs/**"   # 아래 폴더참조로 별도 추가(구조 보존) — 이중 포함 방지
+          - ".omc/**"               # 개발 툴(oh-my-claudecode) 상태 폴더 — 앱 번들에 들어가면 리소스 충돌
       # 지도 글리프 pbf — 폴더참조(type: folder)로 <fontstack>/<range>.pbf 디렉터리 구조 보존.
       # (일반 그룹이면 번들 루트로 평탄화돼 range 파일명이 fontstack 간 충돌.)
       - path: HiHeight/Resources/glyphs
@@ -42,6 +43,7 @@ targets:
         # must be higher than '1'" 로 거부됨 — 2026-07-20).
         MARKETING_VERSION: "1.0"          # App Store Connect 버전 레코드와 일치
         CURRENT_PROJECT_VERSION: 1        # testflight.sh 가 git 커밋 수로 오버라이드
+        GIT_COMMIT: local                 # DEVMODE — testflight.sh 가 커밋 해시로 오버라이드(로컬 빌드는 "local")
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1"   # iPhone
         # 실기기 테스트 · TestFlight 배포 — 자동 서명(배포 인증서/프로파일은
@@ -58,6 +60,7 @@ targets:
         # 빌드 설정을 실제로 반영시키는 참조 — 빼면 XcodeGen 기본값(1.0 / 1) 이 박힌다.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        GitCommit: $(GIT_COMMIT)   # DEVMODE — HUD "커밋" 표시용(testflight.sh 가 빌드 시 주입). 개발자 모드 제거 시 이 줄과 위 GIT_COMMIT 설정 삭제 가능
         UILaunchScreen: {}
         # iOS 26 Liquid Glass(플로팅 탭바·블러) opt-out — 배터리 절약 컨셉(글래스/블러 효과 배제).
         # 웹과 동일한 평평·불투명 하단 바 렌더.

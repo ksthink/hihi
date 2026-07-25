@@ -24,6 +24,7 @@ KEY_PATH="${ASC_KEY_PATH/#\~/$HOME}"
 
 # 빌드번호 = git 커밋 수. 단조 증가하며 재현 가능(같은 번호 재업로드는 거부되므로 매번 달라야 함).
 BUILD="$(git rev-list --count HEAD)"
+COMMIT="$(git rev-parse --short HEAD)$([ -n "$(git status --porcelain)" ] && echo -n '+')"   # DEVMODE — HUD 커밋 표시용
 ARCHIVE="ios/build/HiHeight.xcarchive"
 
 echo "▶ 스타일 생성 + 프로젝트 재생성"
@@ -40,7 +41,8 @@ xcodebuild archive \
   -authenticationKeyPath "$KEY_PATH" \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-  CURRENT_PROJECT_VERSION="$BUILD"
+  CURRENT_PROJECT_VERSION="$BUILD" \
+  GIT_COMMIT="$COMMIT"   # DEVMODE — HUD 커밋 표시용(개발자 모드 제거 시 이 인자와 위 COMMIT 줄 삭제 가능)
 
 echo "▶ App Store Connect 업로드"
 xcodebuild -exportArchive \

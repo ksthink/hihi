@@ -64,6 +64,7 @@ struct ContentView: View {
                     .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
             }
         }
+        .overlay { DevHUD() }   // DEVMODE — 개발자 모드 HUD(모든 탭 위·표시 판단은 DevHUD 내부). 제거 시 이 줄 삭제.
     }
 
     // 웹 하단 네비 — 평평·불투명 전폭 바(상단 헤어라인), 아이콘+라벨, 선택 강조. 글래스 효과 없음.

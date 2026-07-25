@@ -76,6 +76,8 @@ struct ProfileEditView: View {
                 }
                 .padding(.top, 2)
 
+                DevGate().padding(.top, 6)   // DEVMODE — 개발자 모드 토글 (제거 시 이 줄 삭제)
+
                 Spacer(minLength: 0)
             }
             .padding(20)
