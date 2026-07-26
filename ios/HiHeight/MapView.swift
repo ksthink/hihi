@@ -481,7 +481,8 @@ struct MapView: UIViewRepresentable {
             let thick = routeMode && coursesVisible           // 루트 보기용 2배 선(걸은 루트 위)
             for id in Self.courseLayerIDs { style.layer(withIdentifier: id)?.isVisible = normal }
             for id in Self.routeCourseLayerIDs { style.layer(withIdentifier: id)?.isVisible = thick }
-            style.layer(withIdentifier: "course-no-badges")?.isVisible = normal || thick
+            // 코스 번호 배지 — 루트 보기에선 켜도 숨김(비교엔 선만, 번호는 불필요).
+            style.layer(withIdentifier: "course-no-badges")?.isVisible = normal
             // 정규 코스 출발/도착(점·텍스트) — 루트 보기에선 켜도 선만(비교에 불필요).
             for id in ["course-ends-dots", "course-ends-labels"] {
                 style.layer(withIdentifier: id)?.isVisible = !routeMode

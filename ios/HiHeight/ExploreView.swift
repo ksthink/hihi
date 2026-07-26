@@ -126,13 +126,15 @@ struct ExploreView: View {
                     ctrlImageButton(scheme == .dark ? "ctrl-sun" : "ctrl-moon", t) {   // 웹 달/해 아이콘(크기 통일)
                         themePref = scheme == .dark ? "light" : "dark"
                     }
-                    ctrlImageButton("ctrl-locate", t, active: headingOn, beam: true) { locateTick += 1 }   // ◎ 현재위치 — 나침반 추적 중이면 강조+빔
+                    if !inRoute {   // 루트 보기 — 기록 재생이라 현재위치·나침반 불필요
+                        ctrlImageButton("ctrl-locate", t, active: headingOn, beam: true) { locateTick += 1 }   // ◎ 현재위치 — 나침반 추적 중이면 강조+빔
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
-                .padding(.bottom, climb.tracking ? 240 : peek + 92)   // ⓘ 저작권 버튼 위로
-                .opacity(searching || inRoute ? 0 : 1)                // 검색·루트 보기 중엔 숨김
-                .allowsHitTesting(!searching && !inRoute)
+                .padding(.bottom, climb.tracking ? 240 : inRoute ? routeCardH + 60 : peek + 92)   // ⓘ 저작권 버튼 위로
+                .opacity(searching ? 0 : 1)                           // 검색 중엔 숨김
+                .allowsHitTesting(!searching)
 
                 // 저작권 ⓘ — 탭하면 옆으로 펼쳐져 어트리뷰션 노출(웹 MapLibre 식, 팝업 대체)
                 attributionControl(t)
@@ -517,9 +519,17 @@ struct ExploreView: View {
                 Spacer()
                 if r?.mountain_id != nil { coursePill(t) }    // 산이 있어야 정규 코스가 있다
             }
-            HStack(spacing: 0) {                              // 거리 · 시간 · 누적고도
+            HStack(alignment: .top, spacing: 0) {             // 거리 · 시간 · 누적고도
                 hudStat(r?.distance_km.map { String(format: "%.2f", $0) } ?? "–", "거리(km)", t)
-                hudStat(fmtClock(r?.duration_s ?? 0), "시간", t)
+                VStack(spacing: 3) {                          // 시간 — 아래에 시작~종료 시각 작게
+                    Text(fmtClock(r?.duration_s ?? 0))
+                        .font(.kakao(size: 20, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
+                    Text("시간").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                    if let r, let range = timeRangeLabel(r) {
+                        Text(range).font(.kakao(size: 9)).foregroundStyle(t.muted).monospacedDigit()
+                    }
+                }
+                .frame(maxWidth: .infinity)
                 hudStat(r?.ascent_m.map { "\($0)" } ?? "–", "↑고도(m)", t)
             }
             if r?.hasElevation == true {                      // 인터랙티브 고도 프로필(고도값이 있을 때만)
@@ -591,6 +601,13 @@ struct ExploreView: View {
     private func recDateLabel(_ d: Date) -> String {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.MM.dd (E)"
         return f.string(from: d)
+    }
+
+    // "09:12:00~22:12:45" — 걷기 시작~종료 시각(종료 = 시작 + 등반시간. ended_at 은 목록 쿼리에 없음).
+    private func timeRangeLabel(_ r: ClimbRecord) -> String? {
+        guard let s = r.startedDate, let d = r.duration_s else { return nil }
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "HH:mm:ss"
+        return "\(f.string(from: s))~\(f.string(from: s.addingTimeInterval(Double(d))))"
     }
 
     // 겹침 계산(1회 캐시) — 걸은 트랙 중 정규 코스 25m 이내 구간. CPU 작업이라 백그라운드에서.
