@@ -107,22 +107,30 @@ enum PackLoader {
     private struct FC: Decodable { let features: [Feature] }
     private struct Feature: Decodable { let properties: Course; let geometry: Geometry }
 
-    static func courses(_ code: String) async -> [Course] {
+    // localURL(저장된 팩의 routes.geojson)이 있으면 그것을 우선 — 오프라인에서도 코스 목록 보장.
+    static func courses(_ code: String, localURL: URL? = nil) async -> [Course] {
+        if let localURL, let data = try? Data(contentsOf: localURL), let list = decodeCourses(data) {
+            return list
+        }
         guard let url = Config.routesURL(code) else { return [] }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            let fc = try JSONDecoder().decode(FC.self, from: data)
-            return fc.features.map { f in
-                var c = f.properties
-                c.start = f.geometry.first
-                c.end = f.geometry.last
-                c.bbox = f.geometry.bbox
-                c.mid = f.geometry.mid
-                return c
-            }.sorted { ($0.no ?? 0) < ($1.no ?? 0) }
+            return decodeCourses(data) ?? []
         } catch {
             return []
         }
+    }
+
+    private static func decodeCourses(_ data: Data) -> [Course]? {
+        guard let fc = try? JSONDecoder().decode(FC.self, from: data) else { return nil }
+        return fc.features.map { f in
+            var c = f.properties
+            c.start = f.geometry.first
+            c.end = f.geometry.last
+            c.bbox = f.geometry.bbox
+            c.mid = f.geometry.mid
+            return c
+        }.sorted { ($0.no ?? 0) < ($1.no ?? 0) }
     }
 
     // 루트 보기 겹침 계산용 — routes.geojson 의 모든 코스 선 좌표(코스 구분 없이 평탄화).

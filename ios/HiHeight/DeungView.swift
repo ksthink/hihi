@@ -9,19 +9,24 @@ struct DeungView: View {
     @ObservedObject var auth: AuthStore
     @ObservedObject var catalog: CatalogStore
     var onStart: () -> Void = {}            // 등반 시작 → 지도(탐험) 탭으로 전환
-    var onOpenMap: (Mountain) -> Void = { _ in }   // 저장된 지도 탭 → 해당 산 선택 후 탐험 탭
+    var onOpenMap: (Mountain) -> Void = { _ in }   // 캐러셀 [지도] 버튼 → 해당 산 탐험 탭에서 확인
     @Environment(\.colorScheme) private var scheme
     @State private var loginHint = false
     @State private var weather: [WeatherHour] = []   // 선택된 산 시간대별 예보
     @StateObject private var packs = PackStore.shared    // 저장된 오프라인 지도 목록
     @State private var deletePackTarget: Mountain?       // 삭제 확인 대상
     @State private var showPackPrompt = false            // 팩 없이 등반 시작 시 저장 권유
+    // 코스 캐러셀 — 저장된 지도에서 고른 산의 코스 목록(탐험 이동 없이 여기서 선택·시작).
+    @State private var carouselMountain: Mountain?
+    @State private var carouselCourses: [Course] = []
+    @State private var loadingCourses = false
 
     var body: some View {
         let t = Theme(scheme: scheme)
         VStack(spacing: 0) {
             header(t)                       // 상단 고정
             ScrollView {
+                courseCarousel(t)           // 저장된 지도에서 고른 산의 코스 (열려 있을 때만)
                 card(t).padding(20)
                 savedMaps(t)
             }
@@ -148,7 +153,103 @@ struct DeungView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(t.line))
     }
 
-    // 저장된 지도 — 다운로드된 오프라인 팩 목록(웹 renderSavedMaps). 탭=탐험에서 열기, 휴지통=삭제.
+    // MARK: 코스 캐러셀 — 저장된 지도에서 산을 고르면 그 산의 코스를 가로 스와이프로.
+    // 카드 탭 = 코스 확정(아래 등반 카드에 즉시 반영, 탭 이동 없음). 지형 확인은 [지도] 버튼으로만.
+    @ViewBuilder private func courseCarousel(_ t: Theme) -> some View {
+        if let m = carouselMountain {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Text(m.name).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
+                    if !carouselCourses.isEmpty {
+                        Text("\(carouselCourses.count)").font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+                    }
+                    Spacer(minLength: 8)
+                    Button { onOpenMap(m) } label: {          // 들머리·지형 확인이 필요할 때만 탐험으로
+                        Text("지도").font(.kakao(size: 12, weight: .semibold)).foregroundStyle(t.text)
+                            .padding(.horizontal, 12).padding(.vertical, 5)
+                            .background(t.surface, in: Capsule())
+                            .overlay(Capsule().strokeBorder(t.line))
+                    }
+                    .buttonStyle(.plain)
+                    Button { carouselMountain = nil; carouselCourses = [] } label: {
+                        Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(t.muted).frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                if carouselCourses.isEmpty {
+                    Text(loadingCourses ? "코스 불러오는 중…" : "등록된 코스가 없습니다.")
+                        .font(.kakao(size: 12)).foregroundStyle(t.muted)
+                        .padding(.horizontal, 20)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(carouselCourses) { c in courseCard(c, m, t) }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+            }
+            .padding(.top, 16)
+        }
+    }
+
+    // 요약형 코스 카드 — 이름 · 거리/예상 · 난이도 · 고도 스파크라인. 탭=선택(테두리 강조).
+    private func courseCard(_ c: Course, _ m: Mountain, _ t: Theme) -> some View {
+        let sel = climb.course?.id == c.id && climb.mountainCode == m.id
+        return Button { selectCourse(c, of: m) } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(c.name).font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text).lineLimit(1)
+                HStack(spacing: 6) {
+                    if let d = c.distance_km { Text("\(fmtNum(d))km") }
+                    if let tl = c.timeLabel { Text(tl) }
+                }
+                .font(.kakao(size: 11)).foregroundStyle(t.muted)
+                HStack(spacing: 6) {
+                    difMeter(c.difLevel, t)
+                    Text(c.difLabel).font(.kakao(size: 10)).foregroundStyle(t.muted)
+                }
+                Group {   // 프로파일 없는 코스도 카드 높이 일정
+                    if let p = c.profile, p.count > 1 {
+                        ProfileView(points: p, color: t.text, lineWidth: 1.2)
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(height: 26)
+            }
+            .padding(12)
+            .frame(width: 150, alignment: .leading)
+            .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(sel ? t.accent : t.line, lineWidth: sel ? 1.6 : 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // 저장된 지도 탭 → 코스 캐러셀 열기(탐험 이동 대체). 저장된 팩의 로컬 routes.geojson
+    // 우선이라 **오프라인에서도** 코스 목록이 뜬다(저장된 지도의 존재 이유와 일치).
+    private func openCarousel(_ m: Mountain) {
+        carouselMountain = m
+        carouselCourses = []
+        loadingCourses = true
+        Task {
+            carouselCourses = await PackLoader.courses(m.id, localURL: packs.localFile(m.id, "routes.geojson"))
+            loadingCourses = false
+        }
+    }
+
+    // 캐러셀에서 코스 확정 — 등반 카드·시작 버튼이 즉시 활성화(탭 이동 없음).
+    private func selectCourse(_ c: Course, of m: Mountain) {
+        catalog.selected = m               // 날씨·팩 확인·탐험 지도도 이 산 기준으로
+        climb.course = c
+        climb.mountainName = m.name
+        climb.mountainCode = m.id
+        climb.routeRecord = nil
+    }
+
+    // 저장된 지도 — 다운로드된 오프라인 팩 목록(웹 renderSavedMaps). 탭=코스 캐러셀, 스와이프=삭제.
     @ViewBuilder private func savedMaps(_ t: Theme) -> some View {
         let saved = catalog.mountains.filter { packs.downloaded.contains($0.id) }
         if !saved.isEmpty {
@@ -170,7 +271,7 @@ struct DeungView: View {
                         .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
                         .contentShape(Rectangle())
-                        .onTapGesture { onOpenMap(m) }
+                        .onTapGesture { openCarousel(m) }
                     }
                 }
             }
