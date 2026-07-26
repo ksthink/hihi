@@ -183,47 +183,54 @@ struct DeungView: View {
                         .font(.kakao(size: 12)).foregroundStyle(t.muted)
                         .padding(.horizontal, 20)
                 } else {
+                    // 등반 카드와 같은 형태의 큰 카드를 한 장씩 페이지 정렬(추천 캐러셀과 같은 스크롤 감).
+                    let cardW = UIScreen.main.bounds.width - 64   // 다음 카드가 살짝 보이게
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
-                            ForEach(carouselCourses) { c in courseCard(c, m, t) }
+                        HStack(spacing: 12) {
+                            ForEach(carouselCourses) { c in courseCard(c, m, t, width: cardW) }
                         }
+                        .scrollTargetLayout()
                         .padding(.horizontal, 20)
                     }
+                    .scrollTargetBehavior(.viewAligned)
                 }
             }
             .padding(.top, 16)
         }
     }
 
-    // 요약형 코스 카드 — 이름 · 거리/예상 · 난이도 · 고도 스파크라인. 탭=선택(테두리 강조).
-    private func courseCard(_ c: Course, _ m: Mountain, _ t: Theme) -> some View {
+    // 캐러셀 코스 카드 — 아래 등반 카드와 같은 형태(제목 산|코스 · 스탯 3셀 · 고도 그래프)로 통일.
+    // 탭=선택(테두리 강조).
+    private func courseCard(_ c: Course, _ m: Mountain, _ t: Theme, width: CGFloat) -> some View {
         let sel = climb.course?.id == c.id && climb.mountainCode == m.id
         return Button { selectCourse(c, of: m) } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(c.name).font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text).lineLimit(1)
-                HStack(spacing: 6) {
-                    if let d = c.distance_km { Text("\(fmtNum(d))km") }
-                    if let tl = c.timeLabel { Text(tl) }
+            VStack(spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {   // 제목 — 등반 카드와 동일 구성
+                    Text(m.name).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
+                    Text("|").font(.kakao(size: 15)).foregroundStyle(t.muted)
+                    Text(c.name).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.text)
                 }
-                .font(.kakao(size: 11)).foregroundStyle(t.muted)
-                HStack(spacing: 6) {
-                    difMeter(c.difLevel, t)
-                    Text(c.difLabel).font(.kakao(size: 10)).foregroundStyle(t.muted)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+                HStack(spacing: 0) {                                   // 스탯 3셀 — 등반 카드와 동일
+                    statCell("거리(km)", t) { statValue(c.distance_km.map(fmtNum), t) }
+                    statCell("예상", t) { statValue(c.timeLabel, t) }
+                    statCell("난이도", t) { difMeter(c.difLevel, t) }
                 }
                 Group {   // 프로파일 없는 코스도 카드 높이 일정
                     if let p = c.profile, p.count > 1 {
-                        ProfileView(points: p, color: t.text, lineWidth: 1.2)
+                        ProfileView(points: p, color: t.text)
                     } else {
                         Color.clear
                     }
                 }
-                .frame(height: 26)
+                .frame(height: 40)
             }
-            .padding(12)
-            .frame(width: 150, alignment: .leading)
-            .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(sel ? t.accent : t.line, lineWidth: sel ? 1.6 : 1))
+            .padding(16)
+            .frame(width: width)
+            .background(t.elevated, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(sel ? t.accent : t.line, lineWidth: sel ? 1.8 : 1))
         }
         .buttonStyle(.plain)
     }
