@@ -514,10 +514,10 @@ struct ExploreView: View {
         return VStack(spacing: 12) {
             HStack(spacing: 7) {                              // 일자 | 출발~도착 + 정규 코스 토글
                 if let d = r?.startedDate {
-                    Text(recDateLabel(d)).font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+                    Text(recDateLabel(d)).font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.muted)
                     if let r, let range = timeRangeLabel(r) {
                         Text("|").font(.kakao(size: 12)).foregroundStyle(t.line)
-                        Text(range).font(.kakao(size: 12)).foregroundStyle(t.muted).monospacedDigit()
+                        Text(range).font(.kakao(size: 13)).foregroundStyle(t.muted).monospacedDigit()
                     }
                 }
                 Spacer()
@@ -571,8 +571,11 @@ struct ExploreView: View {
         } label: {
             Image(systemName: routeShowCourses ? "eye.fill" : "eye.slash")
                 .font(.system(size: 13, weight: .bold))
+                // eye.fill/eye.slash 는 글리프 고유 폭이 달라 알약·카드 높이가 상태마다 변한다
+                // → 고정 프레임으로 두 상태 크기 동일(바텀시트 실측 높이 흔들림 방지).
+                .frame(width: 20, height: 16)
                 .foregroundStyle(routeShowCourses ? t.onAccent : t.muted)
-                .padding(.horizontal, 11).padding(.vertical, 7)
+                .padding(.horizontal, 9).padding(.vertical, 6)
                 .background(routeShowCourses ? t.accent : t.surface, in: Capsule())
                 .overlay(Capsule().strokeBorder(routeShowCourses ? .clear : t.line))
         }
@@ -596,11 +599,11 @@ struct ExploreView: View {
         return f.string(from: d)
     }
 
-    // "09:12:00~22:12:45" — 걷기 시작~종료 시각(종료 = 시작 + 등반시간. ended_at 은 목록 쿼리에 없음).
+    // "09:12:00 ~ 22:12:45" — 걷기 시작~종료 시각(종료 = 시작 + 등반시간. ended_at 은 목록 쿼리에 없음).
     private func timeRangeLabel(_ r: ClimbRecord) -> String? {
         guard let s = r.startedDate, let d = r.duration_s else { return nil }
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "HH:mm:ss"
-        return "\(f.string(from: s))~\(f.string(from: s.addingTimeInterval(Double(d))))"
+        return "\(f.string(from: s)) ~ \(f.string(from: s.addingTimeInterval(Double(d))))"
     }
 
     // 겹침 계산(1회 캐시) — 걸은 트랙 중 정규 코스 25m 이내 구간. CPU 작업이라 백그라운드에서.
