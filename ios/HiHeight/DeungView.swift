@@ -138,10 +138,10 @@ struct DeungView: View {
             }
             .disabled(c == nil)
 
-            if let hint = hintText(c) {
-                Text(hint).font(.kakao(size: 11)).foregroundStyle(t.muted)
-                    .lineLimit(1).frame(maxWidth: .infinity)
-            }
+            // 힌트 줄 — 항상 한 줄 확보. 코스별 유무(효자동처럼 봉우리·노면·설명이 빈 코스)로
+            // 카드 높이가 달라지면 페이저(가운데 정렬)에서 짧은 카드가 떠 보인다(2026-07-26 확인).
+            Text(hintText(c) ?? " ").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                .lineLimit(1).frame(maxWidth: .infinity)
             if loginHint {
                 Text("등반 기록을 저장하려면 기록 탭에서 로그인하세요.")
                     .font(.kakao(size: 11)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
@@ -159,7 +159,8 @@ struct DeungView: View {
         if let m = carouselMountain, carouselCourses.count > 1 {
             VStack(spacing: 10) {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 20) {
+                    // 위 정렬 — 카드 높이가 달라도(프로파일 없는 코스 등) 상단선이 맞아 떠 보이지 않게.
+                    HStack(alignment: .top, spacing: 20) {
                         ForEach(carouselCourses) { c in
                             card(t, course: c, mountainName: m.name)
                                 .frame(width: UIScreen.main.bounds.width - 40)   // 단일 카드와 같은 폭
