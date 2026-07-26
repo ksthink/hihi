@@ -512,24 +512,20 @@ struct ExploreView: View {
         let r = climb.routeRecord
         let profile = r.map { RouteProfile.build($0) } ?? []
         return VStack(spacing: 12) {
-            HStack {                                          // 날짜 + 정규 코스 토글
+            HStack(spacing: 7) {                              // 일자 | 출발~도착 + 정규 코스 토글
                 if let d = r?.startedDate {
                     Text(recDateLabel(d)).font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+                    if let r, let range = timeRangeLabel(r) {
+                        Text("|").font(.kakao(size: 12)).foregroundStyle(t.line)
+                        Text(range).font(.kakao(size: 12)).foregroundStyle(t.muted).monospacedDigit()
+                    }
                 }
                 Spacer()
                 if r?.mountain_id != nil { coursePill(t) }    // 산이 있어야 정규 코스가 있다
             }
-            HStack(alignment: .top, spacing: 0) {             // 거리 · 시간 · 누적고도
+            HStack(spacing: 0) {                              // 거리 · 시간 · 누적고도 (동일 3셀 밸런스)
                 hudStat(r?.distance_km.map { String(format: "%.2f", $0) } ?? "–", "거리(km)", t)
-                VStack(spacing: 3) {                          // 시간 — 아래에 시작~종료 시각 작게
-                    Text(fmtClock(r?.duration_s ?? 0))
-                        .font(.kakao(size: 20, weight: .bold).monospacedDigit()).foregroundStyle(t.text)
-                    Text("시간").font(.kakao(size: 11)).foregroundStyle(t.muted)
-                    if let r, let range = timeRangeLabel(r) {
-                        Text(range).font(.kakao(size: 9)).foregroundStyle(t.muted).monospacedDigit()
-                    }
-                }
-                .frame(maxWidth: .infinity)
+                hudStat(fmtClock(r?.duration_s ?? 0), "시간", t)
                 hudStat(r?.ascent_m.map { "\($0)" } ?? "–", "↑고도(m)", t)
             }
             if r?.hasElevation == true {                      // 인터랙티브 고도 프로필(고도값이 있을 때만)
@@ -566,22 +562,19 @@ struct ExploreView: View {
             .onChange(of: g.size.height) { _, h in routeCardH = h } })
     }
 
-    // 정규 코스 표시 토글 알약 — RecordsView 정렬 알약과 같은 형태(on=강조).
+    // 정규 코스 표시 토글 — 아이콘만(눈 모양) 알약, on=강조(텍스트 없이 간결).
     // 켤 때 겹침 구간(코스 위를 걸은 부분)을 1회 계산해 반전 점선으로 표시한다.
     private func coursePill(_ t: Theme) -> some View {
         Button {
             withAnimation(.easeOut(duration: 0.15)) { routeShowCourses.toggle() }
             if routeShowCourses { computeRouteOverlap() }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: routeShowCourses ? "eye.fill" : "eye.slash")
-                    .font(.system(size: 10, weight: .bold))
-                Text("정규 코스").font(.kakao(size: 12, weight: routeShowCourses ? .bold : .regular))
-            }
-            .foregroundStyle(routeShowCourses ? t.onAccent : t.muted)
-            .padding(.horizontal, 11).padding(.vertical, 6)
-            .background(routeShowCourses ? t.accent : t.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(routeShowCourses ? .clear : t.line))
+            Image(systemName: routeShowCourses ? "eye.fill" : "eye.slash")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(routeShowCourses ? t.onAccent : t.muted)
+                .padding(.horizontal, 11).padding(.vertical, 7)
+                .background(routeShowCourses ? t.accent : t.surface, in: Capsule())
+                .overlay(Capsule().strokeBorder(routeShowCourses ? .clear : t.line))
         }
         .buttonStyle(.plain)
     }
