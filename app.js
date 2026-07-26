@@ -67,11 +67,12 @@ const DIFF_LEVEL = { 초급: 1, 중급: 2, 고급: 3 };
 // 데이터 값(초급/중급/고급) → 화면 표시 라벨
 const DIFF_LABEL = { 초급: "보통", 중급: "어려움", 고급: "매우 어려움" };
 const difLabel = (d) => DIFF_LABEL[d] || d;
-// 소수 시간(time_hr) → "42분"/"1시간 30분". 데이터 계약은 소수 시간 그대로, 표시만 변환(iOS Course.timeLabel 과 동일 규칙).
+// 소수 시간(time_hr) → "42분"/"1:30". 데이터 계약은 소수 시간 그대로, 표시만 변환(iOS Course.timeLabel 과 동일 규칙).
+// 1시간 이상은 기록 등반시간과 같은 H:MM, 1시간 미만은 시 생략 "분" 표기.
 const fmtTime = (hr) => {
   const m = Math.round(Number(hr) * 60);
   if (!isFinite(m) || m <= 0) return "";
-  return m < 60 ? `${m}분` : `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ""}`;
+  return m < 60 ? `${m}분` : `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
 };
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 

@@ -29,13 +29,14 @@ struct Course: Decodable, Identifiable {
     var id: Int { no ?? name.hashValue }
     var title: String { no.map { "코스 \($0)" } ?? name }
 
-    // 소수 시간(time_hr) → "42분"/"1시간 30분". 데이터 계약은 소수 시간 그대로, 표시만 변환(웹 fmtTime 과 동일 규칙).
+    // 소수 시간(time_hr) → "42분"/"1:30". 데이터 계약은 소수 시간 그대로, 표시만 변환(웹 fmtTime 과 동일 규칙).
+    // 1시간 이상은 기록 탭 등반시간과 같은 H:MM, 1시간 미만은 시 생략 "분" 표기.
     var timeLabel: String? {
         guard let h = time_hr else { return nil }
         let m = Int((h * 60).rounded())
         guard m > 0 else { return nil }
         if m < 60 { return "\(m)분" }
-        return m % 60 == 0 ? "\(m / 60)시간" : "\(m / 60)시간 \(m % 60)분"
+        return "\(m / 60):" + String(format: "%02d", m % 60)
     }
 
     // 난이도 표기 — 웹 DIFF_LABEL/DIFF_LEVEL (초급=보통 1, 중급=어려움 2, 고급=매우 어려움 3).

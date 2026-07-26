@@ -8,6 +8,63 @@ final class EmptyUserDot: MLNUserLocationAnnotationView {
     override func update() { /* 아무것도 그리지 않음 */ }
 }
 
+// 탐험용 위치 점 + 자북 바늘 — **한 뷰(같은 컨테이너)** 에 함께 그려 이동이 완전히 동기된다.
+// ⚠️ 바늘을 스타일 레이어로 그리면 어긋난다: 내장 점(주석 뷰)은 GPS 갱신 사이를 부드럽게
+//    보간 이동하는데 GL 소스 갱신은 즉시 점프라, 점이 미끄러질 때 바늘이 따로 놀았다
+//    (2026-07-26 실기 확인). 스타일 바늘은 climb-pos 와 같은 경로인 등반 중에만 쓴다.
+final class NeedleUserDot: MLNUserLocationAnnotationView {
+    private let orbit = CALayer()      // 바늘 궤도 컨테이너 — 점 중심 기준 회전만 담당
+    private var built = false
+
+    override func update() {
+        guard !built else { return }
+        built = true
+        let R: CGFloat = 60                              // 궤도(바늘 포함) 여유 크기
+        bounds = CGRect(x: 0, y: 0, width: R, height: R)
+        let center = CGPoint(x: R / 2, y: R / 2)
+        // 점 — 내장 dot 모사(파랑 + 흰 테두리 + 옅은 그림자)
+        let dot = CALayer()
+        dot.bounds = CGRect(x: 0, y: 0, width: 22, height: 22)
+        dot.position = center
+        dot.cornerRadius = 11
+        dot.backgroundColor = UIColor.systemBlue.cgColor
+        dot.borderColor = UIColor.white.cgColor
+        dot.borderWidth = 3
+        dot.shadowColor = UIColor.black.cgColor
+        dot.shadowOpacity = 0.25
+        dot.shadowOffset = .zero
+        dot.shadowRadius = 3
+        // 바늘 — 점 절반 크기 삼각형(파랑 + 흰 외곽), 궤도 상단(자북 방향)에 배치
+        let needle = CAShapeLayer()
+        let W: CGFloat = 12, H: CGFloat = 11
+        let p = UIBezierPath()
+        p.move(to: CGPoint(x: W / 2, y: 0))
+        p.addLine(to: CGPoint(x: W - 1.5, y: H))
+        p.addLine(to: CGPoint(x: 1.5, y: H))
+        p.close()
+        needle.path = p.cgPath
+        needle.fillColor = UIColor.systemBlue.cgColor
+        needle.strokeColor = UIColor.white.cgColor
+        needle.lineWidth = 2
+        needle.lineJoin = .round
+        needle.bounds = CGRect(x: 0, y: 0, width: W, height: H)
+        needle.position = CGPoint(x: R / 2, y: R / 2 - 18)   // 점 가장자리 바깥 궤도
+        orbit.bounds = bounds
+        orbit.position = center
+        orbit.isHidden = true                                // 헤딩 수신 전엔 숨김
+        orbit.addSublayer(needle)
+        layer.addSublayer(orbit)
+        layer.addSublayer(dot)
+    }
+
+    // 자북 방위(도) → 바늘이 화면상 자북을 향하도록 궤도 회전(암시적 CA 애니메이션이 살짝 스무딩).
+    func setHeading(_ deg: Double, hidden: Bool) {
+        orbit.isHidden = hidden || deg.isNaN
+        guard !deg.isNaN else { return }
+        orbit.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(-deg * .pi / 180)))
+    }
+}
+
 // MLNMapView SwiftUI 브리지 — 카탈로그가 고른 산으로 카메라 이동 + 등고선 오버레이 소스 전환.
 // 오버레이 레이어는 스타일 JSON 에 GL 표현식으로 정의(gen-style.mjs)돼 있고,
 // 산이 바뀌면 소스 URL 만 교체한다(MLNShapeSource.url 가변) → NSExpression 불필요.
@@ -120,6 +177,13 @@ struct MapView: UIViewRepresentable {
         private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
         private var recCursorKey = ""       // 마지막 반영한 고도 프로필 커서 지점 (중복 갱신 방지)
         private var overlapKey = ""         // 마지막 반영한 겹침 구간 식별 (중복 갱신 방지)
+        // 스타일 재로드(테마·지도유형 전환) 직후 즉시 재주입할 원본 — 다음 updateUIView 를
+        // 기다리면 트리거가 우연한 상태 변화뿐이라 루트가 수 초간 사라진다(2026-07-26 실기).
+        private var desiredTrack: [[Double]] = []      // 등반 라이브 트랙
+        private var desiredRecTrack: [[Double]]?       // 기록 루트
+        private var desiredOverlap: [[[Double]]] = []  // 겹침 반전 구간
+        private var desiredCursor: [Double]?           // 고도 프로필 커서
+        private var recFitKey = ""          // fit 완료한 기록 트랙 키 — 재로드 재주입 시 재fit 방지
         private var coursesVisible = true   // 정규 코스 선/배지 표시 여부 (루트 보기에서 토글)
         private var routeMode = false       // 루트 보기 모드 — 코스를 2배 두께 레이어로, 출발/도착 텍스트 숨김
         var bottomInset: CGFloat = 306      // 시트가 가리는 하단 높이 (fitBounds 하단 여백)
@@ -138,8 +202,9 @@ struct MapView: UIViewRepresentable {
         weak var mapView: MLNMapView?               // 헤딩 콜백에서 지도 접근
         private let headingMgr = CLLocationManager()  // 헤딩 전용(위치 구독 없음 — 자력계라 배터리 미미)
         private var needleDeg = Double.nan          // 최근 자북 방위(도) — nan=수신 전
-        private var needleCoord: CLLocationCoordinate2D?   // 바늘 위치(포인터 좌표와 동기)
+        private var needleCoord: CLLocationCoordinate2D?   // 등반 바늘 위치(climb-pos 와 동기)
         private var headingMode = false             // 나침반 추적 중 — 바늘 숨김(지도가 회전·빔 표시)
+        private weak var userDot: NeedleUserDot?    // 탐험 위치 점(점+바늘 통합 뷰) — viewFor 가 채움
 
         override init() {
             super.init()
@@ -200,13 +265,18 @@ struct MapView: UIViewRepresentable {
             }
 
             if !tracking && !locateOn { mv.showsUserLocation = false }
-            applyNeedle()   // 포인터 표시 여부가 바뀌었을 수 있음 — 자북 바늘도 동기
+            refreshNeedle()   // 포인터 표시 여부·모드가 바뀌었을 수 있음 — 자북 바늘도 동기
         }
 
-        // 등반 중에는 내장 유저 dot 을 숨긴다(현재 위치는 climb-pos style 레이어로 렌더). 그 외엔 기본 dot.
+        // 등반 중에는 내장 유저 dot 을 숨긴다(현재 위치는 climb-pos style 레이어로 렌더).
+        // 탐험은 점+자북 바늘 통합 뷰(NeedleUserDot) — 같은 컨테이너라 이동이 완전 동기.
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
-            if annotation is MLNUserLocation, tracking { return EmptyUserDot() }
-            return nil
+            guard annotation is MLNUserLocation else { return nil }
+            if tracking { return EmptyUserDot() }
+            let v = userDot ?? NeedleUserDot()
+            userDot = v
+            v.setHeading(needleDeg, hidden: headingMode)
+            return v
         }
 
         // 추적 모드 변경(버튼 순환·사용자 팬으로 .none 낙하 등)마다 호출된다.
@@ -217,23 +287,21 @@ struct MapView: UIViewRepresentable {
             let heading = mode == .followWithHeading
             mapView.showsUserHeadingIndicator = heading
             headingMode = heading               // 나침반 켜짐 → 자북 바늘 숨김(해제 시 복귀)
-            applyNeedle()
+            refreshNeedle()
             onHeadingChanged?(heading)
         }
 
-        // 탐험 — 내장 위치 점이 갱신될 때마다 자북 바늘 좌표를 동기(등반 중엔 climb-pos 좌표 사용).
-        func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
-            guard !tracking else { return }
-            if let c = userLocation?.coordinate, CLLocationCoordinate2DIsValid(c) { needleCoord = c }
-            else { needleCoord = nil }
-            applyNeedle()
-        }
-
-        // 지자기 헤딩 수신 — 1° 미만 변화는 무시(과도한 레이어 갱신 방지).
+        // 지자기 헤딩 수신 — 1° 미만 변화는 무시(과도한 갱신 방지).
         func locationManager(_ m: CLLocationManager, didUpdateHeading h: CLHeading) {
             guard h.headingAccuracy >= 0 else { return }        // 무효 헤딩(보정 필요)
             if !needleDeg.isNaN, abs(h.magneticHeading - needleDeg) < 1 { return }
             needleDeg = h.magneticHeading
+            refreshNeedle()
+        }
+
+        // 자북 바늘 갱신 라우팅 — 탐험=주석 뷰(점과 같은 컨테이너), 등반=스타일 레이어(climb-pos 동기).
+        private func refreshNeedle() {
+            userDot?.setHeading(needleDeg, hidden: headingMode || tracking)
             applyNeedle()
         }
 
@@ -274,13 +342,13 @@ struct MapView: UIViewRepresentable {
             style.setImage(img, forName: "north-needle")
         }
 
-        // 자북 바늘 반영 — 표시 조건(포인터 노출 + 나침반 꺼짐 + 헤딩 수신)과 회전 갱신.
+        // 등반용 스타일 바늘 반영 — climb-pos(스타일 레이어 점)와 같은 렌더 경로라 완전 동기.
+        // 탐험은 여기 안 옴(주석 뷰 NeedleUserDot 이 담당 — GL 소스는 보간 없이 점프라 어긋남).
         private func applyNeedle() {
             guard let mv = mapView, let style = mv.style,
                   let src = style.source(withIdentifier: "north-needle") as? MLNShapeSource,
                   let layer = style.layer(withIdentifier: "north-needle") as? MLNSymbolStyleLayer else { return }
-            let dotShown = tracking || mv.showsUserLocation
-            guard !headingMode, dotShown, let c = needleCoord, !needleDeg.isNaN else {
+            guard tracking, !headingMode, let c = needleCoord, !needleDeg.isNaN else {
                 src.shape = nil
                 return
             }
@@ -507,6 +575,7 @@ struct MapView: UIViewRepresentable {
         // 등반 라이브 트랙 — 트랙 점 배열을 LineString shape 로 climb-track 소스에 주입.
         // 점 수가 바뀔 때만 갱신(매 프레임 재직렬화 방지).
         func setTrack(_ track: [[Double]], on mv: MLNMapView) {
+            desiredTrack = track
             guard mv.style != nil else { return }
             if track.count == trackCount { return }
             trackCount = track.count
@@ -549,12 +618,17 @@ struct MapView: UIViewRepresentable {
 
         // 기록 루트 — rec-track 소스에 주입하고 트랙 범위로 카메라 이동(트랙이 바뀔 때만).
         func setRecordTrack(_ track: [[Double]]?, on mv: MLNMapView) {
+            desiredRecTrack = track
             guard mv.style != nil else { return }
             let key = Self.key(track)
             if key == recTrackKey { return }
             recTrackKey = key
             applyRecordTrack(track, on: mv)
-            if let track, track.count >= 2 { fit(track, on: mv) }
+            // fit 은 트랙이 실제로 바뀐 때만 — 스타일 재로드(테마·지도유형 전환) 재주입에선 카메라 유지.
+            if key != recFitKey {
+                recFitKey = key
+                if let track, track.count >= 2 { fit(track, on: mv) }
+            }
         }
 
         private static func key(_ t: [[Double]]?) -> String {
@@ -588,6 +662,7 @@ struct MapView: UIViewRepresentable {
 
         // 걸은 루트 중 정규 코스와 겹치는 구간 — rec-track-inv 소스에 반전 점선으로 주입.
         func setRecordOverlap(_ parts: [[[Double]]], on mv: MLNMapView) {
+            desiredOverlap = parts
             guard let style = mv.style,
                   let src = style.source(withIdentifier: "rec-track-inv") as? MLNShapeSource else { return }
             let key = "\(parts.count):\(parts.reduce(0) { $0 + $1.count })"
@@ -605,6 +680,7 @@ struct MapView: UIViewRepresentable {
 
         // 고도 프로필에서 고른 지점을 rec-cursor 소스로 반영(마커 하나). nil 이면 지움.
         func setRouteCursor(_ coord: [Double]?, on mv: MLNMapView) {
+            desiredCursor = coord
             guard let style = mv.style,
                   let src = style.source(withIdentifier: "rec-cursor") as? MLNShapeSource else { return }
             let key = coord.map { "\($0[0]),\($0[1])" } ?? ""
@@ -671,8 +747,14 @@ struct MapView: UIViewRepresentable {
             applyTrailSelection(desiredCourse?.name, on: mapView)   // 선택 코스 강조 재적용(스타일 재로드)
             applyCourseVisibility(style)                            // 코스 표시 상태 재적용(루트 보기 포함)
             ensureNeedle(on: style)                                 // 자북 바늘 소스/레이어/아이콘(테마 색) 재구성
-            applyNeedle()
-            trackCount = -1; recTrackKey = ""; recCursorKey = ""; overlapKey = ""  // 스타일 재로드 시 재주입 강제
+            refreshNeedle()
+            trackCount = -1; recTrackKey = ""; recCursorKey = ""; overlapKey = ""  // 재주입 강제(키 리셋)
+            // 트랙류는 여기서 **즉시** 재주입 — 다음 updateUIView(우연한 상태 변화)를 기다리면
+            // 테마·지도유형 전환 때 루트가 수 초간 사라져 보인다(2026-07-26 실기).
+            setTrack(desiredTrack, on: mapView)
+            setRecordTrack(desiredRecTrack, on: mapView)
+            setRecordOverlap(desiredOverlap, on: mapView)
+            setRouteCursor(desiredCursor, on: mapView)
         }
 
         // 지도 이동 종료마다 중심 좌표 통지(국가지점번호) + 축척 통지(스케일바).
