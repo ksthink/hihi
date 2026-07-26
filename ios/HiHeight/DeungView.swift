@@ -12,7 +12,6 @@ struct DeungView: View {
     var onOpenMap: (Mountain) -> Void = { _ in }   // 캐러셀 [지도] 버튼 → 해당 산 탐험 탭에서 확인
     @Environment(\.colorScheme) private var scheme
     @State private var loginHint = false
-    @State private var weather: [WeatherHour] = []   // 선택된 산 시간대별 예보
     @StateObject private var packs = PackStore.shared    // 저장된 오프라인 지도 목록
     @State private var deletePackTarget: Mountain?       // 삭제 확인 대상
     @State private var updateTarget: Mountain?           // 지도 업데이트 확인 대상
@@ -54,11 +53,6 @@ struct DeungView: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: showPackPrompt)
-        .task(id: catalog.selected?.id) {   // 산 전환 시 예보 갱신
-            weather = []
-            guard let m = catalog.selected, m.center.count == 2 else { return }
-            weather = await WeatherService.fetch(lat: m.center[1], lon: m.center[0])
-        }
     }
 
     // 고정 헤더 — 웹 view-head "등반 | [산 배지]" + 부제
@@ -78,8 +72,8 @@ struct DeungView: View {
 
     // MARK: 등반 카드 (웹 climb-card — text-align center)
     // 코스를 주입받는다 — 단일 모드는 climb.course, 페이저 모드는 각 페이지의 코스.
-    // showWeather=false 면 날씨 생략(코스 페이저 — 산 공통 정보라 페이지마다 반복될 필요 없음).
-    private func card(_ t: Theme, course c: Course?, mountainName: String?, showWeather: Bool = true) -> some View {
+    // 날씨는 표시하지 않는다(2026-07-26 공통 제거 — 날씨는 탐험 시트에서).
+    private func card(_ t: Theme, course c: Course?, mountainName: String?) -> some View {
         return VStack(spacing: 14) {
             // 제목 — 산이름(볼드) | 코스명. 코스 없으면 안내.
             Group {
@@ -116,10 +110,6 @@ struct DeungView: View {
 
             if let p = c?.profile, p.count > 1 {
                 ProfileView(points: p, color: t.text).frame(height: 46).padding(.vertical, 2)
-            }
-
-            if showWeather && !weather.isEmpty {
-                WeatherStrip(hours: weather)
             }
 
             Button {
@@ -164,9 +154,11 @@ struct DeungView: View {
                     // 위 정렬 — 카드 높이가 달라도(프로파일 없는 코스 등) 상단선이 맞아 떠 보이지 않게.
                     HStack(alignment: .top, spacing: 20) {
                         ForEach(carouselCourses) { c in
-                            card(t, course: c, mountainName: m.name, showWeather: false)  // 날씨는 페이저에서 생략
+                            card(t, course: c, mountainName: m.name)
                                 .frame(width: UIScreen.main.bounds.width - 40)   // 단일 카드와 같은 폭
                                 .id(c.id)
+                                .contentShape(Rectangle())
+                                .onTapGesture { openInExplore(c, m) }   // 카드 터치 = 탐험의 해당 코스로
                         }
                     }
                     .scrollTargetLayout()
@@ -208,11 +200,19 @@ struct DeungView: View {
 
     // 코스 확정 — 등반 카드·시작 버튼이 즉시 활성화(탭 이동 없음).
     private func selectCourse(_ c: Course, of m: Mountain) {
-        catalog.selected = m               // 날씨·팩 확인·탐험 지도도 이 산 기준으로
+        catalog.selected = m               // 팩 확인·탐험 지도도 이 산 기준으로
         climb.course = c
         climb.mountainName = m.name
         climb.mountainCode = m.id
         climb.routeRecord = nil
+    }
+
+    // 페이저 카드 터치 → 탐험 탭의 해당 코스로 이동(코스 선택 + 범위 프레이밍 — 큐레이션 진입과 동일 경로).
+    private func openInExplore(_ c: Course, _ m: Mountain) {
+        selectCourse(c, of: m)
+        climb.wantedCourseName = c.name    // 탐험이 목록에서 매칭해 선택·강조
+        climb.fitRequested = true          // 코스 범위로 fitBounds
+        onOpenMap(m)                       // 탐험 탭 전환
     }
 
     // 저장된 지도 — 다운로드된 오프라인 팩 목록(웹 renderSavedMaps). 탭=코스 캐러셀, 스와이프=삭제.
