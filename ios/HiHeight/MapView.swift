@@ -88,13 +88,14 @@ final class NeedleUserDot: MLNUserLocationAnnotationView {
         beam.colors = [ink.withAlphaComponent(0.45).cgColor, ink.withAlphaComponent(0).cgColor]
     }
 
-    // 자북 방위(도)·나침반 모드 반영 — 나침반 중엔 바늘 대신 빔(지도가 회전, 시선=화면 위).
-    // 궤도 회전은 암시적 CA 애니메이션이 살짝 스무딩해 준다.
+    // 헤딩 화살표 반영 — 화살표 = 폰이 향한 방향(+헤딩, 폰과 함께 돎). 정북 고정 지도에서
+    // "지도상 내 시선"을 보여준다(애플/구글 파란 부채꼴 감각 — 사용자 선택 2026-07-26).
+    // 나침반 모드 중엔 화살표 대신 빔(지도가 회전, 시선=화면 위). 궤도 회전은 암시적 CA 스무딩.
     func set(heading deg: Double, compass: Bool) {
         beam.isHidden = !compass
         orbit.isHidden = compass || deg.isNaN
         guard !deg.isNaN else { return }
-        orbit.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(-deg * .pi / 180)))
+        orbit.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(deg * .pi / 180)))
     }
 }
 
@@ -138,8 +139,11 @@ struct MapView: UIViewRepresentable {
         mv.addGestureRecognizer(UITapGestureRecognizer(
             target: context.coordinator, action: #selector(Coordinator.handleTap(_:))))
         context.coordinator.dark = styleResource.contains("dark")
-        context.coordinator.mapView = mv        // 자북 바늘 — 헤딩 콜백에서 지도 접근
-        context.coordinator.startHeading()      // 지자기 헤딩 구독(시뮬레이터는 미지원 → 바늘 없음)
+        context.coordinator.mapView = mv        // 헤딩 화살표 — 헤딩 콜백에서 지도 접근
+        context.coordinator.startHeading()      // 지자기 헤딩 구독(시뮬레이터는 미지원 → 화살표 없음)
+        // 위치 점 5m 거리 필터 — 기본값(kCLDistanceFilterNone)은 1~3m GPS 지터까지 전부 점으로
+        // 전달돼 가만히 있어도 점이 계속 떠다닌다(등반 트래킹 ClimbStore 와 같은 5m 정책, 2026-07-26).
+        mv.locationManager.setDistanceFilter?(5)
         applyStyle(mv)
         return mv
     }
@@ -230,7 +234,8 @@ struct MapView: UIViewRepresentable {
         var onScaleChanged: ((Double) -> Void)?
         var onHeadingChanged: ((Bool) -> Void)?
 
-        // ── 자북 바늘 — 지도는 그대로 두고 위치 포인터 둘레의 삼각형만 실시간으로 자북을 향한다. ──
+        // ── 헤딩 화살표 — 지도는 그대로 두고 위치 포인터 둘레의 삼각형이 폰이 향한 방향을 실시간 표시. ──
+        // (처음엔 자북 나침반 바늘이었으나 "폰과 함께 도는" 헤딩 방식으로 변경 — 사용자 선택 2026-07-26.)
         // 나침반(followWithHeading) 모드가 아니어도 항상 표시(모드 켜면 숨김·해제하면 복귀).
         weak var mapView: MLNMapView?               // 헤딩 콜백에서 지도 접근
         private let headingMgr = CLLocationManager()  // 헤딩 전용(위치 구독 없음 — 자력계라 배터리 미미)
@@ -444,7 +449,7 @@ struct MapView: UIViewRepresentable {
                 layer.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -8)))
             } else if !needleDeg.isNaN {
                 layer.iconImageName = NSExpression(forConstantValue: "north-needle")
-                layer.iconRotation = NSExpression(forConstantValue: -needleDeg)   // 화면상 자북 방향
+                layer.iconRotation = NSExpression(forConstantValue: needleDeg)   // 헤딩 화살표 — 폰이 향한 방향
                 layer.iconAnchor = NSExpression(forConstantValue: "center")
                 layer.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -18)))
             } else {
