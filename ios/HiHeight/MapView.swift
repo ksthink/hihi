@@ -13,29 +13,53 @@ final class EmptyUserDot: MLNUserLocationAnnotationView {
 //    보간 이동하는데 GL 소스 갱신은 즉시 점프라, 점이 미끄러질 때 바늘이 따로 놀았다
 //    (2026-07-26 실기 확인). 스타일 바늘은 climb-pos 와 같은 경로인 등반 중에만 쓴다.
 final class NeedleUserDot: MLNUserLocationAnnotationView {
-    private let orbit = CALayer()      // 바늘 궤도 컨테이너 — 점 중심 기준 회전만 담당
+    private let orbit = CALayer()         // 바늘 궤도 컨테이너 — 점 중심 기준 회전만 담당
+    private let dot = CALayer()
+    private let needle = CAShapeLayer()
+    private let beam = CAGradientLayer()  // 나침반 모드 빔 — 커스텀 뷰는 내장 빔이 안 그려져 직접 그린다
     private var built = false
 
     override func update() {
-        guard !built else { return }
-        built = true
-        let R: CGFloat = 60                              // 궤도(바늘 포함) 여유 크기
+        if !built { built = true; build() }
+        applyTint()
+    }
+
+    // ⚠️ 색은 tintColor 상속(SwiftUI .tint → 흑백 잉크색) — systemBlue 하드코딩은 앱 흑백
+    //    아이덴티티를 깨고 "갑자기 파랗게" 보였다(build 237 회귀). 내장 dot 도 tint 를 따랐다.
+    override func tintColorDidChange() {
+        super.tintColorDidChange()
+        applyTint()
+    }
+
+    private func build() {
+        let R: CGFloat = 76                              // 빔·궤도 여유 크기
         bounds = CGRect(x: 0, y: 0, width: R, height: R)
         let center = CGPoint(x: R / 2, y: R / 2)
-        // 점 — 내장 dot 모사(파랑 + 흰 테두리 + 옅은 그림자)
-        let dot = CALayer()
+        // 빔 — 점에서 화면 위로 퍼지는 반투명 원뿔. followWithHeading 은 시선이 항상 화면 위라 고정.
+        let BW: CGFloat = 44, BH: CGFloat = 34
+        beam.frame = CGRect(x: center.x - BW / 2, y: center.y - BH, width: BW, height: BH)
+        beam.startPoint = CGPoint(x: 0.5, y: 1)
+        beam.endPoint = CGPoint(x: 0.5, y: 0)
+        let mask = CAShapeLayer()
+        let mp = UIBezierPath()
+        mp.move(to: CGPoint(x: BW / 2, y: BH))           // 꼭짓점 = 점 중심
+        mp.addLine(to: CGPoint(x: 0, y: 0))
+        mp.addLine(to: CGPoint(x: BW, y: 0))
+        mp.close()
+        mask.path = mp.cgPath
+        beam.mask = mask
+        beam.isHidden = true
+        // 점 — 내장 dot 모사(tint 채움 + 흰 테두리 + 옅은 그림자)
         dot.bounds = CGRect(x: 0, y: 0, width: 22, height: 22)
         dot.position = center
         dot.cornerRadius = 11
-        dot.backgroundColor = UIColor.systemBlue.cgColor
         dot.borderColor = UIColor.white.cgColor
         dot.borderWidth = 3
         dot.shadowColor = UIColor.black.cgColor
         dot.shadowOpacity = 0.25
         dot.shadowOffset = .zero
         dot.shadowRadius = 3
-        // 바늘 — 점 절반 크기 삼각형(파랑 + 흰 외곽), 궤도 상단(자북 방향)에 배치
-        let needle = CAShapeLayer()
+        // 바늘 — 점 절반 크기 삼각형, 궤도 상단(자북 방향)에 배치
         let W: CGFloat = 12, H: CGFloat = 11
         let p = UIBezierPath()
         p.move(to: CGPoint(x: W / 2, y: 0))
@@ -43,7 +67,6 @@ final class NeedleUserDot: MLNUserLocationAnnotationView {
         p.addLine(to: CGPoint(x: 1.5, y: H))
         p.close()
         needle.path = p.cgPath
-        needle.fillColor = UIColor.systemBlue.cgColor
         needle.strokeColor = UIColor.white.cgColor
         needle.lineWidth = 2
         needle.lineJoin = .round
@@ -53,13 +76,23 @@ final class NeedleUserDot: MLNUserLocationAnnotationView {
         orbit.position = center
         orbit.isHidden = true                                // 헤딩 수신 전엔 숨김
         orbit.addSublayer(needle)
+        layer.addSublayer(beam)
         layer.addSublayer(orbit)
         layer.addSublayer(dot)
     }
 
-    // 자북 방위(도) → 바늘이 화면상 자북을 향하도록 궤도 회전(암시적 CA 애니메이션이 살짝 스무딩).
-    func setHeading(_ deg: Double, hidden: Bool) {
-        orbit.isHidden = hidden || deg.isNaN
+    private func applyTint() {
+        let ink = tintColor ?? .label
+        dot.backgroundColor = ink.cgColor
+        needle.fillColor = ink.cgColor
+        beam.colors = [ink.withAlphaComponent(0.45).cgColor, ink.withAlphaComponent(0).cgColor]
+    }
+
+    // 자북 방위(도)·나침반 모드 반영 — 나침반 중엔 바늘 대신 빔(지도가 회전, 시선=화면 위).
+    // 궤도 회전은 암시적 CA 애니메이션이 살짝 스무딩해 준다.
+    func set(heading deg: Double, compass: Bool) {
+        beam.isHidden = !compass
+        orbit.isHidden = compass || deg.isNaN
         guard !deg.isNaN else { return }
         orbit.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(-deg * .pi / 180)))
     }
@@ -205,6 +238,9 @@ struct MapView: UIViewRepresentable {
         private var needleCoord: CLLocationCoordinate2D?   // 등반 바늘 위치(climb-pos 와 동기)
         private var headingMode = false             // 나침반 추적 중 — 바늘 숨김(지도가 회전·빔 표시)
         private weak var userDot: NeedleUserDot?    // 탐험 위치 점(점+바늘 통합 뷰) — viewFor 가 채움
+        // 등반 위치 점(climb-pos) 안쪽 도트 깜박임 — 레코딩 중 효과(탐험 포인터와 대비).
+        private var blinkTimer: Timer?
+        private var blinkOn = true
 
         override init() {
             super.init()
@@ -266,7 +302,35 @@ struct MapView: UIViewRepresentable {
 
             if !tracking && !locateOn { mv.showsUserLocation = false }
             refreshNeedle()   // 포인터 표시 여부·모드가 바뀌었을 수 있음 — 자북 바늘도 동기
+            setBlink(tracking)   // 등반 중 = 안쪽 도트 느린 깜박임(레코딩 효과)
         }
+
+        // 등반 점 깜박임 — 0.75초마다 opacity 1 ⇄ 0.15, MLNTransition(0.7s)이 GL 에서 페이드 보간.
+        // 타이머는 1.3Hz 뿐이라 배터리 영향 없음. 스타일 재로드 시에도 매 틱 transition 재설정이라 견고.
+        private func setBlink(_ on: Bool) {
+            if on {
+                guard blinkTimer == nil else { return }
+                blinkTimer = Timer.scheduledTimer(withTimeInterval: 0.75, repeats: true) { [weak self] _ in
+                    self?.blinkTick()
+                }
+            } else {
+                blinkTimer?.invalidate()
+                blinkTimer = nil
+                blinkOn = true
+                if let l = mapView?.style?.layer(withIdentifier: "climb-pos-dot") as? MLNCircleStyleLayer {
+                    l.circleOpacity = NSExpression(forConstantValue: 1)   // 원복
+                }
+            }
+        }
+
+        private func blinkTick() {
+            guard let l = mapView?.style?.layer(withIdentifier: "climb-pos-dot") as? MLNCircleStyleLayer else { return }
+            l.circleOpacityTransition = MLNTransition(duration: 0.7, delay: 0)
+            blinkOn.toggle()
+            l.circleOpacity = NSExpression(forConstantValue: blinkOn ? 1.0 : 0.15)
+        }
+
+        deinit { blinkTimer?.invalidate() }
 
         // 등반 중에는 내장 유저 dot 을 숨긴다(현재 위치는 climb-pos style 레이어로 렌더).
         // 탐험은 점+자북 바늘 통합 뷰(NeedleUserDot) — 같은 컨테이너라 이동이 완전 동기.
@@ -275,7 +339,7 @@ struct MapView: UIViewRepresentable {
             if tracking { return EmptyUserDot() }
             let v = userDot ?? NeedleUserDot()
             userDot = v
-            v.setHeading(needleDeg, hidden: headingMode)
+            v.set(heading: needleDeg, compass: headingMode)
             return v
         }
 
@@ -301,7 +365,7 @@ struct MapView: UIViewRepresentable {
 
         // 자북 바늘 갱신 라우팅 — 탐험=주석 뷰(점과 같은 컨테이너), 등반=스타일 레이어(climb-pos 동기).
         private func refreshNeedle() {
-            userDot?.setHeading(needleDeg, hidden: headingMode || tracking)
+            userDot?.set(heading: needleDeg, compass: headingMode)
             applyNeedle()
         }
 
@@ -309,6 +373,7 @@ struct MapView: UIViewRepresentable {
         // 심볼 레이어 방식이라 등반 climb-pos 와 같은 렌더 경로 — 줌·이동 중에도 포인터와 어긋나지 않는다.
         private func ensureNeedle(on style: MLNStyle) {
             registerNeedleIcon(on: style)
+            registerBeamIcon(on: style)
             guard style.source(withIdentifier: "north-needle") == nil else { return }
             let src = MLNShapeSource(identifier: "north-needle", shape: nil, options: nil)
             style.addSource(src)
@@ -342,20 +407,53 @@ struct MapView: UIViewRepresentable {
             style.setImage(img, forName: "north-needle")
         }
 
-        // 등반용 스타일 바늘 반영 — climb-pos(스타일 레이어 점)와 같은 렌더 경로라 완전 동기.
+        // 나침반 빔 아이콘(등반용) — 점에서 위로 퍼지며 사라지는 반투명 원뿔(잉크색 그라데이션).
+        private func registerBeamIcon(on style: MLNStyle) {
+            let W: CGFloat = 44, H: CGFloat = 34
+            let ink = dark ? UIColor.white : UIColor.black
+            let img = UIGraphicsImageRenderer(size: CGSize(width: W, height: H)).image { ctx in
+                let cg = ctx.cgContext
+                let path = UIBezierPath()
+                path.move(to: CGPoint(x: W / 2, y: H))       // 꼭짓점(점 중심 쪽)
+                path.addLine(to: CGPoint(x: 0, y: 0))
+                path.addLine(to: CGPoint(x: W, y: 0))
+                path.close()
+                cg.addPath(path.cgPath)
+                cg.clip()
+                let colors = [ink.withAlphaComponent(0.45).cgColor, ink.withAlphaComponent(0).cgColor] as CFArray
+                guard let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                            colors: colors, locations: [0, 1]) else { return }
+                cg.drawLinearGradient(grad, start: CGPoint(x: W / 2, y: H),
+                                      end: CGPoint(x: W / 2, y: 0), options: [])
+            }
+            style.setImage(img, forName: "heading-beam")
+        }
+
+        // 등반용 스타일 바늘/빔 반영 — climb-pos(스타일 레이어 점)와 같은 렌더 경로라 완전 동기.
         // 탐험은 여기 안 옴(주석 뷰 NeedleUserDot 이 담당 — GL 소스는 보간 없이 점프라 어긋남).
+        // 나침반 모드 = 빔(내장 빔은 EmptyUserDot 이라 안 그려짐 — followWithHeading 은 시선이 화면 위라 고정).
         private func applyNeedle() {
             guard let mv = mapView, let style = mv.style,
                   let src = style.source(withIdentifier: "north-needle") as? MLNShapeSource,
                   let layer = style.layer(withIdentifier: "north-needle") as? MLNSymbolStyleLayer else { return }
-            guard tracking, !headingMode, let c = needleCoord, !needleDeg.isNaN else {
+            guard tracking, let c = needleCoord else { src.shape = nil; return }
+            if headingMode {
+                layer.iconImageName = NSExpression(forConstantValue: "heading-beam")
+                layer.iconRotation = NSExpression(forConstantValue: 0)        // 시선 = 화면 위
+                layer.iconAnchor = NSExpression(forConstantValue: "bottom")   // 꼭짓점이 점 중심에서 위로
+                layer.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -8)))
+            } else if !needleDeg.isNaN {
+                layer.iconImageName = NSExpression(forConstantValue: "north-needle")
+                layer.iconRotation = NSExpression(forConstantValue: -needleDeg)   // 화면상 자북 방향
+                layer.iconAnchor = NSExpression(forConstantValue: "center")
+                layer.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -18)))
+            } else {
                 src.shape = nil
                 return
             }
             let f = MLNPointFeature()
             f.coordinate = c
             src.shape = f
-            layer.iconRotation = NSExpression(forConstantValue: -needleDeg)   // 화면상 자북 방향
         }
 
         // POI 아이콘 등록 — 웹 makePoiIcon(캔버스) 대응. 네이티브는 SF Symbol 을 렌더한다.
