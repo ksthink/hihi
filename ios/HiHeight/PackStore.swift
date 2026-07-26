@@ -51,9 +51,18 @@ final class PackStore: NSObject, ObservableObject, URLSessionDownloadDelegate {
         refresh()
     }
 
+    // 설치된 팩 버전 — 다운로드 성공 시 pack_version.txt 에 기록(카탈로그 pack_version 과 비교해
+    // "업데이트" 노출 판단). 이 기능 이전에 받은 팩은 파일이 없어 nil → 구버전으로 취급.
+    func installedVersion(_ code: String) -> Int? {
+        guard let s = try? String(contentsOf: packDir(code).appendingPathComponent("pack_version.txt"),
+                                  encoding: .utf8) else { return nil }
+        return Int(s.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
     // 다운로드: base.pmtiles(진행률 0→0.9) + geojson 3종(routes 필수 → 1.0). 성공 시 true.
+    // version = 카탈로그의 현재 pack_version — 성공 시 기록해 이후 업데이트 비교에 쓴다.
     @discardableResult
-    func download(_ code: String) async -> Bool {
+    func download(_ code: String, version: Int? = nil) async -> Bool {
         guard downloadingCode == nil, let baseURL = Config.baseTilesURL(code) else { return false }
         downloadingCode = code; progress = 0; status = "기저 지도 내려받는 중…"
         let dir = packDir(code)
@@ -74,6 +83,11 @@ final class PackStore: NSObject, ObservableObject, URLSessionDownloadDelegate {
             try? await fetchJSON(Config.packURL(code, "contours.geojson"), to: dir.appendingPathComponent("contours.geojson"), required: false)
             progress = 1.0
 
+            // 설치 버전 기록 — 카탈로그 pack_version 과 비교해 "업데이트" 노출 판단에 쓴다.
+            if let version {
+                try? "\(version)".write(to: dir.appendingPathComponent("pack_version.txt"),
+                                        atomically: true, encoding: .utf8)
+            }
             status = "다운로드 완료"
             downloadingCode = nil; refresh()
             return true

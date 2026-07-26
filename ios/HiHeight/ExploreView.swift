@@ -833,7 +833,7 @@ struct ExploreView: View {
             Button {
                 if auth.email == nil { dlLoginHint = true; return }   // 로그인 필수
                 dlLoginHint = false
-                Task { if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) } }
+                Task { if await packs.download(m.id, version: m.pack_version) { await auth.saveDownloadedPack(m.id) } }
             } label: {
                 Text("지도 다운").font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
                     .padding(.horizontal, 12).padding(.vertical, 6)

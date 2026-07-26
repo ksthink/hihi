@@ -13,6 +13,7 @@ struct Mountain: Identifiable, Decodable, Equatable {
     let region: String?
     let famous: Bool?
     let lists: [String]?     // 공식 추천 카테고리(bac100·knps 등, migrations-002)
+    let pack_version: Int?   // 팩 버전(배포마다 +1) — 저장된 지도 업데이트 여부 판단
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: center[1], longitude: center[0])

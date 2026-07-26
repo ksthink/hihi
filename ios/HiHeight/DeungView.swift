@@ -15,6 +15,7 @@ struct DeungView: View {
     @State private var weather: [WeatherHour] = []   // 선택된 산 시간대별 예보
     @StateObject private var packs = PackStore.shared    // 저장된 오프라인 지도 목록
     @State private var deletePackTarget: Mountain?       // 삭제 확인 대상
+    @State private var updateTarget: Mountain?           // 지도 업데이트 확인 대상
     @State private var showPackPrompt = false            // 팩 없이 등반 시작 시 저장 권유
     // 코스 페이저 — 저장된 지도에서 고른 산의 코스 목록. 별도 캐러셀 없이 **등반 카드 자체를**
     // 좌우 스와이프해 코스를 넘긴다(보이는 코스 = 선택 코스). 탐험 이동 없이 여기서 선택·시작.
@@ -42,7 +43,7 @@ struct DeungView: View {
                     status: packs.status,
                     onSave: {
                         Task {
-                            if await packs.download(m.id) { await auth.saveDownloadedPack(m.id) }
+                            if await packs.download(m.id, version: m.pack_version) { await auth.saveDownloadedPack(m.id) }
                             showPackPrompt = false
                             beginClimb()               // 실패해도 진행 — 온라인 모드로 등반
                         }
@@ -77,7 +78,8 @@ struct DeungView: View {
 
     // MARK: 등반 카드 (웹 climb-card — text-align center)
     // 코스를 주입받는다 — 단일 모드는 climb.course, 페이저 모드는 각 페이지의 코스.
-    private func card(_ t: Theme, course c: Course?, mountainName: String?) -> some View {
+    // showWeather=false 면 날씨 생략(코스 페이저 — 산 공통 정보라 페이지마다 반복될 필요 없음).
+    private func card(_ t: Theme, course c: Course?, mountainName: String?, showWeather: Bool = true) -> some View {
         return VStack(spacing: 14) {
             // 제목 — 산이름(볼드) | 코스명. 코스 없으면 안내.
             Group {
@@ -116,7 +118,7 @@ struct DeungView: View {
                 ProfileView(points: p, color: t.text).frame(height: 46).padding(.vertical, 2)
             }
 
-            if !weather.isEmpty {
+            if showWeather && !weather.isEmpty {
                 WeatherStrip(hours: weather)
             }
 
@@ -162,7 +164,7 @@ struct DeungView: View {
                     // 위 정렬 — 카드 높이가 달라도(프로파일 없는 코스 등) 상단선이 맞아 떠 보이지 않게.
                     HStack(alignment: .top, spacing: 20) {
                         ForEach(carouselCourses) { c in
-                            card(t, course: c, mountainName: m.name)
+                            card(t, course: c, mountainName: m.name, showWeather: false)  // 날씨는 페이저에서 생략
                                 .frame(width: UIScreen.main.bounds.width - 40)   // 단일 카드와 같은 폭
                                 .id(c.id)
                         }
@@ -214,8 +216,10 @@ struct DeungView: View {
     }
 
     // 저장된 지도 — 다운로드된 오프라인 팩 목록(웹 renderSavedMaps). 탭=코스 캐러셀, 스와이프=삭제.
+    // 카탈로그 pack_version(배포마다 +1)이 설치본보다 높으면 우측에 [업데이트] 노출.
     @ViewBuilder private func savedMaps(_ t: Theme) -> some View {
-        let saved = catalog.mountains.filter { packs.downloaded.contains($0.id) }
+        // 업데이트로 재다운로드 중인 산도 목록 유지(삭제 후 받는 동안 행이 사라지지 않게).
+        let saved = catalog.mountains.filter { packs.downloaded.contains($0.id) || packs.downloadingCode == $0.id }
         if !saved.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("저장된 지도").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
@@ -226,9 +230,23 @@ struct DeungView: View {
                             Image(systemName: "map").font(.system(size: 15)).foregroundStyle(t.muted)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(m.name).font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
-                                Text("오프라인 사용 가능").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                                Text(packs.downloadingCode == m.id ? "업데이트 중…" : "오프라인 사용 가능")
+                                    .font(.kakao(size: 11)).foregroundStyle(t.muted)
                             }
                             Spacer(minLength: 0)
+                            if packs.downloadingCode == m.id {           // 재다운로드 진행률
+                                Text("\(Int(packs.progress * 100))%")
+                                    .font(.kakao(size: 12, weight: .semibold)).foregroundStyle(t.muted)
+                                    .monospacedDigit()
+                            } else if updateAvailable(m) {
+                                Button { updateTarget = m } label: {
+                                    Text("업데이트").font(.kakao(size: 12, weight: .semibold))
+                                        .foregroundStyle(t.onAccent)
+                                        .padding(.horizontal, 12).padding(.vertical, 6)
+                                        .background(t.accent, in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -245,7 +263,24 @@ struct DeungView: View {
                 titleVisibility: .visible, presenting: deletePackTarget) { m in
                 Button("삭제", role: .destructive) { packs.delete(m.id); Task { await auth.removeSavedPack(m.id) } }
             } message: { m in Text("\(m.name)의 저장된 지도를 삭제합니다.") }
+            // 업데이트 확인 — 예: 기존 팩 삭제 후 새 버전 다운로드(성공 시 설치 버전 기록 → 버튼 사라짐).
+            .confirmationDialog("지도 업데이트", isPresented: Binding(
+                get: { updateTarget != nil }, set: { if !$0 { updateTarget = nil } }),
+                titleVisibility: .visible, presenting: updateTarget) { m in
+                Button("예") {
+                    Task {
+                        packs.delete(m.id)                                          // 기존 팩 제거
+                        _ = await packs.download(m.id, version: m.pack_version)     // 새로 다운로드
+                    }
+                }
+            } message: { m in Text("\(m.name)의 지도를 업데이트하겠습니까?") }
         }
+    }
+
+    // 카탈로그 버전 > 설치 버전이면 업데이트 대상. 버전 기록 이전에 받은 팩(nil)은 구버전(0) 취급
+    // — 한 번 업데이트하면 버전이 기록되어 이후엔 정확히 비교된다.
+    private func updateAvailable(_ m: Mountain) -> Bool {
+        (m.pack_version ?? 1) > (packs.installedVersion(m.id) ?? 0)
     }
 
     // 등반 시작 — 세션 시작 + 탐험 탭으로 전환. 팩 저장 여부와 무관하게 여기 한 곳으로 모은다.
