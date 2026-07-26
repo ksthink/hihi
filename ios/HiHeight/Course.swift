@@ -123,4 +123,20 @@ enum PackLoader {
             return []
         }
     }
+
+    // 루트 보기 겹침 계산용 — routes.geojson 의 모든 코스 선 좌표(코스 구분 없이 평탄화).
+    // courses() 는 시종점·bbox 만 파생하고 전체 좌표를 버리므로 별도 로더가 필요하다.
+    static func routeLines(_ code: String) async -> [[[Double]]] {
+        guard let url = Config.routesURL(code),
+              let (data, _) = try? await URLSession.shared.data(from: url),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let feats = obj["features"] as? [[String: Any]] else { return [] }
+        var lines: [[[Double]]] = []
+        for f in feats {
+            guard let g = f["geometry"] as? [String: Any], let t = g["type"] as? String else { continue }
+            if t == "LineString", let co = g["coordinates"] as? [[Double]] { lines.append(co) }
+            else if t == "MultiLineString", let co = g["coordinates"] as? [[[Double]]] { lines.append(contentsOf: co) }
+        }
+        return lines
+    }
 }

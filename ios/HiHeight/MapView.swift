@@ -19,6 +19,8 @@ struct MapView: UIViewRepresentable {
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
     var showCourses: Bool = true         // 정규 코스 선/배지 표시(루트 보기에선 토글로 끔)
+    var routeMode: Bool = false          // 루트 보기 — 코스는 2배 두께 레이어(route-trails)로, 출발/도착 텍스트 숨김
+    var recordOverlap: [[[Double]]] = [] // 걸은 루트 중 정규 코스와 겹치는 구간 — 반전 점선(rec-track-inv)
     var routeCursor: [Double]? = nil     // 고도 프로필에서 고른 지점 [lng,lat] — 지도에 마커
     var offlineBaseURL: URL? = nil       // 다운로드된 팩의 로컬 base.pmtiles(있으면 오프라인 렌더)
     var locateTick: Int = 0              // 증가 시 현재위치로 이동 + 정북·수평 복원(위치/나침반 통합 버튼)
@@ -68,7 +70,8 @@ struct MapView: UIViewRepresentable {
         context.coordinator.fitCourse(fitCourseTick, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
         context.coordinator.setRecordTrack(recordTrack, on: mv)
-        context.coordinator.setCoursesVisible(showCourses, on: mv)              // 정규 코스 토글
+        context.coordinator.setCoursesVisible(showCourses, route: routeMode, on: mv)   // 정규 코스 토글(루트 보기=2배 레이어)
+        context.coordinator.setRecordOverlap(recordOverlap, on: mv)             // 코스와 겹치는 구간 반전 표시
         context.coordinator.setRouteCursor(routeCursor, on: mv)                 // 고도 프로필 커서 마커
         context.coordinator.applyUserState(tracking: tracking, locateTick: locateTick, on: mv)
     }
@@ -113,7 +116,9 @@ struct MapView: UIViewRepresentable {
         private var trackCount = -1         // 마지막 반영한 트랙 점 개수 (중복 갱신 방지)
         private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
         private var recCursorKey = ""       // 마지막 반영한 고도 프로필 커서 지점 (중복 갱신 방지)
+        private var overlapKey = ""         // 마지막 반영한 겹침 구간 식별 (중복 갱신 방지)
         private var coursesVisible = true   // 정규 코스 선/배지 표시 여부 (루트 보기에서 토글)
+        private var routeMode = false       // 루트 보기 모드 — 코스를 2배 두께 레이어로, 출발/도착 텍스트 숨김
         var bottomInset: CGFloat = 306      // 시트가 가리는 하단 높이 (fitBounds 하단 여백)
         private var lastLocate = 0
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
@@ -460,12 +465,44 @@ struct MapView: UIViewRepresentable {
             return "\(t.count):\(f[0]),\(f[1])-\(l[0]),\(l[1])"
         }
 
-        // 정규 코스(선·번호 배지) 표시 토글 — 루트 보기에선 기본 꺼짐. 스타일 재로드 시 재적용된다.
-        private static let courseLayerIDs = ["trail-casing", "trail-line", "trail-hl", "trail-hit", "course-no-badges"]
-        func setCoursesVisible(_ show: Bool, on mv: MLNMapView) {
+        // 정규 코스 표시 토글 — 탐험은 얇은 trail-* 그대로, 루트 보기는 2배 두께 route-trails 로
+        // (걸었던 루트 위에 얹혀 비교). 루트 보기에선 출발/도착 텍스트(course-ends)도 항상 숨긴다.
+        private static let courseLayerIDs = ["trail-casing", "trail-line", "trail-hl", "trail-hit"]
+        private static let routeCourseLayerIDs = ["route-trails-casing", "route-trails"]
+        func setCoursesVisible(_ show: Bool, route: Bool, on mv: MLNMapView) {
             coursesVisible = show
+            routeMode = route
             guard let style = mv.style else { return }
-            for id in Self.courseLayerIDs { style.layer(withIdentifier: id)?.isVisible = show }
+            applyCourseVisibility(style)
+        }
+
+        private func applyCourseVisibility(_ style: MLNStyle) {
+            let normal = routeMode ? false : coursesVisible   // 탐험용 얇은 선
+            let thick = routeMode && coursesVisible           // 루트 보기용 2배 선(걸은 루트 위)
+            for id in Self.courseLayerIDs { style.layer(withIdentifier: id)?.isVisible = normal }
+            for id in Self.routeCourseLayerIDs { style.layer(withIdentifier: id)?.isVisible = thick }
+            style.layer(withIdentifier: "course-no-badges")?.isVisible = normal || thick
+            // 정규 코스 출발/도착(점·텍스트) — 루트 보기에선 켜도 선만(비교에 불필요).
+            for id in ["course-ends-dots", "course-ends-labels"] {
+                style.layer(withIdentifier: id)?.isVisible = !routeMode
+            }
+        }
+
+        // 걸은 루트 중 정규 코스와 겹치는 구간 — rec-track-inv 소스에 반전 점선으로 주입.
+        func setRecordOverlap(_ parts: [[[Double]]], on mv: MLNMapView) {
+            guard let style = mv.style,
+                  let src = style.source(withIdentifier: "rec-track-inv") as? MLNShapeSource else { return }
+            let key = "\(parts.count):\(parts.reduce(0) { $0 + $1.count })"
+            if key == overlapKey { return }
+            overlapKey = key
+            guard !parts.isEmpty else { src.shape = nil; return }
+            let f: [String: Any] = ["type": "Feature", "properties": [:],
+                                    "geometry": ["type": "MultiLineString", "coordinates": parts]]
+            guard let d = try? JSONSerialization.data(withJSONObject: f),
+                  let sh = try? MLNShape(data: d, encoding: String.Encoding.utf8.rawValue) else {
+                src.shape = nil; return
+            }
+            src.shape = sh
         }
 
         // 고도 프로필에서 고른 지점을 rec-cursor 소스로 반영(마커 하나). nil 이면 지움.
@@ -493,7 +530,7 @@ struct MapView: UIViewRepresentable {
             }
             src.shape = shape
             if let s = track.first, let e = track.last, s.count >= 2, e.count >= 2,
-               let d = Self.endsGeoJSON(start: Array(s.prefix(2)), end: Array(e.prefix(2))),
+               let d = Self.endsGeoJSON(start: Array(s.prefix(2)), end: Array(e.prefix(2)), labeled: false),
                let sh = try? MLNShape(data: d, encoding: String.Encoding.utf8.rawValue) {
                 ends?.shape = sh
             } else {
@@ -514,12 +551,13 @@ struct MapView: UIViewRepresentable {
             mv.setVisibleCoordinateBounds(bounds, edgePadding: pad, animated: true, completionHandler: nil)
         }
 
-        private static func endsGeoJSON(start: [Double], end: [Double]) -> Data? {
+        // labeled=false 면 출발/도착 텍스트 없이 점만(루트 보기 — 텍스트는 비교에 방해).
+        private static func endsGeoJSON(start: [Double], end: [Double], labeled: Bool = true) -> Data? {
+            var s: [String: Any] = ["kind": "start"], e: [String: Any] = ["kind": "end"]
+            if labeled { s["label"] = "출발"; e["label"] = "도착" }
             let fc: [String: Any] = ["type": "FeatureCollection", "features": [
-                ["type": "Feature", "properties": ["kind": "start", "label": "출발"],
-                 "geometry": ["type": "Point", "coordinates": start]],
-                ["type": "Feature", "properties": ["kind": "end", "label": "도착"],
-                 "geometry": ["type": "Point", "coordinates": end]],
+                ["type": "Feature", "properties": s, "geometry": ["type": "Point", "coordinates": start]],
+                ["type": "Feature", "properties": e, "geometry": ["type": "Point", "coordinates": end]],
             ]]
             return try? JSONSerialization.data(withJSONObject: fc)
         }
@@ -533,8 +571,8 @@ struct MapView: UIViewRepresentable {
             courseNosKey = ""                    // 스타일 재로드 시 배지 위치 재주입 강제
             setCourseNos(desiredCourses, on: mapView)
             applyTrailSelection(desiredCourse?.name, on: mapView)   // 선택 코스 강조 재적용(스타일 재로드)
-            for id in Self.courseLayerIDs { style.layer(withIdentifier: id)?.isVisible = coursesVisible }  // 코스 토글 재적용
-            trackCount = -1; recTrackKey = ""; recCursorKey = ""  // 스타일 재로드 시 트랙·커서 재주입 강제
+            applyCourseVisibility(style)                            // 코스 표시 상태 재적용(루트 보기 포함)
+            trackCount = -1; recTrackKey = ""; recCursorKey = ""; overlapKey = ""  // 스타일 재로드 시 재주입 강제
         }
 
         // 지도 이동 종료마다 중심 좌표 통지(국가지점번호) + 축척 통지(스케일바).

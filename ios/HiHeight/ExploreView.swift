@@ -37,10 +37,10 @@ struct ExploreView: View {
     @State private var endCode = ""                       // 팝업에 제시할 랜덤 2자리 확인번호
     // 기록 루트 보기 전용 모드 — climb.routeRecord 가 있으면 진입(등반 중이 아닐 때).
     @State private var routeShowCourses = false           // 정규 코스 표시 토글(기본 꺼짐)
+    @State private var routeOverlap: [[[Double]]]? = nil  // 코스와 겹치는 걸은 구간(계산 캐시, nil=미계산)
     @State private var routeCursor: [Double]? = nil       // 고도 프로필에서 고른 지점 [lng,lat](지도 마커)
     @State private var routeCardH: CGFloat = 300          // 루트 카드 실측 높이(컨트롤·스케일 여백)
-    @State private var showGPXShare = false               // GPX 공유 시트
-    @State private var gpxURL: URL? = nil
+    @State private var gpxFile: GPXFile?                  // GPX 공유 시트(item 기반 — 값이 준비돼야 뜸)
 
     // 루트 보기 모드 여부 — 기록 탭에서 "루트"를 탭해 들어온 상태(등반 중이면 우선).
     private var inRoute: Bool { climb.routeRecord != nil && !climb.tracking }
@@ -79,6 +79,8 @@ struct ExploreView: View {
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
                         showCourses: inRoute ? routeShowCourses : true,   // 루트 보기에선 토글, 그 외 항상 표시
+                        routeMode: inRoute,                                // 코스 2배 두께·출발/도착 텍스트 숨김
+                        recordOverlap: (inRoute && routeShowCourses) ? (routeOverlap ?? []) : [],  // 겹침 반전
                         routeCursor: inRoute ? routeCursor : nil,          // 고도 프로필 커서 마커
                         // 로컬 팩을 쓸지 결정 — base 타일과 오버레이(MapView.applyOverlay)가 함께 따른다.
                         //   탐험 중  : **항상 원격 우선**. 팩이 설치돼 있어도 원격을 본다.
@@ -262,16 +264,16 @@ struct ExploreView: View {
         // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
         // 않으므로 여기서 이미 로드된 목록에 적용한다. (없으면 코스가 안 바뀜)
         .onChange(of: climb.wantedCourseName) { _, _ in applyWantedCourse() }
-        // 루트 보기 진입(새 기록)마다 토글·커서 초기화 — 이전 루트의 상태가 남지 않게.
-        .onChange(of: climb.routeRecord?.id) { _, _ in routeShowCourses = false; routeCursor = nil }
+        // 루트 보기 진입(새 기록)마다 토글·커서·겹침 캐시 초기화 — 이전 루트의 상태가 남지 않게.
+        .onChange(of: climb.routeRecord?.id) { _, _ in
+            routeShowCourses = false; routeCursor = nil; routeOverlap = nil
+        }
         // 등반 종료 오터치 방지 — 확인번호가 일치할 때만 종료 + 기록 저장.
         .sheet(isPresented: $showEndConfirm) {
             ClimbEndConfirmView(code: endCode) { finishClimb() }
         }
-        // GPX 내보내기 — iOS 공유 시트(파일 저장·에어드롭·메신저).
-        .sheet(isPresented: $showGPXShare) {
-            if let url = gpxURL { ShareSheet(items: [url]) }
-        }
+        // GPX 내보내기 — iOS 공유 시트(파일 저장·에어드롭·메신저). item 기반이라 파일이 준비된 뒤에만 뜬다.
+        .sheet(item: $gpxFile) { f in ShareSheet(items: [f.url]) }
         // 100m 이하 짧은 등반 — 저장 여부 확인(저장=기존대로, 취소=저장 않고 종료).
         .overlay {
             if showShortConfirm {
@@ -527,8 +529,10 @@ struct ExploreView: View {
             }
             Button {                                          // GPX 내보내기(공유 시트)
                 guard let r else { return }
-                gpxURL = RouteGPX.writeTemp(r, mountainName: routeMountainName, courseName: r.course_name)
-                if gpxURL != nil { showGPXShare = true }
+                // 파일명: 사용자아이디_산코드_걸은날짜.gpx (아이디=이메일 @ 앞부분)
+                let uid = auth.email?.components(separatedBy: "@").first
+                gpxFile = RouteGPX.writeTemp(r, mountainName: routeMountainName,
+                                             courseName: r.course_name, userID: uid).map { GPXFile(url: $0) }
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: "square.and.arrow.down").font(.system(size: 15, weight: .semibold))
@@ -553,8 +557,12 @@ struct ExploreView: View {
     }
 
     // 정규 코스 표시 토글 알약 — RecordsView 정렬 알약과 같은 형태(on=강조).
+    // 켤 때 겹침 구간(코스 위를 걸은 부분)을 1회 계산해 반전 점선으로 표시한다.
     private func coursePill(_ t: Theme) -> some View {
-        Button { withAnimation(.easeOut(duration: 0.15)) { routeShowCourses.toggle() } } label: {
+        Button {
+            withAnimation(.easeOut(duration: 0.15)) { routeShowCourses.toggle() }
+            if routeShowCourses { computeRouteOverlap() }
+        } label: {
             HStack(spacing: 4) {
                 Image(systemName: routeShowCourses ? "eye.fill" : "eye.slash")
                     .font(.system(size: 10, weight: .bold))
@@ -583,6 +591,17 @@ struct ExploreView: View {
     private func recDateLabel(_ d: Date) -> String {
         let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.MM.dd (E)"
         return f.string(from: d)
+    }
+
+    // 겹침 계산(1회 캐시) — 걸은 트랙 중 정규 코스 25m 이내 구간. CPU 작업이라 백그라운드에서.
+    private func computeRouteOverlap() {
+        guard routeOverlap == nil, let r = climb.routeRecord, let code = r.mountain_id else { return }
+        let track = r.trackPoints
+        Task.detached(priority: .userInitiated) {
+            let lines = await PackLoader.routeLines(code)
+            let parts = RouteOverlap.compute(track: track, lines: lines)
+            await MainActor.run { routeOverlap = parts }
+        }
     }
 
     // 바텀시트 2단계 (peek=지도 모드 / large=목록 모드)

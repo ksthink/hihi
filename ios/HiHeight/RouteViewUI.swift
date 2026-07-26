@@ -33,6 +33,65 @@ enum RouteProfile {
     }
 }
 
+// ── 겹침 계산 — 걸었던 루트 중 정규 코스 선과 가까운(≤threshold m) 연속 구간. ──
+// MapLibre 는 선끼리의 픽셀 교차 블렌딩이 없어, 겹침 구간을 직접 계산해
+// 반전 점선 레이어(rec-track-inv)로 정규 코스 위에 얹는다(코스와 걸은 길 비교용).
+enum RouteOverlap {
+    // track: 걸은 지점들 [lng,lat,...], lines: 코스 선들의 좌표. 반환: 겹침 구간(MultiLineString parts).
+    static func compute(track: [[Double]], lines: [[[Double]]], thresholdM: Double = 25) -> [[[Double]]] {
+        guard track.count >= 2, !lines.isEmpty else { return [] }
+        // 소지역 평면 근사(등장방형) — 산 하나 범위에선 충분히 정확.
+        let lat0 = track[track.count / 2][1] * .pi / 180
+        let mLon = 111_320 * cos(lat0), mLat = 110_540.0
+        func xy(_ p: [Double]) -> (x: Double, y: Double) { (p[0] * mLon, p[1] * mLat) }
+        // 코스 세그먼트를 threshold 격자에 색인 — 트랙 지점마다 근처 세그먼트만 검사(O(N)).
+        struct Seg { let ax, ay, bx, by: Double }
+        let cell = thresholdM
+        var grid: [Int64: [Seg]] = [:]
+        func key(_ cx: Int, _ cy: Int) -> Int64 { (Int64(cx) << 32) | Int64(UInt32(bitPattern: Int32(cy))) }
+        for line in lines {
+            guard line.count >= 2 else { continue }
+            for i in 1..<line.count {
+                guard line[i - 1].count >= 2, line[i].count >= 2 else { continue }
+                let a = xy(line[i - 1]), b = xy(line[i])
+                let seg = Seg(ax: a.x, ay: a.y, bx: b.x, by: b.y)
+                let x0 = Int(floor((min(a.x, b.x) - cell) / cell)), x1 = Int(floor((max(a.x, b.x) + cell) / cell))
+                let y0 = Int(floor((min(a.y, b.y) - cell) / cell)), y1 = Int(floor((max(a.y, b.y) + cell) / cell))
+                for cx in x0...x1 { for cy in y0...y1 { grid[key(cx, cy), default: []].append(seg) } }
+            }
+        }
+        // 지점→가장 가까운 세그먼트 거리 ≤ threshold 판정.
+        func near(_ p: [Double]) -> Bool {
+            let q = xy(p)
+            guard let segs = grid[key(Int(floor(q.x / cell)), Int(floor(q.y / cell)))] else { return false }
+            for s in segs {
+                let dx = s.bx - s.ax, dy = s.by - s.ay
+                let l2 = dx * dx + dy * dy
+                var t = l2 > 0 ? ((q.x - s.ax) * dx + (q.y - s.ay) * dy) / l2 : 0
+                t = min(1, max(0, t))
+                let ex = q.x - (s.ax + t * dx), ey = q.y - (s.ay + t * dy)
+                if ex * ex + ey * ey <= thresholdM * thresholdM { return true }
+            }
+            return false
+        }
+        let hits = track.map(near)
+        // 연속 근접 지점을 구간으로 — 1지점 끊김은 GPS 요동으로 보고 이어붙인다.
+        var parts: [[[Double]]] = []
+        var cur: [[Double]] = []
+        for (i, p) in track.enumerated() {
+            let hit = hits[i] || (i > 0 && i + 1 < track.count && hits[i - 1] && hits[i + 1])
+            if hit {
+                cur.append([p[0], p[1]])
+            } else {
+                if cur.count >= 2 { parts.append(cur) }
+                cur = []
+            }
+        }
+        if cur.count >= 2 { parts.append(cur) }
+        return parts
+    }
+}
+
 // 고도 프로필 선/채움 — Sparkline 과 같은 결(채움 0.1 + 선)이되 x 를 누적 거리로 매핑.
 private struct EleProfileShape: Shape {
     let profile: [RouteProfilePoint]
@@ -168,23 +227,24 @@ enum RouteGPX {
         return s
     }
 
-    // "관악산_사당능선_20260720.gpx" — 파일 시스템에 안전한 이름.
-    static func fileName(_ record: ClimbRecord, mountainName: String?, courseName: String?) -> String {
-        var parts = [mountainName, courseName].compactMap { $0 }.filter { !$0.isEmpty }
+    // "ksthink_900000001_20260726.gpx" — 사용자아이디_산코드_걸은날짜. 파일 시스템에 안전한 이름.
+    static func fileName(_ record: ClimbRecord, userID: String?) -> String {
+        var parts: [String] = []
+        if let u = userID, !u.isEmpty { parts.append(u) }
+        if let c = record.mountain_id, !c.isEmpty { parts.append(c) }
         if let d = record.startedDate {
             let f = DateFormatter(); f.dateFormat = "yyyyMMdd"; parts.append(f.string(from: d))
         }
-        let base = parts.joined(separator: "_")
-        let safe = base.isEmpty ? "route" : base
-        let cleaned = safe.components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>|")).joined()
+        let base = parts.isEmpty ? "route" : parts.joined(separator: "_")
+        let cleaned = base.components(separatedBy: CharacterSet(charactersIn: "/\\:*?\"<>| ")).joined()
         return "\(cleaned).gpx"
     }
 
     // 임시 파일로 써서 URL 반환 — 공유 시트가 파일명을 보존하도록.
-    static func writeTemp(_ record: ClimbRecord, mountainName: String?, courseName: String?) -> URL? {
+    static func writeTemp(_ record: ClimbRecord, mountainName: String?, courseName: String?, userID: String?) -> URL? {
         let text = build(record, mountainName: mountainName, courseName: courseName)
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(fileName(record, mountainName: mountainName, courseName: courseName))
+            .appendingPathComponent(fileName(record, userID: userID))
         do { try text.data(using: .utf8)?.write(to: url); return url }
         catch { return nil }
     }
@@ -198,6 +258,14 @@ enum RouteGPX {
     private static let iso: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime]; return f
     }()
+}
+
+// 공유할 GPX 파일 — .sheet(item:) 트리거용.
+// ⚠️ isPresented+별도 URL 상태 조합은 시트 내용이 이전 상태(nil)로 평가돼 빈 시트가 뜰 수 있다
+//    (build 230에서 "다운로드가 안 됨"으로 재현). item 기반이면 값이 준비된 뒤에만 시트가 뜬다.
+struct GPXFile: Identifiable {
+    let url: URL
+    var id: String { url.path }
 }
 
 // iOS 공유 시트 — 파일(GPX) 저장·에어드롭·메신저 공유. UIActivityViewController 브리지.

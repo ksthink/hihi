@@ -283,6 +283,31 @@ function make(theme, baseMode) {
       layout: { "line-cap": "butt", "line-join": "round" },
       paint: { "line-color": tc.line, "line-width": 3.4, "line-dasharray": [1.6, 1.4] } },
   );
+  // ── 루트 보기 정규 코스(2배 두께) — 걸었던 루트 위에 얹어 비교. 기본 숨김, MapView 토글이 켠다. ──
+  // 탐험의 trail-* 와 같은 trails 소스를 쓰되 두께만 2배(탐험 스타일은 그대로 유지하려 별도 레이어).
+  const widthExpr2 = ["interpolate", ["linear"], ["zoom"],
+    11, ["match", ["get", "difficulty"], "초급", 3.2, "중급", 4.8, "고급", 6.8, 4.4],
+    16, ["match", ["get", "difficulty"], "초급", 7, "중급", 10, "고급", 14, 9]];
+  style.layers.push(
+    { id: "route-trails-casing", type: "line", source: "trails",
+      layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+      paint: { "line-color": tc.casing,
+               "line-width": ["interpolate", ["linear"], ["zoom"], 11, 7, 16, 16] } },
+    { id: "route-trails", type: "line", source: "trails",
+      layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+      paint: { "line-color": tc.line, "line-width": widthExpr2 } },
+  );
+  // ── 겹침 반전 구간 — 걸었던 루트 중 정규 코스와 겹치는 부분(런타임 계산·RouteOverlap). ──
+  // 정규 코스(본선색) 위에서 대시가 반전색으로 보여 "코스 위를 걸었다"가 한눈에 구분된다.
+  style.sources["rec-track-inv"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  style.layers.push(
+    { id: "rec-track-inv-casing", type: "line", source: "rec-track-inv",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": tc.line, "line-width": 6.5 } },
+    { id: "rec-track-inv", type: "line", source: "rec-track-inv",
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: { "line-color": tc.casing, "line-width": 3.4, "line-dasharray": [1.6, 1.4] } },
+  );
   // 기록 트랙의 시작·도착 — 선택 코스(course-ends)와 동일한 모양. 트랙 선 위에 얹는다.
   // 빈 FC 로 두고 MapView.applyRecordTrack 이 트랙 첫/끝 점으로 채운다.
   style.sources["rec-ends"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
