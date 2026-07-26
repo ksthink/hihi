@@ -630,28 +630,41 @@ function ensureOverlays() {
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.4 }
     });
     // 정상(peak) 스팟 → 봉우리 표식 (팩 주도 — 관리자에서 '정상'으로 찍은 지점).
-    // 봉우리 표식: 라이트 ▲(채움) / 다크 △(외곽) + 지명. 테마 토글 시 재부착으로 갱신.
-    // size 설정 = 주봉 크기, 부봉(main=false)은 11/14.4 비율로 축소. icon 설정 = ▲ 접두 기호.
+    // ▲ 마크는 **좌표에 고정**(중앙 앵커), 이름은 그 위로 분리. 예전엔 "▲+이름" 한 텍스트라
+    // 앵커(문자열 가운데-아래) 기준으로 ▲가 픽셀 단위로 비껴 있었고, 텍스트는 화면 크기
+    // 고정이라 그 픽셀 오프셋의 지상 거리가 줌마다 달라져 마커가 미끄러져 보였다
+    // (2026-07-26 용왕산). size 설정 = 주봉 크기, 부봉(main=false)은 11/14.4 비율로 축소.
     const pk = spotDisplay["정상"];
+    // 정상은 기본 최상위. 부봉으로 낮추려면 스팟 main=false. disp_size 가 최우선.
+    const pkSize = ["coalesce", ["get", "disp_size"],
+      ["case", ["==", ["get", "main"], false],
+        Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]];
+    const pkFont = ["match", ["to-string", ["get", "disp_bold"]],
+      "true", ["literal", SPOT_FONT(true)], "false", ["literal", SPOT_FONT(false)],
+      ["literal", SPOT_FONT(pk.bold)]];
+    // 기호 — 스팟별 disp_icon 이 분류 설정(pk.icon)을 덮는다(켬/끔).
+    // 어떤 글자를 쓸지는 분류 설정이 정한다: 관리자가 넣은 문자 > 기본 ▲/△
+    map.addLayer({
+      id: "spot-peak-marks", type: "symbol", source: "spots",
+      filter: ["all", ["==", ["get", "category"], "정상"],
+        ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]],
+        [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"], pk.zoom ?? 99]]],
+      layout: {
+        "text-field": symChar(pk.icon) ?? (theme === "dark" ? "△" : "▲"),
+        "text-font": pkFont, "text-size": pkSize,
+        "text-allow-overlap": true, "text-ignore-placement": true,   // 마크 = 핀, 충돌로 안 사라지게
+        "text-anchor": "center", "text-offset": [0, 0]
+      },
+      paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.8 }
+    });
     map.addLayer({
       id: "spot-peaks", type: "symbol", source: "spots",
       filter: ["all", ["==", ["get", "category"], "정상"],
         [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"], pk.zoom ?? 99]]],
       layout: {
-        // 접두 기호 — 스팟별 disp_icon 이 분류 설정(pk.icon)을 덮는다(켬/끔).
-        // 어떤 글자를 쓸지는 분류 설정이 정한다: 관리자가 넣은 문자 > 기본 ▲/△
-        "text-field": ["concat",
-          ["case", ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]],
-            symChar(pk.icon) ?? (theme === "dark" ? "△" : "▲"), ""],
-          ["coalesce", ["get", "name"], ""]],
-        "text-font": ["match", ["to-string", ["get", "disp_bold"]],
-          "true", ["literal", SPOT_FONT(true)], "false", ["literal", SPOT_FONT(false)],
-          ["literal", SPOT_FONT(pk.bold)]],
-        // 정상은 기본 최상위. 부봉으로 낮추려면 스팟 main=false. disp_size 가 최우선.
-        "text-size": ["coalesce", ["get", "disp_size"],
-          ["case", ["==", ["get", "main"], false],
-            Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]],
-        "text-offset": [0, -0.6], "text-anchor": "bottom"
+        "text-field": ["coalesce", ["get", "name"], ""],
+        "text-font": pkFont, "text-size": pkSize,
+        "text-offset": [0, -0.75], "text-anchor": "bottom"   // 마크 바로 위
       },
       paint: { "text-color": c.line, "text-halo-color": c.casing, "text-halo-width": 1.8 }
     });

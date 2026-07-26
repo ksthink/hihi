@@ -193,6 +193,10 @@ function make(theme, baseMode) {
   };
   const FAC_CATS = Object.keys(FACILITY_ICON);
   const pk = spotCfg["정상"];
+  // 정상 크기 — 주봉=설정값, 부봉(main:false)=11/14.4 축소, 스팟별 disp_size 최우선.
+  const peakSize = ["coalesce", ["get", "disp_size"],
+    ["case", ["==", ["get", "main"], false],
+      Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]];
   style.sources.spots = {
     type: "geojson",
     data: `${BASE}/packs/${PACK}/spots.geojson`,
@@ -224,20 +228,29 @@ function make(theme, baseMode) {
         "text-offset": [0, 1.05], "text-anchor": "top", "text-max-width": 8,
       },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.4 } },
-    // 정상 — 접두 기호(설정 문자 또는 ▲/△) + 이름. 부봉(main:false)은 주봉 대비 11/14.4 축소.
+    // 정상 — ▲ 마크는 **좌표에 고정**(중앙 앵커), 이름은 그 위로 분리(웹 app.js 동일 구조).
+    // 예전엔 "▲+이름" 한 텍스트라 앵커(문자열 가운데-아래) 기준으로 ▲가 픽셀 단위로 비껴,
+    // 줌마다 지상 오프셋이 달라져 마커가 미끄러져 보였다(2026-07-26 용왕산).
+    // 부봉(main:false)은 주봉 대비 11/14.4 축소. disp_size 최우선.
+    { id: "spot-peak-marks", type: "symbol", source: "spots",
+      filter: ["all", ["==", ["get", "category"], "정상"],
+               ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]],
+               [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"], pk.zoom ?? 99]]],
+      layout: {
+        "text-field": symChar(pk.icon) ?? (theme === "dark" ? "△" : "▲"),
+        "text-font": spotFont(["정상"]),
+        "text-size": peakSize,
+        "text-allow-overlap": true, "text-ignore-placement": true,   // 마크 = 핀, 충돌로 안 사라지게
+        "text-anchor": "center", "text-offset": [0, 0] },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.8 } },
     { id: "spot-peaks", type: "symbol", source: "spots",
       filter: ["all", ["==", ["get", "category"], "정상"],
                [">=", ["zoom"], ["coalesce", ["get", "disp_zoom"], pk.zoom ?? 99]]],
       layout: {
-        "text-field": ["concat",
-          ["case", ["to-boolean", ["coalesce", ["get", "disp_icon"], pk.icon]],
-            symChar(pk.icon) ?? (theme === "dark" ? "△" : "▲"), ""],
-          ["coalesce", ["get", "name"], ""]],
+        "text-field": ["coalesce", ["get", "name"], ""],
         "text-font": spotFont(["정상"]),
-        "text-size": ["coalesce", ["get", "disp_size"],
-          ["case", ["==", ["get", "main"], false],
-            Math.round(pk.size * (11 / 14.4) * 10) / 10, pk.size]],
-        "text-offset": [0, -0.6], "text-anchor": "bottom" },
+        "text-size": peakSize,
+        "text-offset": [0, -0.75], "text-anchor": "bottom" },   // 마크 바로 위
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.8 } },
   );
 
