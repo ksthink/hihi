@@ -17,21 +17,23 @@ struct ContentView: View {
         ("safari", "탐험"), ("star", "추천"), ("mountain.2", "등반"), ("clock", "기록"),
     ]
 
-    // 스크롤 탭이 확보할 하단 공간 — 네비가 떠 있을 때만(검색·등반 중엔 네비가 없으니 0).
-    private var navReserve: CGFloat { (searching || climb.tracking) ? 0 : navBarH }
+    // 스크롤 탭이 확보할 하단 공간 — 네비가 떠 있을 때만(검색·등반·루트 보기 중엔 네비가 없으니 0).
+    private var navReserve: CGFloat { (searching || climb.tracking || climb.routeRecord != nil) ? 0 : navBarH }
 
     var body: some View {
         // 네이티브 탭바(iOS 26 글래스 플로팅) 숨기고 웹식 평평·불투명 하단 네비를 직접 그린다.
         // safeAreaInset 으로 공간을 확보해 각 탭 콘텐츠(지도 시트 포함)가 네비 위에 놓인다.
         TabView(selection: $tab) {
-            ExploreView(catalog: catalog, climb: climb, auth: auth, searching: $searching).tag(0).toolbar(.hidden, for: .tabBar)
+            ExploreView(catalog: catalog, climb: climb, auth: auth,
+                        onExitRoute: exitRoute,
+                        searching: $searching).tag(0).toolbar(.hidden, for: .tabBar)
             // 스크롤 탭(추천·등반·기록)은 하단 네비 높이만큼 콘텐츠 하단을 확보한다.
             // (네비를 TabView 에 safeAreaInset 으로 달면 페이지 스크롤엔 공간이 전파되지
             //  않아 마지막 항목이 네비에 가려짐 — 짧은 화면에서 잘림. 페이지별로 인셋을 준다.)
             RecoView(catalog: catalog, onOpen: openCuration).tag(1).toolbar(.hidden, for: .tabBar)
                 .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve).allowsHitTesting(false) }
             DeungView(climb: climb, auth: auth, catalog: catalog, onStart: { tab = 0 },
-                      onOpenMap: { m in catalog.selected = m; climb.recordTrack = nil; tab = 0 })
+                      onOpenMap: { m in catalog.selected = m; climb.routeRecord = nil; tab = 0 })
                 .tag(2).toolbar(.hidden, for: .tabBar)
                 .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: navReserve).allowsHitTesting(false) }
             RecordsView(auth: auth, catalog: catalog, onShowRoute: showRoute).tag(3).toolbar(.hidden, for: .tabBar)
@@ -39,8 +41,8 @@ struct ContentView: View {
         }
         .tint(scheme == .dark ? Color(hex: 0xf2f2f2) : Color(hex: 0x111111))
         .preferredColorScheme(themePref == "dark" ? .dark : themePref == "light" ? .light : nil)
-        // 검색 중엔 네비바 숨김. 등반 중에도 숨긴다 — 배터리 절약·오조작 방지로 다른 탭 이동 차단(종료하면 복귀).
-        .safeAreaInset(edge: .bottom, spacing: 0) { if !searching && !climb.tracking { bottomNav } }
+        // 검색 중엔 네비바 숨김. 등반·루트 보기 중에도 숨긴다 — 전용 모드에 집중(닫기 버튼으로 복귀).
+        .safeAreaInset(edge: .bottom, spacing: 0) { if !searching && !climb.tracking && climb.routeRecord == nil { bottomNav } }
         .task {                                // 앱 시작 시 카탈로그 + 저장된 로그인 세션 복원(탭 무관)
             async let c: Void = catalog.load()
             async let a: Void = auth.refresh()
@@ -112,17 +114,21 @@ struct ContentView: View {
             catalog.selected = m
         }
         climb.wantedCourseName = courseName
-        climb.recordTrack = nil
+        climb.routeRecord = nil
         climb.fitRequested = true       // 코스 로드 후 지도를 코스 범위로 프레이밍
         tab = 0
     }
 
-    // 기록 루트 탭 → 해당 산 선택 + 트랙을 지도에 표시하고 탐험 탭으로 이동.
+    // 루트 보기 닫기 → 기록 탭 복귀(ExploreView 닫기 버튼 배선).
+    private func exitRoute() { climb.routeRecord = nil; tab = 3 }
+
+    // 기록 루트 탭 → 해당 산 선택 + 전용 루트 보기 모드로 탐험 탭에 진입.
     private func showRoute(_ r: ClimbRecord) {
         if let code = r.mountain_id, let m = catalog.mountains.first(where: { $0.id == code }) {
             catalog.selected = m
         }
-        climb.recordTrack = r.trackPoints
+        climb.course = nil          // 루트 보기엔 선택 코스 강조 없음(정규 코스는 토글로)
+        climb.routeRecord = r       // 전용 모드 진입(ExploreView.inRoute)
         tab = 0
     }
 }

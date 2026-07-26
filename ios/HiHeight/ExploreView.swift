@@ -7,6 +7,7 @@ struct ExploreView: View {
     @ObservedObject var catalog: CatalogStore
     @ObservedObject var climb: ClimbStore        // 선택 코스를 등반 탭과 공유
     @ObservedObject var auth: AuthStore          // 등반 종료 시 기록 저장
+    var onExitRoute: () -> Void = {}             // 루트 보기 닫기 → 기록 탭 복귀(ContentView 배선)
     @Environment(\.colorScheme) private var scheme
     @AppStorage("hiheight-theme") private var themePref = "system"
     // 기저 모드: 지형 전용(기본) ⇄ OSM 전체 basemap. 웹 baseMode 와 동일 개념.
@@ -34,6 +35,23 @@ struct ExploreView: View {
     @State private var showEndConfirm = false             // 등반 종료 오터치 방지 확인 팝업
     @State private var showShortConfirm = false           // 100m 이하 짧은 등반 저장 확인 팝업
     @State private var endCode = ""                       // 팝업에 제시할 랜덤 2자리 확인번호
+    // 기록 루트 보기 전용 모드 — climb.routeRecord 가 있으면 진입(등반 중이 아닐 때).
+    @State private var routeShowCourses = false           // 정규 코스 표시 토글(기본 꺼짐)
+    @State private var routeCursor: [Double]? = nil       // 고도 프로필에서 고른 지점 [lng,lat](지도 마커)
+    @State private var routeCardH: CGFloat = 300          // 루트 카드 실측 높이(컨트롤·스케일 여백)
+    @State private var showGPXShare = false               // GPX 공유 시트
+    @State private var gpxURL: URL? = nil
+
+    // 루트 보기 모드 여부 — 기록 탭에서 "루트"를 탭해 들어온 상태(등반 중이면 우선).
+    private var inRoute: Bool { climb.routeRecord != nil && !climb.tracking }
+    // 산이름 | 코스명 (루트 보기 상단·GPX 파일명용)
+    private var routeMountainName: String? {
+        climb.routeRecord?.mountain_id.flatMap { id in catalog.mountains.first { $0.id == id }?.name }
+    }
+    private var routeTitle: String {
+        let course = climb.routeRecord?.course_name ?? ""
+        return [routeMountainName, course.isEmpty ? nil : course].compactMap { $0 }.joined(separator: " | ")
+    }
 
     // 국가지점번호 — 등반 중(GPS 위치 기준)에만 표시. 탐험(지도) 상태에선 숨김.
     private var npnCode: String? {
@@ -60,6 +78,8 @@ struct ExploreView: View {
                         mountain: catalog.selected, courses: courses, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
                         recordTrack: climb.recordTrack,
+                        showCourses: inRoute ? routeShowCourses : true,   // 루트 보기에선 토글, 그 외 항상 표시
+                        routeCursor: inRoute ? routeCursor : nil,          // 고도 프로필 커서 마커
                         // 로컬 팩을 쓸지 결정 — base 타일과 오버레이(MapView.applyOverlay)가 함께 따른다.
                         //   탐험 중  : **항상 원격 우선**. 팩이 설치돼 있어도 원격을 본다.
                         //             팩은 받은 시점에 멈춰 있어(버전 추적 없음) 새로 추가된 코스가
@@ -80,6 +100,7 @@ struct ExploreView: View {
                         bottomInset: peek + 40,
                         onScaleChanged: { metersPerPoint = $0 },
                         onCourseTapped: { name in                       // 지도에서 등산로/배지 탭 → 코스 선택 + 목록 노출·스크롤
+                            guard !inRoute else { return }              // 루트 보기 중엔 코스 탭 무시(모드 이탈 방지)
                             if let c = courses.first(where: { $0.name == name }) { selectCourse(c) }
                         },
                         onHeadingChanged: { headingOn = $0 })           // 나침반 추적 on/off → 위치 버튼 강조
@@ -90,7 +111,7 @@ struct ExploreView: View {
                     scaleBar(label, width, t)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                         .padding(.leading, 16)
-                        .padding(.bottom, climb.tracking ? 210 : peek + 28)
+                        .padding(.bottom, climb.tracking ? 210 : inRoute ? routeCardH + 16 : peek + 28)
                         .allowsHitTesting(false)
                 }
 
@@ -108,35 +129,45 @@ struct ExploreView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.trailing, 14)
                 .padding(.bottom, climb.tracking ? 240 : peek + 92)   // ⓘ 저작권 버튼 위로
-                .opacity(searching ? 0 : 1)                           // 검색 중엔 숨김
-                .allowsHitTesting(!searching)
+                .opacity(searching || inRoute ? 0 : 1)                // 검색·루트 보기 중엔 숨김
+                .allowsHitTesting(!searching && !inRoute)
 
                 // 저작권 ⓘ — 탭하면 옆으로 펼쳐져 어트리뷰션 노출(웹 MapLibre 식, 팝업 대체)
                 attributionControl(t)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     .padding(.trailing, 14)
-                    .padding(.bottom, climb.tracking ? 200 : peek + 40)
+                    .padding(.bottom, climb.tracking ? 200 : inRoute ? routeCardH + 8 : peek + 40)
                     .opacity(searching ? 0 : 1)                       // 검색 중엔 숨김
                     .allowsHitTesting(!searching)
 
                 // 상단: 산이름 | 코스명(좌상단) + 검색 버튼(우) + 국가지점번호(라벨 아래 좌측·라벨텍스트 없이 코드만) — 웹 title-block/npn-box
                 VStack(alignment: .trailing, spacing: 6) {
                     HStack(alignment: .top) {
-                        if let m = catalog.selected, !searching {   // 검색 중엔 산이름 숨김(확장 공간 확보)
+                        if inRoute {                                 // 루트 보기 — 산|코스 라벨 + 닫기(X)
                             overlayBox(t) {
-                                HStack(alignment: .firstTextBaseline, spacing: 7) {
-                                    Text(m.name).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
-                                    if let c = climb.course {
-                                        Text("|").font(.kakao(size: 14)).foregroundStyle(t.muted)
-                                        Text(c.name).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
-                                    }
-                                }
-                                .lineLimit(1)
+                                Text(routeTitle.isEmpty ? "산행 기록" : routeTitle)
+                                    .font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text).lineLimit(1)
                             }
                             .padding(.top, 6)
+                            Spacer()
+                            routeCloseButton(t)
+                        } else {
+                            if let m = catalog.selected, !searching {   // 검색 중엔 산이름 숨김(확장 공간 확보)
+                                overlayBox(t) {
+                                    HStack(alignment: .firstTextBaseline, spacing: 7) {
+                                        Text(m.name).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
+                                        if let c = climb.course {
+                                            Text("|").font(.kakao(size: 14)).foregroundStyle(t.muted)
+                                            Text(c.name).font(.kakao(size: 14, weight: .bold)).foregroundStyle(t.text)
+                                        }
+                                    }
+                                    .lineLimit(1)
+                                }
+                                .padding(.top, 6)
+                            }
+                            Spacer()
+                            searchBar(t)
                         }
-                        Spacer()
-                        searchBar(t)
                     }
                     if searching && hasQuery {                      // 입력 후 관련 산만 (검색바 아래 우측 정렬)
                         HStack { Spacer(); searchResults(t) }
@@ -174,6 +205,8 @@ struct ExploreView: View {
                     Spacer()
                     if climb.tracking {
                         climbHUD(t)
+                    } else if inRoute {
+                        routeCard(t)
                     } else {
                         infoSheet(t, maxH: geo.size.height, peek: peek)
                     }
@@ -182,7 +215,7 @@ struct ExploreView: View {
                 // 등반 중엔 하단 네비바가 숨겨진다 — 이 컨테이너가 하단 안전영역까지 내려가야 HUD 카드가
                 // 화면 물리적 끝까지 채워진다(자식에만 걸면 부모가 이미 안전영역을 소비해 확장이 안 됨).
                 // 내용은 climbHUD 안의 safeAreaPadding 이 기기별 인디케이터 높이만큼 자동으로 밀어 올린다.
-                .ignoresSafeArea(.container, edges: climb.tracking ? .bottom : [])
+                .ignoresSafeArea(.container, edges: (climb.tracking || inRoute) ? .bottom : [])
             }
             .ignoresSafeArea(.keyboard)   // 검색 키보드가 지도·컨트롤을 위로 밀지 않도록
         }
@@ -229,9 +262,15 @@ struct ExploreView: View {
         // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
         // 않으므로 여기서 이미 로드된 목록에 적용한다. (없으면 코스가 안 바뀜)
         .onChange(of: climb.wantedCourseName) { _, _ in applyWantedCourse() }
+        // 루트 보기 진입(새 기록)마다 토글·커서 초기화 — 이전 루트의 상태가 남지 않게.
+        .onChange(of: climb.routeRecord?.id) { _, _ in routeShowCourses = false; routeCursor = nil }
         // 등반 종료 오터치 방지 — 확인번호가 일치할 때만 종료 + 기록 저장.
         .sheet(isPresented: $showEndConfirm) {
             ClimbEndConfirmView(code: endCode) { finishClimb() }
+        }
+        // GPX 내보내기 — iOS 공유 시트(파일 저장·에어드롭·메신저).
+        .sheet(isPresented: $showGPXShare) {
+            if let url = gpxURL { ShareSheet(items: [url]) }
         }
         // 100m 이하 짧은 등반 — 저장 여부 확인(저장=기존대로, 취소=저장 않고 종료).
         .overlay {
@@ -390,7 +429,7 @@ struct ExploreView: View {
                 ForEach(results) { m in
                     Button {
                         catalog.selected = m
-                        climb.recordTrack = nil       // 산 변경 → 기록 루트 지움
+                        climb.routeRecord = nil       // 산 변경 → 기록 루트 지움
                         withAnimation(.easeOut(duration: 0.18)) { searching = false }
                         query = ""
                     } label: {
@@ -461,6 +500,89 @@ struct ExploreView: View {
 
     private func fmtClock(_ sec: Int) -> String {
         String(format: "%d:%02d:%02d", sec / 3600, (sec % 3600) / 60, sec % 60)
+    }
+
+    // MARK: 기록 루트 보기 카드 (등반 HUD 와 같은 형태) — 날짜·거리·시간·고도 + 고도 프로필 + GPX.
+    // 불필요한 정보(검색·날씨·산 소개·다운로드)는 빼고 걸었던 루트에 집중한다.
+    private func routeCard(_ t: Theme) -> some View {
+        let r = climb.routeRecord
+        let profile = r.map { RouteProfile.build($0) } ?? []
+        return VStack(spacing: 12) {
+            HStack {                                          // 날짜 + 정규 코스 토글
+                if let d = r?.startedDate {
+                    Text(recDateLabel(d)).font(.kakao(size: 13, weight: .semibold)).foregroundStyle(t.muted)
+                }
+                Spacer()
+                if r?.mountain_id != nil { coursePill(t) }    // 산이 있어야 정규 코스가 있다
+            }
+            HStack(spacing: 0) {                              // 거리 · 시간 · 누적고도
+                hudStat(r?.distance_km.map { String(format: "%.2f", $0) } ?? "–", "거리(km)", t)
+                hudStat(fmtClock(r?.duration_s ?? 0), "시간", t)
+                hudStat(r?.ascent_m.map { "\($0)" } ?? "–", "↑고도(m)", t)
+            }
+            if r?.hasElevation == true {                      // 인터랙티브 고도 프로필(고도값이 있을 때만)
+                RouteElevationProfile(profile: profile, theme: t) { pt in
+                    withAnimation(.easeOut(duration: 0.12)) { routeCursor = pt?.coord }
+                }
+            }
+            Button {                                          // GPX 내보내기(공유 시트)
+                guard let r else { return }
+                gpxURL = RouteGPX.writeTemp(r, mountainName: routeMountainName, courseName: r.course_name)
+                if gpxURL != nil { showGPXShare = true }
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: "square.and.arrow.down").font(.system(size: 15, weight: .semibold))
+                    Text("GPX 다운로드").font(.kakao(size: 15, weight: .semibold))
+                }
+                .foregroundStyle(t.onAccent).frame(maxWidth: .infinity).padding(.vertical, 13)
+                .background(t.accent, in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        .padding(16)
+        .safeAreaPadding(.bottom)          // 기기별 홈 인디케이터 높이만큼 자동 여백(HUD 와 동일)
+        .background(t.elevated)
+        .clipShape(.rect(topLeadingRadius: 18, topTrailingRadius: 18))
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 18).strokeBorder(t.line).mask(Rectangle().padding(.bottom, -20))
+        }
+        .shadow(color: .black.opacity(0.10), radius: 12, y: -3)
+        // 카드 실측 높이 → 스케일·저작권을 카드 위로 올리는 여백(routeCardH)에 반영
+        .background(GeometryReader { g in Color.clear
+            .onAppear { routeCardH = g.size.height }
+            .onChange(of: g.size.height) { _, h in routeCardH = h } })
+    }
+
+    // 정규 코스 표시 토글 알약 — RecordsView 정렬 알약과 같은 형태(on=강조).
+    private func coursePill(_ t: Theme) -> some View {
+        Button { withAnimation(.easeOut(duration: 0.15)) { routeShowCourses.toggle() } } label: {
+            HStack(spacing: 4) {
+                Image(systemName: routeShowCourses ? "eye.fill" : "eye.slash")
+                    .font(.system(size: 10, weight: .bold))
+                Text("정규 코스").font(.kakao(size: 12, weight: routeShowCourses ? .bold : .regular))
+            }
+            .foregroundStyle(routeShowCourses ? t.onAccent : t.muted)
+            .padding(.horizontal, 11).padding(.vertical, 6)
+            .background(routeShowCourses ? t.accent : t.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(routeShowCourses ? .clear : t.line))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // 루트 보기 닫기(X) — 검색 버튼과 같은 원형. 기록 탭으로 복귀.
+    private func routeCloseButton(_ t: Theme) -> some View {
+        Button {
+            climb.routeRecord = nil; routeCursor = nil; onExitRoute()
+        } label: {
+            Image(systemName: "xmark").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
+                .frame(width: 42, height: 42)
+                .background(t.elevated.opacity(0.92), in: Circle())
+                .overlay(Circle().strokeBorder(t.line))
+        }
+    }
+
+    private func recDateLabel(_ d: Date) -> String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "ko_KR"); f.dateFormat = "yyyy.MM.dd (E)"
+        return f.string(from: d)
     }
 
     // 바텀시트 2단계 (peek=지도 모드 / large=목록 모드)
@@ -651,7 +773,7 @@ struct ExploreView: View {
 
     private func selectCourse(_ c: Course) {
         withAnimation(.easeOut(duration: 0.15)) { climb.course = c }
-        climb.recordTrack = nil                    // 기록 루트 표시 중이면 해제
+        climb.routeRecord = nil                    // 기록 루트 표시 중이면 해제
         courseFitTick += 1                         // 지도를 코스 범위로 이동
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = .peek }
     }

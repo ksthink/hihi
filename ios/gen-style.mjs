@@ -274,13 +274,14 @@ function make(theme, baseMode) {
   // ── 기록 루트 보기 — 저장된 기록 트랙(점선). app.js:554-566. ──
   // 빈 FC 로 두고, 기록 탭에서 루트를 탭하면 MapView 가 source.shape 로 채운다.
   style.sources["rec-track"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  // 내가 걸었던 루트 — 중간 두께 점선(정규 코스 실선과 구분). 검정 테두리 위 본선색 대시.
   style.layers.push(
     { id: "rec-track-casing", type: "line", source: "rec-track",
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": tc.casing, "line-width": 6 } },
+      paint: { "line-color": tc.casing, "line-width": 6.5 } },
     { id: "rec-track", type: "line", source: "rec-track",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": tc.line, "line-width": 2.6, "line-dasharray": [0.1, 1.8] } },
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: { "line-color": tc.line, "line-width": 3.4, "line-dasharray": [1.6, 1.4] } },
   );
   // 기록 트랙의 시작·도착 — 선택 코스(course-ends)와 동일한 모양. 트랙 선 위에 얹는다.
   // 빈 FC 로 두고 MapView.applyRecordTrack 이 트랙 첫/끝 점으로 채운다.
@@ -295,6 +296,13 @@ function make(theme, baseMode) {
       layout: { "text-field": ["get", "label"], "text-font": ["MonaS12 Regular"],
                 "text-size": 12, "text-offset": [0, 1.1], "text-anchor": "top" },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
+  );
+  // 고도 프로필에서 고른 지점 — 루트 위 강조 마커(비어 있음, MapView.setRouteCursor 가 채움). 시종점 위에 얹는다.
+  style.sources["rec-cursor"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  style.layers.push(
+    { id: "rec-cursor", type: "circle", source: "rec-cursor",
+      paint: { "circle-radius": 6.5, "circle-color": tc.casing,
+               "circle-stroke-color": tc.line, "circle-stroke-width": 3 } },
   );
 
   // ── 등반 중 라이브 트랙(지나온 곳) — app.js:566-578. ──

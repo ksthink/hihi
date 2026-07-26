@@ -23,7 +23,10 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var mountainCode: String?  // climb_records.mountain_id 용
     @Published var saveResult: String?    // 종료 후 저장 결과 배너
     @Published var fitRequested = false   // 추천/외부 진입 시 코스 로드 후 지도 fitBounds 요청
-    @Published var recordTrack: [[Double]]?  // 기록 루트 보기 — 지도에 표시할 트랙(없으면 nil)
+    // 기록 루트 보기 — 보고 있는 기록(없으면 nil). 전용 루트 뷰 모드의 단일 소스.
+    // 지도에 그릴 트랙은 여기서 파생(recordTrack) — 두 상태가 어긋나지 않게 하나로 관리한다.
+    @Published var routeRecord: ClimbRecord?
+    var recordTrack: [[Double]]? { routeRecord?.trackPoints }
 
     // 트래킹 세션 상태 (HUD 표시용)
     @Published var tracking = false
@@ -76,7 +79,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     func start() {
         guard let _ = course, !tracking else { return }
         startedAt = Date(); track = []; distance = 0; elapsed = 0; last = nil; note = nil
-        recordTrack = nil          // 등반 시작 → 기록 루트 표시 지움
+        routeRecord = nil          // 등반 시작 → 기록 루트 표시 지움
         tracking = true
         restoredCourseName = nil
         beginSessionFile()          // 강제 종료 대비 — 진행 중 계속 append
@@ -230,7 +233,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         mountainCode = s.mountainCode
         restoredCourseName = s.courseName.isEmpty ? nil : s.courseName
         last = s.track.last.map { CLLocation(latitude: $0[1], longitude: $0[0]) }
-        recordTrack = nil
+        routeRecord = nil
         note = nil
         tracking = true
         pending = nil
