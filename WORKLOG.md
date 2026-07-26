@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-07-26
+
+기록 탭의 "루트 보기"를 **탐험 화면 재사용 → 전용 모드**로 전면 재작업한 날.
+등반 HUD 와 같은 형태의 집중 카드 + 인터랙티브 고도 프로필 + GPX 내보내기 + 정규 코스 비교(겹침 반전)까지.
+TestFlight 빌드 230·231 배포.
+
+### 생성 / 추가
+- **`RouteViewUI.swift` 신규 — 기록 루트 보기 전용 UI 모음**: ① `RouteProfile`/`RouteElevationProfile` — 저장된 트랙의 지점별 고도로 **인터랙티브 고도 프로필**(x=실제 누적거리·y=고도, Sparkline 과 같은 결). 그래프를 누르거나 끌면 그 지점이 **지도 루트 위 마커(`rec-cursor`)로 표시** + 상단에 "거리 · 고도" 라벨. ② `RouteGPX` — 트랙을 **고도(`<ele>`)·시각(`<time>`) 포함 표준 GPX 1.1** 로 내보내기(iOS 공유 시트, `ShareSheet` 브리지). ③ `RouteOverlap` — 걸은 트랙 중 **정규 코스 25m 이내 연속 구간을 기하 계산**(threshold 격자 색인 O(N), 점→세그먼트 거리, 1점 끊김은 GPS 요동으로 이어붙임). MapLibre 엔 선끼리 픽셀 블렌딩이 없어 겹침을 직접 계산해 반전 레이어로 얹는 방식. 파이썬 등가 구현으로 교차 검증(코스 위 20점+이탈 15점+복귀 10점 → 정확히 2구간, 이탈 제외).
+- **기록 루트 보기 전용 모드(`ExploreView`·`ContentView`)**: 기록 탭 "루트 ›" → 탐험 전체 UI(검색·날씨·산 소개·다운로드·하단 네비)가 아니라 **등반 HUD 와 같은 형태의 집중 카드**로 진입. 상단 = "산 \| 코스" 라벨 + 닫기(X, 기록 탭 복귀), 카드 = 날짜(요일) · 거리/시간/↑고도 3스탯(`hudStat` 재사용) · 고도 프로필 · GPX 다운로드 버튼. 진입 시 트랙 범위로 자동 fitBounds. 폰트·카드 형태는 기존 구조(.kakao/Theme) 그대로 통일.
+- **정규 코스 비교(루트 보기)**: 카드의 **"정규 코스" 토글(👁, 기본 꺼짐)** — 켜면 그 산의 모든 정규 코스가 **2배 두께 실선(`route-trails` 전용 레이어)** 로 **걸었던 루트(중간 두께 점선) 위에** 얹힌다. 걸은 트랙 중 코스와 겹치는 구간은 **색상 반전 점선(`rec-track-inv` — 검정 테두리+흰 대시)** 으로 코스 선 위에 표시 → "코스대로 걸은 부분 vs 벗어난 부분"이 한눈에 구분. 계산은 토글 켤 때 1회·백그라운드(`Task.detached`)·기록당 캐시. 루트 보기 중 지도 코스 탭은 무시(모드 이탈 방지).
+- **`PackLoader.routeLines(code)`(`Course.swift`)**: 겹침 계산용 — `courses()` 는 시종점·bbox 만 파생하고 전체 좌표를 버려서, routes.geojson 의 모든 선 좌표를 평탄화해 반환하는 로더 별도 신설.
+- **`gen-style.mjs` 루트 보기 레이어 3종**: `route-trails(-casing)`(코스 2배 두께, 기본 `visibility:none`) · `rec-track-inv(-casing)`(겹침 반전 점선) · `rec-cursor`(고도 프로필 커서 마커). 순서 = 걸은 루트 → 코스 2배선 → 반전 점선 → 시종점 점 → 커서(맨 위).
+
+### 수정 / 변경
+- **`climb.recordTrack`(좌표만) → `climb.routeRecord`(기록 전체) 단일 소스(`ClimbStore`·전 호출부)**: 루트 보기가 거리·시간·고도·코스명까지 쓰므로 기록 객체를 통째로 보관하고 지도 트랙은 computed 로 파생 — 두 상태가 어긋날 여지 제거. `ClimbRecord` 에 `trackFull`(지점별 [lng,lat,ele?,time?])·`hasElevation` 헬퍼 추가.
+- **루트 보기에서 출발/도착 텍스트 제거(`MapView`)**: 걸은 루트 시종점은 **점만**(rec-ends 라벨 미주입, `endsGeoJSON(labeled:)` 분기), 정규 코스 시종점(course-ends)은 루트 보기에서 **토글과 무관하게 숨김** — 비교에 방해라 켜도 선만 나온다.
+- **`MapView` 확장**: `showCourses`(탐험=항상 표시 / 루트 보기=토글이 route-trails 를 켬)·`routeMode`·`recordOverlap`·`routeCursor` props + Coordinator 가시성/소스 주입(`applyCourseVisibility`·`setRecordOverlap`·`setRouteCursor`), 스타일 재로드 시 전부 재적용.
+- **걸은 루트 점선 두께 상향(`gen-style.mjs`)**: rec-track 2.6→**3.4**(중간 두께), dash [0.1,1.8]→[1.6,1.4] — 점 나열이 아니라 대시로.
+- **GPX 다운로드가 안 되던 버그 수정(`ExploreView`·`RouteViewUI`)**: `.sheet(isPresented:)`+별도 URL 상태 조합은 시트 내용이 **이전 상태(nil)로 평가돼 빈 시트**가 뜨는 레이스(빌드 230 실기 재현). **`.sheet(item: $gpxFile)`**(Identifiable `GPXFile`) 기반으로 교체 — 파일이 준비된 뒤에만 시트가 뜬다.
+- **GPX 파일명 형식**: 산·코스명 → **`사용자아이디_산코드_걸은날짜.gpx`**(예: `ksthink_900000001_20260726.gpx`). 아이디=로그인 이메일 `@` 앞부분.
+- **하단 네비 게이트(`ContentView`)**: 루트 보기 중에도 등반처럼 하단 네비 숨김(닫기 버튼으로만 복귀), `navReserve` 도 0.
+
+### 배포
+- **빌드 230**: 루트 보기 전용 모드 1차. 실기 확인에서 GPX 빈 시트 발견 → 위 수정으로 이어짐.
+- **빌드 231**: GPX 수정 + 파일명 형식 + 정규 코스 비교(2배선·겹침 반전·출발/도착 텍스트 제거). 아카이브·App Store Connect 업로드 완료(`Upload succeeded`).
+
+---
+
 ## 2026-07-25
 
 TestFlight 로 빌드 205~211 을 반복 배포하며 실기기 확인. 지도 상단 배치·등반 UI 를 다듬고,
