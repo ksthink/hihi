@@ -1,5 +1,6 @@
 import SwiftUI
 import MapLibre
+import CoreLocation   // 자북 바늘 — 지자기 헤딩 구독
 
 // 등반 중 내장 유저 dot 을 숨긴다 — 현재 위치는 climb-pos style 레이어로 그려 줌 시 루트와 완벽 동기.
 // (내장 dot 은 주석 뷰라 줌 애니메이션 중 한 프레임 늦게 재배치돼 루트 선과 엇갈림.)
@@ -47,6 +48,8 @@ struct MapView: UIViewRepresentable {
         mv.addGestureRecognizer(UITapGestureRecognizer(
             target: context.coordinator, action: #selector(Coordinator.handleTap(_:))))
         context.coordinator.dark = styleResource.contains("dark")
+        context.coordinator.mapView = mv        // 자북 바늘 — 헤딩 콜백에서 지도 접근
+        context.coordinator.startHeading()      // 지자기 헤딩 구독(시뮬레이터는 미지원 → 바늘 없음)
         applyStyle(mv)
         return mv
     }
@@ -109,7 +112,7 @@ struct MapView: UIViewRepresentable {
         return out
     }
 
-    final class Coordinator: NSObject, MLNMapViewDelegate {
+    final class Coordinator: NSObject, MLNMapViewDelegate, CLLocationManagerDelegate {
         private var desired: Mountain?      // 목표 산
         private var cameraDone: String?     // 카메라를 맞춘 산코드 (중복 이동 방지)
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
@@ -129,6 +132,25 @@ struct MapView: UIViewRepresentable {
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
         var onScaleChanged: ((Double) -> Void)?
         var onHeadingChanged: ((Bool) -> Void)?
+
+        // ── 자북 바늘 — 지도는 그대로 두고 위치 포인터 둘레의 삼각형만 실시간으로 자북을 향한다. ──
+        // 나침반(followWithHeading) 모드가 아니어도 항상 표시(모드 켜면 숨김·해제하면 복귀).
+        weak var mapView: MLNMapView?               // 헤딩 콜백에서 지도 접근
+        private let headingMgr = CLLocationManager()  // 헤딩 전용(위치 구독 없음 — 자력계라 배터리 미미)
+        private var needleDeg = Double.nan          // 최근 자북 방위(도) — nan=수신 전
+        private var needleCoord: CLLocationCoordinate2D?   // 바늘 위치(포인터 좌표와 동기)
+        private var headingMode = false             // 나침반 추적 중 — 바늘 숨김(지도가 회전·빔 표시)
+
+        override init() {
+            super.init()
+            headingMgr.delegate = self
+        }
+
+        // 지자기 헤딩 구독 시작 — 권한 불요. 시뮬레이터는 headingAvailable=false 라 바늘이 안 뜬다.
+        func startHeading() {
+            guard CLLocationManager.headingAvailable() else { return }
+            headingMgr.startUpdatingHeading()
+        }
 
         // 현재위치 점 표시 + 추적 카메라(등반 중 tracking, 또는 위치 버튼 locateTick).
         // 위치 버튼은 나침반도 통합 — 누를 때마다 정북 추적 ⇄ 나침반(헤딩) 추적을 순환한다.
@@ -178,6 +200,7 @@ struct MapView: UIViewRepresentable {
             }
 
             if !tracking && !locateOn { mv.showsUserLocation = false }
+            applyNeedle()   // 포인터 표시 여부가 바뀌었을 수 있음 — 자북 바늘도 동기
         }
 
         // 등반 중에는 내장 유저 dot 을 숨긴다(현재 위치는 climb-pos style 레이어로 렌더). 그 외엔 기본 dot.
@@ -193,7 +216,78 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
             let heading = mode == .followWithHeading
             mapView.showsUserHeadingIndicator = heading
+            headingMode = heading               // 나침반 켜짐 → 자북 바늘 숨김(해제 시 복귀)
+            applyNeedle()
             onHeadingChanged?(heading)
+        }
+
+        // 탐험 — 내장 위치 점이 갱신될 때마다 자북 바늘 좌표를 동기(등반 중엔 climb-pos 좌표 사용).
+        func mapView(_ mapView: MLNMapView, didUpdate userLocation: MLNUserLocation?) {
+            guard !tracking else { return }
+            if let c = userLocation?.coordinate, CLLocationCoordinate2DIsValid(c) { needleCoord = c }
+            else { needleCoord = nil }
+            applyNeedle()
+        }
+
+        // 지자기 헤딩 수신 — 1° 미만 변화는 무시(과도한 레이어 갱신 방지).
+        func locationManager(_ m: CLLocationManager, didUpdateHeading h: CLHeading) {
+            guard h.headingAccuracy >= 0 else { return }        // 무효 헤딩(보정 필요)
+            if !needleDeg.isNaN, abs(h.magneticHeading - needleDeg) < 1 { return }
+            needleDeg = h.magneticHeading
+            applyNeedle()
+        }
+
+        // 자북 바늘 소스/레이어/아이콘 — 스타일 로드마다 재구성(테마 색 반영).
+        // 심볼 레이어 방식이라 등반 climb-pos 와 같은 렌더 경로 — 줌·이동 중에도 포인터와 어긋나지 않는다.
+        private func ensureNeedle(on style: MLNStyle) {
+            registerNeedleIcon(on: style)
+            guard style.source(withIdentifier: "north-needle") == nil else { return }
+            let src = MLNShapeSource(identifier: "north-needle", shape: nil, options: nil)
+            style.addSource(src)
+            let l = MLNSymbolStyleLayer(identifier: "north-needle", source: src)
+            l.iconImageName = NSExpression(forConstantValue: "north-needle")
+            // viewport 정렬 — 지도 베어링과 무관하게 화면 기준으로 회전(자북 = 화면상 -헤딩 방향).
+            l.iconRotationAlignment = NSExpression(forConstantValue: "viewport")
+            // 포인터(≈22pt) 가장자리 바깥 궤도 — offset 은 icon-rotate 와 함께 회전해 둘레를 따라 돈다.
+            l.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -18)))
+            l.iconAllowsOverlap = NSExpression(forConstantValue: true)
+            l.iconIgnoresPlacement = NSExpression(forConstantValue: true)
+            style.addLayer(l)                    // 맨 위 — 트랙·포인터 위에
+        }
+
+        // 삼각 바늘 아이콘 — 포인터 절반 크기(≈11pt), 잉크색 + 반대색 외곽(흑백 테마 통일).
+        private func registerNeedleIcon(on style: MLNStyle) {
+            let W: CGFloat = 12, H: CGFloat = 11
+            let img = UIGraphicsImageRenderer(size: CGSize(width: W, height: H)).image { _ in
+                let p = UIBezierPath()
+                p.move(to: CGPoint(x: W / 2, y: 1.2))            // 꼭짓점(자북 방향)
+                p.addLine(to: CGPoint(x: W - 2.2, y: H - 1.5))
+                p.addLine(to: CGPoint(x: 2.2, y: H - 1.5))
+                p.close()
+                p.lineJoinStyle = .round
+                (dark ? UIColor.black : .white).setStroke()      // 반대색 외곽 — 어느 배경에서든 분리
+                p.lineWidth = 2.4
+                p.stroke()
+                (dark ? UIColor.white : .black).setFill()
+                p.fill()
+            }
+            style.setImage(img, forName: "north-needle")
+        }
+
+        // 자북 바늘 반영 — 표시 조건(포인터 노출 + 나침반 꺼짐 + 헤딩 수신)과 회전 갱신.
+        private func applyNeedle() {
+            guard let mv = mapView, let style = mv.style,
+                  let src = style.source(withIdentifier: "north-needle") as? MLNShapeSource,
+                  let layer = style.layer(withIdentifier: "north-needle") as? MLNSymbolStyleLayer else { return }
+            let dotShown = tracking || mv.showsUserLocation
+            guard !headingMode, dotShown, let c = needleCoord, !needleDeg.isNaN else {
+                src.shape = nil
+                return
+            }
+            let f = MLNPointFeature()
+            f.coordinate = c
+            src.shape = f
+            layer.iconRotation = NSExpression(forConstantValue: -needleDeg)   // 화면상 자북 방향
         }
 
         // POI 아이콘 등록 — 웹 makePoiIcon(캔버스) 대응. 네이티브는 SF Symbol 을 렌더한다.
@@ -424,9 +518,12 @@ struct MapView: UIViewRepresentable {
         private func setClimbPos(_ track: [[Double]], on mv: MLNMapView) {
             guard let src = mv.style?.source(withIdentifier: "climb-pos") as? MLNShapeSource else { return }
             if tracking, let p = track.last, p.count >= 2 {
+                let c = CLLocationCoordinate2D(latitude: p[1], longitude: p[0])
                 let f = MLNPointFeature()
-                f.coordinate = CLLocationCoordinate2D(latitude: p[1], longitude: p[0])
+                f.coordinate = c
                 src.shape = f
+                needleCoord = c                 // 자북 바늘도 같은 좌표(포인터와 동기)
+                applyNeedle()
             } else {
                 src.shape = nil
             }
@@ -573,6 +670,8 @@ struct MapView: UIViewRepresentable {
             setCourseNos(desiredCourses, on: mapView)
             applyTrailSelection(desiredCourse?.name, on: mapView)   // 선택 코스 강조 재적용(스타일 재로드)
             applyCourseVisibility(style)                            // 코스 표시 상태 재적용(루트 보기 포함)
+            ensureNeedle(on: style)                                 // 자북 바늘 소스/레이어/아이콘(테마 색) 재구성
+            applyNeedle()
             trackCount = -1; recTrackKey = ""; recCursorKey = ""; overlapKey = ""  // 스타일 재로드 시 재주입 강제
         }
 
