@@ -1,6 +1,6 @@
 import SwiftUI
 import MapLibre
-import CoreLocation   // 자북 바늘 — 지자기 헤딩 구독
+import CoreLocation
 
 // 등반 중 내장 유저 dot 을 숨긴다 — 현재 위치는 climb-pos style 레이어로 그려 줌 시 루트와 완벽 동기.
 // (내장 dot 은 주석 뷰라 줌 애니메이션 중 한 프레임 늦게 재배치돼 루트 선과 엇갈림.)
@@ -8,14 +8,11 @@ final class EmptyUserDot: MLNUserLocationAnnotationView {
     override func update() { /* 아무것도 그리지 않음 */ }
 }
 
-// 탐험용 위치 점 + 자북 바늘 — **한 뷰(같은 컨테이너)** 에 함께 그려 이동이 완전히 동기된다.
-// ⚠️ 바늘을 스타일 레이어로 그리면 어긋난다: 내장 점(주석 뷰)은 GPS 갱신 사이를 부드럽게
-//    보간 이동하는데 GL 소스 갱신은 즉시 점프라, 점이 미끄러질 때 바늘이 따로 놀았다
-//    (2026-07-26 실기 확인). 스타일 바늘은 climb-pos 와 같은 경로인 등반 중에만 쓴다.
-final class NeedleUserDot: MLNUserLocationAnnotationView {
-    private let orbit = CALayer()         // 바늘 궤도 컨테이너 — 점 중심 기준 회전만 담당
+// 탐험용 위치 점 — 내장 dot 모사 + 나침반 모드 빔을 **한 뷰(같은 컨테이너)** 에 그린다.
+// (커스텀 주석 뷰를 쓰면 내장 빔이 안 그려져 직접 그린다. 헤딩 화살표는 나침반 빔과
+//  기능이 겹치고 자기 간섭 시 오정보라 제거 — 사용자 결정 2026-07-28.)
+final class ExploreUserDot: MLNUserLocationAnnotationView {
     private let dot = CALayer()
-    private let needle = CAShapeLayer()
     private let beam = CAGradientLayer()  // 나침반 모드 빔 — 커스텀 뷰는 내장 빔이 안 그려져 직접 그린다
     private var built = false
 
@@ -59,43 +56,19 @@ final class NeedleUserDot: MLNUserLocationAnnotationView {
         dot.shadowOpacity = 0.25
         dot.shadowOffset = .zero
         dot.shadowRadius = 3
-        // 바늘 — 점 절반 크기 삼각형, 궤도 상단(자북 방향)에 배치
-        let W: CGFloat = 12, H: CGFloat = 11
-        let p = UIBezierPath()
-        p.move(to: CGPoint(x: W / 2, y: 0))
-        p.addLine(to: CGPoint(x: W - 1.5, y: H))
-        p.addLine(to: CGPoint(x: 1.5, y: H))
-        p.close()
-        needle.path = p.cgPath
-        needle.strokeColor = UIColor.white.cgColor
-        needle.lineWidth = 2
-        needle.lineJoin = .round
-        needle.bounds = CGRect(x: 0, y: 0, width: W, height: H)
-        needle.position = CGPoint(x: R / 2, y: R / 2 - 18)   // 점 가장자리 바깥 궤도
-        orbit.bounds = bounds
-        orbit.position = center
-        orbit.isHidden = true                                // 헤딩 수신 전엔 숨김
-        orbit.addSublayer(needle)
         layer.addSublayer(beam)
-        layer.addSublayer(orbit)
         layer.addSublayer(dot)
     }
 
     private func applyTint() {
         let ink = tintColor ?? .label
         dot.backgroundColor = ink.cgColor
-        needle.fillColor = ink.cgColor
         beam.colors = [ink.withAlphaComponent(0.45).cgColor, ink.withAlphaComponent(0).cgColor]
     }
 
-    // 헤딩 화살표 반영 — 화살표 = 폰이 향한 방향(+헤딩, 폰과 함께 돎). 정북 고정 지도에서
-    // "지도상 내 시선"을 보여준다(애플/구글 파란 부채꼴 감각 — 사용자 선택 2026-07-26).
-    // 나침반 모드 중엔 화살표 대신 빔(지도가 회전, 시선=화면 위). 궤도 회전은 암시적 CA 스무딩.
-    func set(heading deg: Double, compass: Bool) {
+    // 나침반 모드 빔 — followWithHeading 은 지도가 회전해 시선이 항상 화면 위라 빔은 고정.
+    func set(compass: Bool) {
         beam.isHidden = !compass
-        orbit.isHidden = compass || deg.isNaN
-        guard !deg.isNaN else { return }
-        orbit.setAffineTransform(CGAffineTransform(rotationAngle: CGFloat(deg * .pi / 180)))
     }
 }
 
@@ -139,8 +112,7 @@ struct MapView: UIViewRepresentable {
         mv.addGestureRecognizer(UITapGestureRecognizer(
             target: context.coordinator, action: #selector(Coordinator.handleTap(_:))))
         context.coordinator.dark = styleResource.contains("dark")
-        context.coordinator.mapView = mv        // 헤딩 화살표 — 헤딩 콜백에서 지도 접근
-        context.coordinator.startHeading()      // 지자기 헤딩 구독(시뮬레이터는 미지원 → 화살표 없음)
+        context.coordinator.mapView = mv        // 깜박임 타이머·나침반 빔에서 지도 접근
         // 위치 점 5m 거리 필터 — 기본값(kCLDistanceFilterNone)은 1~3m GPS 지터까지 전부 점으로
         // 전달돼 가만히 있어도 점이 계속 떠다닌다(등반 트래킹 ClimbStore 와 같은 5m 정책, 2026-07-26).
         mv.locationManager.setDistanceFilter?(5)
@@ -206,7 +178,7 @@ struct MapView: UIViewRepresentable {
         return out
     }
 
-    final class Coordinator: NSObject, MLNMapViewDelegate, CLLocationManagerDelegate {
+    final class Coordinator: NSObject, MLNMapViewDelegate {
         private var desired: Mountain?      // 목표 산
         private var cameraDone: String?     // 카메라를 맞춘 산코드 (중복 이동 방지)
         private var desiredCourse: Course?  // 선택 코스 (시종점 표시용)
@@ -234,29 +206,15 @@ struct MapView: UIViewRepresentable {
         var onScaleChanged: ((Double) -> Void)?
         var onHeadingChanged: ((Bool) -> Void)?
 
-        // ── 헤딩 화살표 — 지도는 그대로 두고 위치 포인터 둘레의 삼각형이 폰이 향한 방향을 실시간 표시. ──
-        // (처음엔 자북 나침반 바늘이었으나 "폰과 함께 도는" 헤딩 방식으로 변경 — 사용자 선택 2026-07-26.)
-        // 나침반(followWithHeading) 모드가 아니어도 항상 표시(모드 켜면 숨김·해제하면 복귀).
-        weak var mapView: MLNMapView?               // 헤딩 콜백에서 지도 접근
-        private let headingMgr = CLLocationManager()  // 헤딩 전용(위치 구독 없음 — 자력계라 배터리 미미)
-        private var needleDeg = Double.nan          // 최근 자북 방위(도) — nan=수신 전
-        private var needleCoord: CLLocationCoordinate2D?   // 등반 바늘 위치(climb-pos 와 동기)
-        private var headingMode = false             // 나침반 추적 중 — 바늘 숨김(지도가 회전·빔 표시)
-        private weak var userDot: NeedleUserDot?    // 탐험 위치 점(점+바늘 통합 뷰) — viewFor 가 채움
+        // ── 나침반 모드 빔 — 탐험은 주석 뷰(ExploreUserDot), 등반은 스타일 레이어(climb-pos 동기). ──
+        // (헤딩 화살표는 나침반 빔과 기능이 겹쳐 제거 — 사용자 결정 2026-07-28.)
+        weak var mapView: MLNMapView?               // 깜박임 타이머·빔 갱신에서 지도 접근
+        private var beamCoord: CLLocationCoordinate2D?   // 등반 빔 위치(climb-pos 와 동기)
+        private var headingMode = false             // 나침반 추적 중 — 빔 표시(지도가 회전)
+        private weak var userDot: ExploreUserDot?   // 탐험 위치 점(점+빔 통합 뷰) — viewFor 가 채움
         // 등반 위치 점(climb-pos) 안쪽 도트 깜박임 — 레코딩 중 효과(탐험 포인터와 대비).
         private var blinkTimer: Timer?
         private var blinkOn = true
-
-        override init() {
-            super.init()
-            headingMgr.delegate = self
-        }
-
-        // 지자기 헤딩 구독 시작 — 권한 불요. 시뮬레이터는 headingAvailable=false 라 바늘이 안 뜬다.
-        func startHeading() {
-            guard CLLocationManager.headingAvailable() else { return }
-            headingMgr.startUpdatingHeading()
-        }
 
         // 현재위치 점 표시 + 추적 카메라(등반 중 tracking, 또는 위치 버튼 locateTick).
         // 위치 버튼은 나침반도 통합 — 누를 때마다 정북 추적 ⇄ 나침반(헤딩) 추적을 순환한다.
@@ -306,7 +264,7 @@ struct MapView: UIViewRepresentable {
             }
 
             if !tracking && !locateOn { mv.showsUserLocation = false }
-            refreshNeedle()   // 포인터 표시 여부·모드가 바뀌었을 수 있음 — 자북 바늘도 동기
+            refreshBeam()     // 포인터 표시 여부·모드가 바뀌었을 수 있음 — 빔도 동기
             setBlink(tracking)   // 등반 중 = 안쪽 도트 느린 깜박임(레코딩 효과)
         }
 
@@ -338,13 +296,13 @@ struct MapView: UIViewRepresentable {
         deinit { blinkTimer?.invalidate() }
 
         // 등반 중에는 내장 유저 dot 을 숨긴다(현재 위치는 climb-pos style 레이어로 렌더).
-        // 탐험은 점+자북 바늘 통합 뷰(NeedleUserDot) — 같은 컨테이너라 이동이 완전 동기.
+        // 탐험은 점+나침반 빔 통합 뷰(ExploreUserDot) — 같은 컨테이너라 이동이 완전 동기.
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
             guard annotation is MLNUserLocation else { return nil }
             if tracking { return EmptyUserDot() }
-            let v = userDot ?? NeedleUserDot()
+            let v = userDot ?? ExploreUserDot()
             userDot = v
-            v.set(heading: needleDeg, compass: headingMode)
+            v.set(compass: headingMode)
             return v
         }
 
@@ -355,61 +313,33 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, didChange mode: MLNUserTrackingMode, animated: Bool) {
             let heading = mode == .followWithHeading
             mapView.showsUserHeadingIndicator = heading
-            headingMode = heading               // 나침반 켜짐 → 자북 바늘 숨김(해제 시 복귀)
-            refreshNeedle()
+            headingMode = heading
+            refreshBeam()
             onHeadingChanged?(heading)
         }
 
-        // 지자기 헤딩 수신 — 1° 미만 변화는 무시(과도한 갱신 방지).
-        func locationManager(_ m: CLLocationManager, didUpdateHeading h: CLHeading) {
-            guard h.headingAccuracy >= 0 else { return }        // 무효 헤딩(보정 필요)
-            if !needleDeg.isNaN, abs(h.magneticHeading - needleDeg) < 1 { return }
-            needleDeg = h.magneticHeading
-            refreshNeedle()
+        // 나침반 빔 갱신 라우팅 — 탐험=주석 뷰(점과 같은 컨테이너), 등반=스타일 레이어(climb-pos 동기).
+        private func refreshBeam() {
+            userDot?.set(compass: headingMode)
+            applyBeam()
         }
 
-        // 자북 바늘 갱신 라우팅 — 탐험=주석 뷰(점과 같은 컨테이너), 등반=스타일 레이어(climb-pos 동기).
-        private func refreshNeedle() {
-            userDot?.set(heading: needleDeg, compass: headingMode)
-            applyNeedle()
-        }
-
-        // 자북 바늘 소스/레이어/아이콘 — 스타일 로드마다 재구성(테마 색 반영).
+        // 등반 나침반 빔 소스/레이어/아이콘 — 스타일 로드마다 재구성(테마 색 반영).
         // 심볼 레이어 방식이라 등반 climb-pos 와 같은 렌더 경로 — 줌·이동 중에도 포인터와 어긋나지 않는다.
-        private func ensureNeedle(on style: MLNStyle) {
-            registerNeedleIcon(on: style)
+        private func ensureBeam(on style: MLNStyle) {
             registerBeamIcon(on: style)
-            guard style.source(withIdentifier: "north-needle") == nil else { return }
-            let src = MLNShapeSource(identifier: "north-needle", shape: nil, options: nil)
+            guard style.source(withIdentifier: "compass-beam") == nil else { return }
+            let src = MLNShapeSource(identifier: "compass-beam", shape: nil, options: nil)
             style.addSource(src)
-            let l = MLNSymbolStyleLayer(identifier: "north-needle", source: src)
-            l.iconImageName = NSExpression(forConstantValue: "north-needle")
-            // viewport 정렬 — 지도 베어링과 무관하게 화면 기준으로 회전(자북 = 화면상 -헤딩 방향).
+            let l = MLNSymbolStyleLayer(identifier: "compass-beam", source: src)
+            l.iconImageName = NSExpression(forConstantValue: "heading-beam")
+            // viewport 정렬 — followWithHeading 은 지도가 회전하고 시선은 항상 화면 위라 빔 고정.
             l.iconRotationAlignment = NSExpression(forConstantValue: "viewport")
-            // 포인터(≈22pt) 가장자리 바깥 궤도 — offset 은 icon-rotate 와 함께 회전해 둘레를 따라 돈다.
-            l.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -18)))
+            l.iconAnchor = NSExpression(forConstantValue: "bottom")   // 꼭짓점이 점 중심에서 위로
+            l.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -8)))
             l.iconAllowsOverlap = NSExpression(forConstantValue: true)
             l.iconIgnoresPlacement = NSExpression(forConstantValue: true)
             style.addLayer(l)                    // 맨 위 — 트랙·포인터 위에
-        }
-
-        // 삼각 바늘 아이콘 — 포인터 절반 크기(≈11pt), 잉크색 + 반대색 외곽(흑백 테마 통일).
-        private func registerNeedleIcon(on style: MLNStyle) {
-            let W: CGFloat = 12, H: CGFloat = 11
-            let img = UIGraphicsImageRenderer(size: CGSize(width: W, height: H)).image { _ in
-                let p = UIBezierPath()
-                p.move(to: CGPoint(x: W / 2, y: 1.2))            // 꼭짓점(자북 방향)
-                p.addLine(to: CGPoint(x: W - 2.2, y: H - 1.5))
-                p.addLine(to: CGPoint(x: 2.2, y: H - 1.5))
-                p.close()
-                p.lineJoinStyle = .round
-                (dark ? UIColor.black : .white).setStroke()      // 반대색 외곽 — 어느 배경에서든 분리
-                p.lineWidth = 2.4
-                p.stroke()
-                (dark ? UIColor.white : .black).setFill()
-                p.fill()
-            }
-            style.setImage(img, forName: "north-needle")
         }
 
         // 나침반 빔 아이콘(등반용) — 점에서 위로 퍼지며 사라지는 반투명 원뿔(잉크색 그라데이션).
@@ -434,28 +364,12 @@ struct MapView: UIViewRepresentable {
             style.setImage(img, forName: "heading-beam")
         }
 
-        // 등반용 스타일 바늘/빔 반영 — climb-pos(스타일 레이어 점)와 같은 렌더 경로라 완전 동기.
-        // 탐험은 여기 안 옴(주석 뷰 NeedleUserDot 이 담당 — GL 소스는 보간 없이 점프라 어긋남).
-        // 나침반 모드 = 빔(내장 빔은 EmptyUserDot 이라 안 그려짐 — followWithHeading 은 시선이 화면 위라 고정).
-        private func applyNeedle() {
+        // 등반용 스타일 빔 반영 — climb-pos(스타일 레이어 점)와 같은 렌더 경로라 완전 동기.
+        // 탐험은 여기 안 옴(주석 뷰 ExploreUserDot 이 담당 — 내장 빔은 EmptyUserDot 이라 안 그려짐).
+        private func applyBeam() {
             guard let mv = mapView, let style = mv.style,
-                  let src = style.source(withIdentifier: "north-needle") as? MLNShapeSource,
-                  let layer = style.layer(withIdentifier: "north-needle") as? MLNSymbolStyleLayer else { return }
-            guard tracking, let c = needleCoord else { src.shape = nil; return }
-            if headingMode {
-                layer.iconImageName = NSExpression(forConstantValue: "heading-beam")
-                layer.iconRotation = NSExpression(forConstantValue: 0)        // 시선 = 화면 위
-                layer.iconAnchor = NSExpression(forConstantValue: "bottom")   // 꼭짓점이 점 중심에서 위로
-                layer.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -8)))
-            } else if !needleDeg.isNaN {
-                layer.iconImageName = NSExpression(forConstantValue: "north-needle")
-                layer.iconRotation = NSExpression(forConstantValue: needleDeg)   // 헤딩 화살표 — 폰이 향한 방향
-                layer.iconAnchor = NSExpression(forConstantValue: "center")
-                layer.iconOffset = NSExpression(forConstantValue: NSValue(cgVector: CGVector(dx: 0, dy: -18)))
-            } else {
-                src.shape = nil
-                return
-            }
+                  let src = style.source(withIdentifier: "compass-beam") as? MLNShapeSource else { return }
+            guard tracking, headingMode, let c = beamCoord else { src.shape = nil; return }
             let f = MLNPointFeature()
             f.coordinate = c
             src.shape = f
@@ -694,8 +608,8 @@ struct MapView: UIViewRepresentable {
                 let f = MLNPointFeature()
                 f.coordinate = c
                 src.shape = f
-                needleCoord = c                 // 자북 바늘도 같은 좌표(포인터와 동기)
-                applyNeedle()
+                beamCoord = c                   // 나침반 빔도 같은 좌표(포인터와 동기)
+                applyBeam()
             } else {
                 src.shape = nil
             }
@@ -849,8 +763,8 @@ struct MapView: UIViewRepresentable {
             setCourseNos(desiredCourses, on: mapView)
             applyTrailSelection(desiredCourse?.name, on: mapView)   // 선택 코스 강조 재적용(스타일 재로드)
             applyCourseVisibility(style)                            // 코스 표시 상태 재적용(루트 보기 포함)
-            ensureNeedle(on: style)                                 // 자북 바늘 소스/레이어/아이콘(테마 색) 재구성
-            refreshNeedle()
+            ensureBeam(on: style)                                   // 등반 나침반 빔 소스/레이어/아이콘(테마 색) 재구성
+            refreshBeam()
             trackCount = -1; recTrackKey = ""; recCursorKey = ""; overlapKey = ""  // 재주입 강제(키 리셋)
             // 트랙류는 여기서 **즉시** 재주입 — 다음 updateUIView(우연한 상태 변화)를 기다리면
             // 테마·지도유형 전환 때 루트가 수 초간 사라져 보인다(2026-07-26 실기).
