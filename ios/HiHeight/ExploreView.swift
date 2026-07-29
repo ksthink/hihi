@@ -28,6 +28,10 @@ struct ExploreView: View {
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
     @State private var weather: [WeatherHour] = []
+    // info·weather 가 담고 있는 산. 코스보다 늦게 도착하므로(날씨 2s+), 산이 바뀌었는데
+    // 이전 산 값이 새 산 정보처럼 잠깐 보이는 것을 막는 데 쓴다. 같은 산 재진입이면
+    // 값을 유지해 깜빡임을 피한다.
+    @State private var loadedInfoCode: String?
     @StateObject private var packs = PackStore.shared    // 오프라인 팩 다운로드/설치 상태
     @StateObject private var net = NetworkMonitor.shared  // 온라인/오프라인 — 하이브리드 base 전환
     @State private var deletePackTarget: Mountain?        // 저장된 지도 삭제 확인 대상
@@ -234,12 +238,18 @@ struct ExploreView: View {
             //   약해 실패하거나 재시도로 배터리를 먹고, 날씨는 출발 시점 스냅샷이 맞다.
             //   시작 시 이미 채워 둔 값을 그대로 쓴다(지도 소스도 로컬 팩 — offlineBaseURL).
             guard !climb.tracking else { return }
-            async let cs = PackLoader.courses(m.id)    // 팩(프록시)·산정보(Supabase)·날씨(프록시) 병렬
+            // 팩(로컬 우선)·산정보(Supabase)·날씨(프록시) 병렬 시작.
+            // 코스는 저장된 팩의 routes.geojson 을 먼저 본다 — 등반 탭 캐러셀과 같은 경로라
+            // 방금 로컬로 읽은 목록을 네트워크로 다시 받지 않고, 오프라인에서도 프레이밍이 된다.
+            async let cs = PackLoader.courses(m.id, localURL: packs.localFile(m.id, "routes.geojson"))
             async let inf = InfoLoader.load(m.id)
             async let wx = WeatherService.fetch(lat: m.center[1], lon: m.center[0])
+            // ⚠️ 코스가 도착하면 **즉시** 선택·프레이밍한다. 예전엔 날씨까지 await 한 뒤에야
+            //    코스를 골라, 등반 카드 터치 → 코스가 화면에 차기까지 2~3초가 걸렸다
+            //    (2026-07-29 실측: 코스 0.78s · 산정보 0.09s · 날씨 vfcst 2.24s).
+            //    날씨·산정보는 하단 시트에서만 쓰여 지도 프레이밍과 무관하다.
+            if loadedInfoCode != m.id { info = nil; weather = [] }   // 산 전환 — 이전 값 즉시 치움
             courses = await cs
-            info = await inf
-            weather = await wx
             climb.mountainName = m.name
             climb.mountainCode = m.id
             // 코스 자동 선택. (등반 중이면 위 guard 에서 이미 반환 — 세션 코스는 건드리지 않는다.
@@ -262,6 +272,10 @@ struct ExploreView: View {
                 climb.fitRequested = false
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }
             }
+            // 프레이밍이 끝난 뒤 나머지를 채운다 — 시트가 열려 있으면 도착하는 대로 갱신된다.
+            info = await inf
+            weather = await wx
+            loadedInfoCode = m.id
         }
         // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
         // 않으므로 여기서 이미 로드된 목록에 적용한다. (없으면 코스가 안 바뀜)

@@ -196,6 +196,11 @@ struct DeungView: View {
     private func openCarousel(_ m: Mountain) {
         carouselMountain = m
         carouselCourses = []
+        // 이 산의 날씨를 미리 받아둔다 — 사용자가 카드를 훑는 동안 끝나므로, 카드를 눌러
+        // 탐험으로 넘어갔을 때 시트 날씨가 이미 채워져 있다(캐시 미스면 2초 넘게 걸린다).
+        if !climb.tracking, m.center.count == 2 {
+            WeatherService.prefetch(lat: m.center[1], lon: m.center[0])
+        }
         Task {
             let list = await PackLoader.courses(m.id, localURL: packs.localFile(m.id, "routes.geojson"))
             carouselCourses = list

@@ -90,6 +90,13 @@ enum WeatherService {
         return m
     }
 
+    // 미리 받아두기 — 결과는 버리고 URLCache 만 채운다(프록시 Cache-Control max-age=1800).
+    // 탐험 진입 시점에 처음 요청하면 캐시 미스가 2초 넘게 걸려 날씨 칸이 비어 보인다.
+    // 앱 시작·코스 캐러셀 진입처럼 **탐험보다 이른 시점**에 걸어두면 도착할 때 이미 캐시에 있다.
+    static func prefetch(lat: Double, lon: Double) {
+        Task { _ = await fetch(lat: lat, lon: lon) }
+    }
+
     // 산 위치 2시간 간격 count 개 예보 (초단기예보 + 단기예보 병합)
     static func fetch(lat: Double, lon: Double, count: Int = 8, stepHours: Int = 2) async -> [WeatherHour] {
         let (nx, ny) = dfsXy(lat: lat, lon: lon)

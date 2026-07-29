@@ -48,6 +48,11 @@ struct ContentView: View {
             async let a: Void = auth.refresh()
             _ = await (c, a)
             climb.checkPending()               // 강제 종료로 중단된 등반이 있으면 복구 안내
+            // 선택된 산의 날씨를 미리 받아둔다 — 스플래시(2.8s)가 떠 있는 동안 끝나므로
+            // 첫 탐험 진입에서 날씨 칸이 비어 있다가 채워지는 지연이 보이지 않는다.
+            if !climb.tracking, let m = catalog.selected, m.center.count == 2 {
+                WeatherService.prefetch(lat: m.center[1], lon: m.center[0])
+            }
         }
         // 중단된 등반 복구 — 강제 종료는 막을 수 없으므로 진행 중 저장해 둔 세션으로 되살린다(IOS.md §9 S3).
         // 시스템 다이얼로그 대신 앱 UI 로 통일한 전용 팝업(ClimbResumeView).
