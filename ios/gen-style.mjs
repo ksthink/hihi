@@ -145,9 +145,12 @@ function make(theme, baseMode) {
   const tc = theme === "dark"
     ? { line: "#ffffff", casing: "#000000", faded: "#5c5c5c" }
     : { line: "#111111", casing: "#ffffff", faded: "#b8b8b8" };
-  const widthExpr = ["interpolate", ["linear"], ["zoom"],
-    11, ["match", ["get", "difficulty"], "초급", 1.6, "중급", 2.4, "고급", 3.4, 2.2],
-    16, ["match", ["get", "difficulty"], "초급", 3.5, "중급", 5, "고급", 7, 4.5]];
+  // 두께는 난이도와 무관하게 통일한다(2026-07-29). 예전에는 난이도별로 굵기를 나눴는데
+  // (초급 1.6/3.5 · 중급 2.4/5 · 고급 3.4/7 · 기본 2.2/4.5), 산 대부분이 초급 단일 코스라
+  // "난이도 인코딩"으로 읽히지 않고 "산마다 두께가 제각각"으로만 체감됐다.
+  // 값은 가장 굵던 고급 기준 — 얇은 선은 손가락·야외 시인성에서 불리하다.
+  // (난이도는 등반 카드의 3막대 미터와 코스 목록 배지가 표시한다.)
+  const widthExpr = ["interpolate", ["linear"], ["zoom"], 11, 3.4, 16, 7];
   style.sources.trails = {
     type: "geojson",
     data: `${BASE}/packs/${PACK}/routes.geojson`,
