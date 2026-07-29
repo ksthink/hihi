@@ -24,6 +24,7 @@
   <nav id="tabs">
     <button id="tab-mnt" class="tab active" data-tab="mnt">산 편집</button>
     <button id="tab-cu" class="tab" data-tab="cu">큐레이션</button>
+    <button id="tab-rec" class="tab" data-tab="rec">등반 기록</button>
   </nav>
   <span class="head-right">
     <span id="save-state" title="draft 저장 상태"></span>
@@ -194,6 +195,20 @@
       </div>
     </div>
     <div id="cu-list"></div>
+  </section>
+
+  <!-- ── 등반 기록 · 진단 (지도 불필요 — 전체 폭) ── -->
+  <!-- climb_records + track.meta(배터리·GPS 요약). 서버가 service_role 로 조회한다(/api/records). -->
+  <section id="records-view" hidden>
+    <div id="rv-head">
+      <h2>등반 기록 <span class="dim">백그라운드 GPS 의 시간당 배터리 소모 — 정확도 설정별 비교</span></h2>
+      <div class="row">
+        <button id="rec-reload">새로고침</button>
+        <span id="rec-state" class="dim"></span>
+      </div>
+    </div>
+    <div id="rec-summary"></div>
+    <div id="rec-list"></div>
   </section>
 </div>
 

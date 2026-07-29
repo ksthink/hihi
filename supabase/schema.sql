@@ -37,9 +37,18 @@ create policy own_profile on profiles for all
 
 -- climb_records: 등반 기록.
 -- track jsonb 포맷(웹·iOS 공용): { points: [[lng,lat,고도m|null,unix초]...](최대 2000점, 균등 솎음),
---   elev: {min,max,ascent,descent}(고도 샘플 충분할 때만) }
+--   elev: {min,max,ascent,descent}(고도 샘플 충분할 때만),
+--   meta: 진단 요약(2026-07-29 추가, iOS 만 기록 — 없는 기록은 키 자체가 없다) }
+-- meta 포맷: { v:1, bat_start, bat_end(0~100·-1=미측정), low_power, charged,
+--   gps_mode("Best"|"10m"|"100m"), fixes, fixes_dropped(정확도 게이트 탈락 수), acc_avg(m·-1=표본없음) }
+--   목적: 백그라운드 GPS 의 시간당 배터리 소모를 기기·정확도 설정별로 비교(관리자 콘솔 "등반 기록" 탭).
+--   ⚠️ bat_* 는 기기 전체 소모다 — 앱별 소비 전력 API 는 iOS 에 없다. charged=true 면 소모량 무의미.
 -- 구형 기록은 points 가 [lng,lat,unix초] 3원소 — 소비 측에서 길이로 구분.
 -- 원본 고해상 트랙은 클라우드에 올리지 않는다(iOS: 기기 로컬 GPX 보관, 여기엔 단순화본).
+--
+-- 관리자 열람: RLS 는 본인 기록만(own_records) 그대로 둔다. 관리자 콘솔은 admin_server.py 의
+-- /api/records 가 service_role 키로 조회하므로 정책 추가가 필요 없다 — 브라우저에 service_role
+-- 키가 노출되지 않고, 사용자 트랙 열람 권한이 상시 열려 있지도 않다(2026-07-29 결정).
 create table if not exists climb_records (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users on delete cascade,

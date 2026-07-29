@@ -337,6 +337,46 @@ LOGIN_FAILS = {}          # ip -> {"n": 실패 횟수, "until": 잠금 해제 �
 MAX_FAILS, LOCK_SEC = 5, 600
 
 
+# ── 등반 기록 (진단 열람) ──
+# climb_records 의 RLS 는 "본인 기록만"이라 브라우저의 publishable 키로는 남의 기록을 못 읽는다.
+# 관리자 콘솔 대신 이 서버가 service_role 키로 조회한다 — 키가 브라우저에 나가지 않고,
+# 사용자 트랙 열람 권한을 상시 열어두는 RLS 정책도 필요 없다(2026-07-29 결정).
+SUPABASE_URL = os.environ.get(
+    "SUPABASE_URL", "https://durnojryhhsajnlwvdzt.supabase.co").rstrip("/")
+
+
+def _supabase_secret():
+    return (os.environ.get("SUPABASE_SECRET_KEY")
+            or os.environ.get("SUPABASE_SERVICE_ROLE") or "")
+
+
+def _records(limit=200):
+    """등반 기록 목록 + 진단 요약. track.points 는 크므로 개수만 돌려준다."""
+    key = _supabase_secret()
+    if not key:
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY 가 없습니다 — .env 에 service_role 키를 넣고 서버를 재시작하세요")
+    qs = urllib.parse.urlencode({
+        "select": ("id,user_id,mountain_id,course_name,started_at,ended_at,"
+                   "distance_km,ascent_m,duration_s,track"),
+        "order": "started_at.desc",
+        "limit": str(limit),
+    })
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/climb_records?{qs}",
+        headers={"apikey": key, "Authorization": f"Bearer {key}"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        rows = json.load(r)
+    out = []
+    for row in rows:
+        tr = row.pop("track", None) or {}
+        row["meta"] = tr.get("meta")          # 진단 요약(구형 기록엔 없음)
+        row["elev"] = tr.get("elev")
+        row["points"] = len(tr.get("points") or [])
+        out.append(row)
+    return out
+
+
 class AdminHandler(BaseHandler):
     # ── 공통 ──
     def _json(self, obj, status=200):
@@ -447,6 +487,17 @@ class AdminHandler(BaseHandler):
         # GET /api/weather?op=&nx=&ny=&base_date=&base_time=  (기상청 프록시)
         if method == "GET" and p == ["weather"]:
             return self._weather(q)
+
+        # GET /api/records?limit= — 등반 기록 + 진단 요약(배터리·GPS). service_role 조회.
+        if method == "GET" and p == ["records"]:
+            try:
+                limit = int((q.get("limit") or ["200"])[0])
+            except ValueError:
+                limit = 200
+            try:
+                return self._json(_records(min(max(limit, 1), 1000)))
+            except Exception as e:
+                return self._err(str(e), 500)
 
         # GET /api/mnt-codes?q=
         if method == "GET" and p == ["mnt-codes"]:

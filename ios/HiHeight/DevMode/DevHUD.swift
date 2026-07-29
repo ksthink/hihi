@@ -2,8 +2,12 @@ import SwiftUI
 import UIKit   // UIPasteboard (탭 복사)
 
 // 개발자 모드 HUD — 모든 탭 위에 뜨는 드래그 가능한 플로팅 패널. (DevMode/ — 삭제 대상)
-// 접으면 작은 알약(⚙), 펼치면 지도·GPS·콘솔·빌드 4구획. 각 값을 탭하면 복사된다.
+// 접으면 작은 알약(⚙), 펼치면 배터리·계측·GPS·통신 4구획. 각 값을 탭하면 복사된다.
 // 개발자 모드가 켜져 있으면 HUD 는 항상 표시(닫기 없음) — 끄기는 프로필 토글에서.
+//
+// 2026-07-29 재구성 — 배터리 계측기. 지도·콘솔·빌드 구획을 빼고 소모 측정에 필요한 값만 남겼다.
+// 사용법: [리셋] 을 누르고 등반 → 10분 뒤부터 %/h 가 나온다. GPS 모드를 탭하면 정확도 등급이
+//        바뀌고 계측이 자동 리셋되므로, 같은 코스에서 등급별 소모를 비교할 수 있다.
 struct DevHUD: View {
     @ObservedObject var dev = DevStore.shared
     @Environment(\.colorScheme) private var scheme
@@ -25,10 +29,10 @@ struct DevHUD: View {
             if expanded {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        mapSection(t)
+                        batterySection(t)
+                        meterSection(t)
                         gpsSection(t)
-                        logSection(t)
-                        buildSection(t)
+                        netSection(t)
                     }
                     .padding(10)
                 }
@@ -62,22 +66,58 @@ struct DevHUD: View {
     }
 
     // MARK: 구획
-    private func mapSection(_ t: Theme) -> some View {
-        section(t, "지도") {
-            row(t, "중심", String(format: "%.5f, %.5f", dev.map.lat, dev.map.lng))
-            row(t, "줌", String(format: "%.2f", dev.map.zoom))
-            row(t, "방위", String(format: "%.0f°", dev.map.bearing))
-            row(t, "기울기", String(format: "%.0f°", dev.map.pitch))
-            row(t, "스타일", dev.map.style)
+
+    private func batterySection(_ t: Theme) -> some View {
+        section(t, "배터리") {
+            if dev.batteryLevel < 0 {
+                Text("미지원 — 실기기에서만 측정됨")
+                    .font(.kakao(size: 11)).foregroundStyle(t.muted)
+            } else {
+                row(t, "잔량", String(format: "%.0f%% · %@", dev.batteryLevel * 100,
+                                     dev.charging ? "충전 중" : "방전 중"))
+            }
+            row(t, "저전력", dev.lowPower ? "ON" : "OFF")
         }
     }
 
+    // 계측 — 이 HUD 의 핵심. %/h 를 얻으려고 나머지 구획이 존재한다.
+    private func meterSection(_ t: Theme) -> some View {
+        section(t, "계측") {
+            HStack {
+                Spacer()
+                Button("리셋") { dev.resetSession() }
+                    .font(.kakao(size: 10)).foregroundStyle(t.muted)
+            }
+            row(t, "경과", fmtElapsed(dev.elapsed))
+            row(t, "소모", dev.drainPercent.map { String(format: "%.0f%%", $0) }
+                ?? (dev.charging ? "충전 중 — 측정 불가" : "—"))
+            row(t, "시간당", dev.drainPerHour.map { String(format: "%.1f %%/h", $0) }
+                ?? "10분 이상 필요")
+        }
+    }
+
+    // GPS — 배터리 소모의 주범. 좌표보다 설정값·갱신 빈도가 중요하다.
     private func gpsSection(_ t: Theme) -> some View {
         section(t, "GPS · \(dev.authText)") {
+            row(t, "신호", dev.accuracy < 0 ? "\(dev.signalMeter) 없음"
+                : String(format: "%@ %@ · ±%.0fm", dev.signalMeter, dev.signalLabel, dev.accuracy))
+            row(t, "고도", dev.vAccuracy < 0 ? "—"
+                : String(format: "%.0fm · ±%.0fm", dev.altitude, dev.vAccuracy))
+            // 탭하면 정확도 등급 순환(Best → 10m → 100m) + 계측 리셋 — 등급별 %/h 비교용.
+            HStack(alignment: .top, spacing: 8) {
+                Text("모드").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                    .frame(width: 48, alignment: .leading)
+                Text("\(dev.accuracyMode)  ⟳ 탭=변경")
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(t.accent)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { dev.cycleAccuracy() }
+            row(t, "빈도", dev.fixPerMinute.map { String(format: "%d회 · %.1f/분", dev.fixCount, $0) }
+                ?? "\(dev.fixCount)회")
+            row(t, "최근", dev.sinceLastFix.map { fmtAgo($0) } ?? "수신 없음")
             if let c = dev.coord {
                 row(t, "위치", String(format: "%.6f, %.6f", c.latitude, c.longitude))
-                row(t, "정확도", dev.accuracy < 0 ? "—" : String(format: "±%.0fm", dev.accuracy))
-                row(t, "고도", String(format: "%.0fm", dev.altitude))
             } else {
                 Text("위치 없음 (시뮬: Features › Location)")
                     .font(.kakao(size: 11)).foregroundStyle(t.muted)
@@ -85,35 +125,9 @@ struct DevHUD: View {
         }
     }
 
-    private func logSection(_ t: Theme) -> some View {
-        section(t, "콘솔 · \(dev.logs.count)") {
-            HStack {
-                Spacer()
-                Button("지우기") { dev.clearLogs() }
-                    .font(.kakao(size: 10)).foregroundStyle(t.muted)
-            }
-            if dev.logs.isEmpty {
-                Text("출력 없음").font(.kakao(size: 11)).foregroundStyle(t.muted)
-            } else {
-                // 최근 아래로 — 최신 40줄만(HUD 가벼움 유지). 줄을 탭하면 그 줄 복사.
-                ForEach(Array(dev.logs.suffix(40).enumerated()), id: \.offset) { i, line in
-                    let id = "log-\(i)"
-                    Text(copied == id ? "복사됨 ✓" : line)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(copied == id ? t.accent : t.text)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .onTapGesture { copy(id, line) }
-                }
-            }
-        }
-    }
-
-    private func buildSection(_ t: Theme) -> some View {
-        section(t, "빌드") {
-            row(t, "버전", dev.appVersion)
-            row(t, "커밋", dev.gitCommit)
-            row(t, "네트워크", NetworkMonitor.shared.isOnline ? "온라인" : "오프라인")
+    private func netSection(_ t: Theme) -> some View {
+        section(t, "통신") {
+            row(t, "상태", NetworkMonitor.shared.isOnline ? "온라인" : "오프라인")
             row(t, "설치 팩", "\(PackStore.shared.downloaded.count)개")
         }
     }
@@ -148,5 +162,17 @@ struct DevHUD: View {
             try? await Task.sleep(nanoseconds: 800_000_000)
             if copied == id { copied = nil }
         }
+    }
+
+    private func fmtElapsed(_ s: TimeInterval) -> String {
+        let m = Int(s) / 60
+        if m < 60 { return "\(m)분" }
+        return "\(m / 60)시간 \(m % 60)분"
+    }
+
+    private func fmtAgo(_ s: TimeInterval) -> String {
+        if s < 15 { return "방금" }
+        if s < 60 { return "\(Int(s))초 전" }
+        return "\(Int(s) / 60)분 전"
     }
 }

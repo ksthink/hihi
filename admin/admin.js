@@ -1028,18 +1028,22 @@ const resizeMap = () => {
   requestAnimationFrame(() => { _rz = false; map.resize(); });
 };
 
-// 상단 탭: 산 편집 ↔ 큐레이션(지도 숨기고 전체 폭)
+// 상단 탭: 산 편집 ↔ 큐레이션 ↔ 등반 기록 (뒤 둘은 지도 숨기고 전체 폭)
 function showTab(name) {
   const cu = name === "cu";
-  $("editor-panel").hidden = cu;
-  $("map").hidden = cu;
-  $("mapcfg").hidden = cu;
+  const rec = name === "rec";
+  const full = cu || rec;
+  $("editor-panel").hidden = full;
+  $("map").hidden = full;
+  $("mapcfg").hidden = full;
   $("curation-view").hidden = !cu;
+  $("records-view").hidden = !rec;
   for (const b of document.querySelectorAll("#tabs .tab"))
     b.classList.toggle("active", b.dataset.tab === name);
   localStorage.setItem(TAB_KEY, name);
-  if (!cu) resizeMap();      // 숨김 상태에서 바뀐 컨테이너 크기를 지도에 알림
-  else growSlideFields();    // 숨겨진 동안 잰 높이는 0 — 보일 때 다시 잰다
+  if (!full) resizeMap();    // 숨김 상태에서 바뀐 컨테이너 크기를 지도에 알림
+  if (cu) growSlideFields(); // 숨겨진 동안 잰 높이는 0 — 보일 때 다시 잰다
+  if (rec) loadRecords();
 }
 
 // 서브탭: 산 목록 / 등산로 / 스팟
@@ -1056,6 +1060,91 @@ function setMountainVisible(on) {
   for (const el of document.querySelectorAll("#panel-scroll .sec-mnt-empty")) el.hidden = on;
   $("spotcfg-hint").hidden = on;   // 스팟 미리보기는 산이 선택돼야 보인다
 }
+
+// ── 등반 기록 · 진단 ──────────────────────────────────────────────────────
+// climb_records 는 RLS 가 "본인 것만"이라 브라우저에서 직접 못 읽는다 — 서버(/api/records)가
+// service_role 로 대신 조회한다. track.meta 는 iOS 앱이 기록한 배터리·GPS 요약(schema.sql 참조).
+const REC = { rows: [] };
+
+const escHtml = (s) => String(s ?? "").replace(/[&<>"]/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// 시간당 배터리 소모(%/h). 측정 불가면 null —
+// 충전 중이었거나(소모량 무의미), 잔량 미측정(시뮬·이어하기)이거나, 10분 미만(5% 단위라 튐).
+function drainRate(r) {
+  const m = r.meta;
+  if (!m || m.charged || m.bat_start < 0 || m.bat_end < 0) return null;
+  const h = (r.duration_s || 0) / 3600;
+  if (h < 1 / 6) return null;
+  return (m.bat_start - m.bat_end) / h;
+}
+
+async function loadRecords() {
+  $("rec-state").textContent = "불러오는 중…";
+  try {
+    REC.rows = await api("/records?limit=300");
+    renderRecords();
+    $("rec-state").textContent = `${REC.rows.length}건`;
+  } catch (e) {
+    $("rec-state").textContent = "실패: " + e.message;
+    $("rec-summary").innerHTML = "";
+    $("rec-list").innerHTML = "";
+  }
+}
+
+function renderRecords() {
+  // 요약 — GPS 정확도 모드별 평균 소모율. 이 표를 보려고 나머지가 있다.
+  const by = new Map();
+  for (const r of REC.rows) {
+    const v = drainRate(r);
+    if (v == null) continue;
+    const k = r.meta.gps_mode || "?";
+    if (!by.has(k)) by.set(k, []);
+    by.get(k).push(v);
+  }
+  const avg = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  $("rec-summary").innerHTML = by.size
+    ? `<table class="rec-tbl"><thead><tr><th>GPS 모드</th><th>평균 소모</th><th>표본</th></tr></thead><tbody>${
+        [...by.entries()].map(([k, a]) =>
+          `<tr><td>${escHtml(k)}</td><td><b>${avg(a).toFixed(1)} %/h</b></td><td>${a.length}건</td></tr>`
+        ).join("")}</tbody></table>`
+    : `<p class="dim">아직 측정 가능한 기록이 없습니다 — 실기기에서 10분 이상, 충전하지 않고 등반한 기록이 필요합니다.</p>`;
+
+  // 목록
+  const rows = REC.rows.map((r) => {
+    const m = r.meta;
+    const rate = drainRate(r);
+    const when = (r.started_at || "").slice(0, 16).replace("T", " ");
+    const dur = r.duration_s ? `${Math.floor(r.duration_s / 3600)}:${String(Math.floor(r.duration_s % 3600 / 60)).padStart(2, "0")}` : "—";
+    const bat = !m ? "—"
+      : m.charged ? "충전 중"
+      : m.bat_start < 0 ? "미측정"
+      : `${m.bat_start}→${m.bat_end}%`;
+    const gps = !m ? "—"
+      : `${escHtml(m.gps_mode)} · ${m.fixes}fix${m.fixes_dropped ? ` <span class="warn">(-${m.fixes_dropped})</span>` : ""}`;
+    const acc = m && m.acc_avg >= 0 ? `±${m.acc_avg}m` : "—";
+    return `<tr>
+      <td>${escHtml(when)}</td>
+      <td>${escHtml(r.course_name || "—")}<span class="dim"> ${escHtml(r.mountain_id || "")}</span></td>
+      <td>${r.distance_km != null ? r.distance_km.toFixed(2) : "—"}km</td>
+      <td>${dur}</td>
+      <td>${bat}</td>
+      <td>${rate != null ? `<b>${rate.toFixed(1)}</b>` : "—"}</td>
+      <td>${gps}</td>
+      <td>${acc}</td>
+      <td>${r.points}점</td>
+      <td class="dim">${escHtml((r.user_id || "").slice(0, 8))}</td>
+    </tr>`;
+  }).join("");
+  $("rec-list").innerHTML = REC.rows.length
+    ? `<table class="rec-tbl"><thead><tr>
+         <th>시작</th><th>코스</th><th>거리</th><th>시간</th><th>배터리</th>
+         <th>%/h</th><th>GPS</th><th>평균정확도</th><th>트랙</th><th>사용자</th>
+       </tr></thead><tbody>${rows}</tbody></table>`
+    : `<p class="dim">기록이 없습니다.</p>`;
+}
+
+$("rec-reload").onclick = loadRecords;
 
 for (const b of document.querySelectorAll("#tabs .tab")) b.onclick = () => showTab(b.dataset.tab);
 for (const b of document.querySelectorAll("#subtabs .subtab")) b.onclick = () => showSub(b.dataset.sub);

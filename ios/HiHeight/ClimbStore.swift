@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import UIKit   // UIDevice — 진단 계측의 배터리 잔량
 
 // 종료 시점 스냅샷 — AuthStore.saveClimb 이 climb_records 로 변환/삽입한다.
 struct ClimbDraft {
@@ -11,6 +12,22 @@ struct ClimbDraft {
     let plannedAscent: Int?
     let plannedDistanceKm: Double?   // 코스 계획 거리 — 실측 고도 없을 때 진행률 비례 추정에 사용
     let track: [[Double]]     // [lng, lat, 고도(m·-1=없음), unix초]
+    let diag: ClimbDiag?      // 진단 요약 — track.meta 로 저장(관리자 콘솔 열람용)
+}
+
+// 등반 1회의 진단 요약 — 백그라운드 GPS 가 배터리를 얼마나 먹는지 기기별로 보려고 모은다.
+// 개발자 모드 HUD(DevMode/)의 실시간 계측과 목적은 같지만, 이쪽은 **모든 사용자**의 등반에서
+// 최소값만 수집해 climb_records.track.meta 로 올라간다(2026-07-29).
+// ⚠️ 소모량은 기기 전체 값이다 — 앱별 소비 전력을 주는 API 는 iOS 에 없다.
+struct ClimbDiag {
+    let batStart: Int        // 0~100, -1 = 미지원(시뮬레이터)
+    let batEnd: Int
+    let lowPower: Bool       // 시작 시점 저전력 모드
+    let charged: Bool        // 등반 중 충전 정황(종료 잔량 > 시작 잔량) — 이 경우 소모량은 무의미
+    let gpsMode: String      // desiredAccuracy 라벨 ("Best" 등)
+    let fixes: Int           // 수신한 위치 총 수
+    let fixesDropped: Int    // 정확도 게이트(<0 또는 >50m)로 버린 수 — 신호 품질의 직접 지표
+    let accAvg: Double       // 게이트를 통과한 fix 의 평균 수평정확도(m). 표본 없으면 -1
 }
 
 // 등반 세션 관리 — 웹 startClimb/stopClimb(app.js:1362-1446) 이식.
@@ -54,6 +71,14 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var last: CLLocation?
     private var sessionHandle: FileHandle?      // 진행 중 세션 append 핸들
 
+    // 진단 계측 누적치 — start()/resume() 에서 초기화, finish() 에서 ClimbDiag 로 확정.
+    private var diagBatStart = -1
+    private var diagLowPower = false
+    private var diagFixes = 0
+    private var diagDropped = 0
+    private var diagAccSum = 0.0
+    private var diagAccN = 0
+
     override init() {
         super.init()
         manager.delegate = self
@@ -82,6 +107,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         routeRecord = nil          // 등반 시작 → 기록 루트 표시 지움
         tracking = true
         restoredCourseName = nil
+        beginDiag()                 // 진단 계측 시작(배터리 시작 잔량·저전력 모드)
         beginSessionFile()          // 강제 종료 대비 — 진행 중 계속 append
         startTimer()
         manager.requestWhenInUseAuthorization()
@@ -127,15 +153,53 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         return ClimbDraft(mountainCode: mountainCode, courseName: c.name,
                           startedAt: started, endedAt: ended,
                           distanceKm: distance / 1000, plannedAscent: c.ascent,
-                          plannedDistanceKm: c.distance_km, track: t)
+                          plannedDistanceKm: c.distance_km, track: t, diag: endDiag())
+    }
+
+    // MARK: 진단 계측
+    // 배터리 모니터링 플래그는 전역이고 켜는 건 idempotent 라 매번 보장한다 — 개발자 모드
+    // (DevStore)가 꺼져도 등반 계측이 영향받지 않게.
+    private func batteryPercent() -> Int {
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        let l = UIDevice.current.batteryLevel
+        return l < 0 ? -1 : Int((l * 100).rounded())
+    }
+
+    private func beginDiag() {
+        diagBatStart = batteryPercent()
+        diagLowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+        diagFixes = 0; diagDropped = 0; diagAccSum = 0; diagAccN = 0
+    }
+
+    private func endDiag() -> ClimbDiag {
+        let end = batteryPercent()
+        return ClimbDiag(
+            batStart: diagBatStart, batEnd: end,
+            lowPower: diagLowPower,
+            charged: diagBatStart >= 0 && end > diagBatStart,
+            gpsMode: Self.accuracyLabel(manager.desiredAccuracy),
+            fixes: diagFixes, fixesDropped: diagDropped,
+            accAvg: diagAccN > 0 ? ((diagAccSum / Double(diagAccN)) * 10).rounded() / 10 : -1)
+    }
+
+    private static func accuracyLabel(_ a: CLLocationAccuracy) -> String {
+        switch a {
+        case kCLLocationAccuracyBestForNavigation: return "BestForNav"
+        case kCLLocationAccuracyBest:              return "Best"
+        case kCLLocationAccuracyNearestTenMeters:  return "10m"
+        case kCLLocationAccuracyHundredMeters:     return "100m"
+        default: return String(format: "%.0fm", a)
+        }
     }
 
     // MARK: CLLocationManagerDelegate (main 스레드 전달 — manager 를 main 에서 생성)
     func locationManager(_ m: CLLocationManager, didUpdateLocations locs: [CLLocation]) {
         guard tracking, let loc = locs.last else { return }
+        diagFixes += 1                              // 진단 — 수신 총량(게이트 이전)
         // 정확도 게이트 — 무효(-1)/부정확(>50m) 고정은 무시(포인터 튐·트랙 오염 방지).
         // 나쁜 고정 시엔 마지막 양호 위치를 유지(엉뚱한 곳으로 점프하지 않게).
-        if loc.horizontalAccuracy < 0 || loc.horizontalAccuracy > 50 { return }
+        if loc.horizontalAccuracy < 0 || loc.horizontalAccuracy > 50 { diagDropped += 1; return }
+        diagAccSum += loc.horizontalAccuracy; diagAccN += 1   // 진단 — 통과분 평균 정확도
         if note != nil { note = nil }               // 위치 수신 성공 → 이전 일시 오류 안내 해제
         currentCoord = loc.coordinate               // 국가지점번호는 매 위치마다 갱신(5m 게이트 이전)
         // 잡음 제거: 직전 점에서 5m 미만 이동은 무시(app.js:1413)
@@ -237,6 +301,10 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         note = nil
         tracking = true
         pending = nil
+        // 진단 — 이어하기는 중단 전 소모를 알 수 없으므로 배터리는 측정 불가로 두고(-1),
+        // GPS 통계만 재개 시점부터 다시 센다. 시작 잔량을 지금 값으로 잡으면 소모가 축소된다.
+        beginDiag()
+        diagBatStart = -1
         sessionHandle = try? FileHandle(forWritingTo: Self.sessionURL)
         _ = try? sessionHandle?.seekToEnd()
         startTimer()
@@ -253,7 +321,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
                    distanceKm: s.distance / 1000,
                    plannedAscent: s.plannedAscent,
                    plannedDistanceKm: s.plannedDistanceKm,
-                   track: s.track)
+                   track: s.track, diag: nil)   // 복구본만 저장 — 계측한 세션이 아니라 진단 없음
     }
 
     func locationManager(_ m: CLLocationManager, didFailWithError error: Error) {

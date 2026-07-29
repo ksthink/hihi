@@ -182,7 +182,9 @@ final class AuthStore: ObservableObject {
                                                            plannedAscent: d.plannedAscent,
                                                            plannedKm: d.plannedDistanceKm),
             duration_s: duration,
-            track: track.count >= 2 ? TrackJSON(points: points, elev: elev) : nil)
+            track: track.count >= 2
+                ? TrackJSON(points: points, elev: elev, meta: d.diag.map(Self.diagJSON))
+                : nil)
 
         do {
             try await client.from("climb_records").insert(rec).execute()
@@ -248,8 +250,31 @@ final class AuthStore: ObservableObject {
     private struct TrackJSON: Encodable {
         let points: [[Double?]]   // [lng, lat, 고도|null, unix초]
         let elev: ElevStat?
+        let meta: DiagJSON?       // 진단 요약(2026-07-29 추가) — 없던 기록은 이 키가 없다
     }
     private struct ElevStat: Encodable { let min, max, ascent, descent: Int }
+
+    // track.meta — 배터리·GPS 진단 요약. 관리자 콘솔이 /api/records 로 읽어 소모율을 집계한다.
+    // v 는 포맷 버전(소비 측이 키 추가/변경을 구분).
+    private struct DiagJSON: Encodable {
+        let v: Int
+        let bat_start: Int        // 0~100, -1 = 미측정(시뮬레이터·이어하기)
+        let bat_end: Int
+        let low_power: Bool
+        let charged: Bool         // 등반 중 충전 — true 면 소모량은 무의미
+        let gps_mode: String
+        let fixes: Int
+        let fixes_dropped: Int    // 정확도 게이트 탈락 수 — 신호 품질 지표
+        let acc_avg: Double       // 평균 수평정확도(m), 표본 없으면 -1
+    }
+
+    private static func diagJSON(_ d: ClimbDiag) -> DiagJSON {
+        DiagJSON(v: 1,
+                 bat_start: d.batStart, bat_end: d.batEnd,
+                 low_power: d.lowPower, charged: d.charged,
+                 gps_mode: d.gpsMode,
+                 fixes: d.fixes, fixes_dropped: d.fixesDropped, acc_avg: d.accAvg)
+    }
 
     private func run(_ op: @escaping () async throws -> Void) async {
         busy = true; message = nil

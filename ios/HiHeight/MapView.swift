@@ -778,7 +778,6 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
             onCenterChanged?(mapView.centerCoordinate)
             onScaleChanged?(mapView.metersPerPoint(atLatitude: mapView.centerCoordinate.latitude))
-            DevStore.shared.updateMap(mapView)   // DEVMODE — 지도 상태 통지(읽기 전용). 제거 시 이 줄 삭제.
         }
     }
 }
