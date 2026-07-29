@@ -179,7 +179,15 @@ struct DeungView: View {
                 if let id, let c = carouselCourses.first(where: { $0.id == id }) { selectCourse(c, of: m) }
             }
         } else {
+            // 코스가 1개인 산(현재 북한산 외 전부)은 페이저가 아니라 이 단일 카드로 그려진다.
+            // 터치 동작은 페이저와 같아야 한다 — 여기에 제스처가 없어서 "북한산만 탐험으로
+            // 이동"하는 것처럼 보였다(2026-07-29).
             card(t, course: climb.course, mountainName: climb.mountainName).padding(20)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard let c = climb.course, let m = carouselMountain ?? catalog.selected else { return }
+                    openInExplore(c, m)
+                }
         }
     }
 

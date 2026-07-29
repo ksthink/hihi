@@ -35,6 +35,17 @@ struct SplashView: View {
                     .opacity(copyIn ? 1 : 0).offset(y: copyIn ? 0 : 12)
                     .padding(.bottom, 34)
             }
+
+            VStack {                                          // 빌드 식별 (상단 좌측)
+                HStack {
+                    Text(buildStamp)
+                        .font(.kakao(size: 9)).foregroundStyle(t.muted).opacity(0.7)
+                        .tracking(0.4)
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20).padding(.top, 8)
         }
         .opacity(fadeOut ? 0 : 1)
         .task {
@@ -46,5 +57,19 @@ struct SplashView: View {
             try? await Task.sleep(nanoseconds: 700_000_000)     // 페이드아웃(.65s) 후 제거
             onFinished()
         }
+    }
+
+    // 빌드 식별 문자열 — "build 250 · 07-29 14:32".
+    // 번호는 CFBundleVersion(testflight.sh 가 git 커밋 수로 주입, 로컬은 project.yml 기본값 1),
+    // 시각은 실행 파일 수정시각 — 빌드마다 자동 갱신되므로 별도 주입 없이 로컬 빌드도 맞는다.
+    private var buildStamp: String {
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        guard let url = Bundle.main.executableURL,
+              let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?
+                  .contentModificationDate else { return "build \(b)" }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")   // 기기 12시간제 설정과 무관하게 24시간 표기
+        f.dateFormat = "MM-dd HH:mm"
+        return "build \(b) · \(f.string(from: date))"
     }
 }
