@@ -1241,6 +1241,10 @@ function renderRecords() {
 }
 
 $("rec-reload").onclick = loadRecords;
+$("rec-dl").onclick = () => {
+  const tok = adminToken ? `?token=${encodeURIComponent(adminToken)}` : "";
+  location.href = "/api/records/export" + tok;
+};
 
 for (const b of document.querySelectorAll("#tabs .tab")) b.onclick = () => showTab(b.dataset.tab);
 for (const b of document.querySelectorAll("#subtabs .subtab")) b.onclick = () => showSub(b.dataset.sub);

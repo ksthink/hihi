@@ -378,6 +378,61 @@ def _records(limit=200):
     return out
 
 
+def _records_xlsx(limit=1000):
+    """등반 기록 → xlsx (관리자 표와 같은 분리 열 + 분석용 수치 컬럼)."""
+    import io
+    from datetime import datetime, timedelta
+    import openpyxl
+
+    def kst(iso):
+        if not iso:
+            return None
+        try:
+            return (datetime.fromisoformat(iso.replace("Z", "+00:00"))
+                    + timedelta(hours=9)).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            return iso
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "records"
+    head = ["시작(KST)", "종료(KST)", "산코드", "코스", "거리(km)", "시간(분)",
+            "누적상승(m)", "배터리 시작(%)", "배터리 끝(%)", "충전중", "소모율(%/h)",
+            "GPS 수준", "GPS 지점", "GPS 유실", "평균정확도(m)",
+            "빌드", "기기", "OS", "트랙 점수", "사용자", "기록 id"]
+    ws.append(head)
+    for r in _records(limit):
+        m = r.get("meta") or {}
+        rate = None
+        if m and not m.get("charged") and m.get("bat_start", -1) >= 0 \
+                and m.get("bat_end", -1) >= 0 and (r.get("duration_s") or 0) >= 600:
+            rate = round((m["bat_start"] - m["bat_end"]) / (r["duration_s"] / 3600), 1)
+        ws.append([
+            kst(r.get("started_at")), kst(r.get("ended_at")),
+            r.get("mountain_id"), r.get("course_name"),
+            r.get("distance_km"),
+            round(r["duration_s"] / 60) if r.get("duration_s") else None,
+            r.get("ascent_m"),
+            m.get("bat_start") if m.get("bat_start", -1) >= 0 else None,
+            m.get("bat_end") if m.get("bat_end", -1) >= 0 else None,
+            bool(m.get("charged")) if m else None,
+            rate,
+            m.get("gps_mode"), m.get("fixes"), m.get("fixes_dropped"),
+            m.get("acc_avg") if m.get("acc_avg", -1) >= 0 else None,
+            f"b{m['build']}" if m.get("build") else None,
+            m.get("device"), m.get("os"),
+            r.get("points"), (r.get("user_id") or "")[:8], r.get("id"),
+        ])
+    ws.freeze_panes = "A2"
+    for i in range(1, len(head) + 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = 12
+    ws.column_dimensions["A"].width = ws.column_dimensions["B"].width = 16
+    ws.column_dimensions["D"].width = 20
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 class AdminHandler(BaseHandler):
     # ── 공통 ──
     def _json(self, obj, status=200):
@@ -499,6 +554,24 @@ class AdminHandler(BaseHandler):
                 return self._json(_records(min(max(limit, 1), 1000)))
             except Exception as e:
                 return self._err(str(e), 500)
+
+        # GET /api/records/export?limit= — 등반 기록 xlsx 다운로드
+        if method == "GET" and p == ["records", "export"]:
+            try:
+                limit = int((q.get("limit") or ["1000"])[0])
+            except ValueError:
+                limit = 1000
+            data = _records_xlsx(min(max(limit, 1), 1000))
+            self.send_response(200)
+            self.send_header("Content-Type",
+                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition",
+                             f'attachment; filename="hiheight-records-{time.strftime("%Y%m%d")}.xlsx"')
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
 
         # ── 시트 — 산 메타·스팟 일괄 편집 (그리드 JSON + xlsx 왕복, sheet_lib) ──
         # GET /api/sheet — 그리드 데이터 + 백업 목록
