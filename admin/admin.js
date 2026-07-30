@@ -1028,22 +1028,25 @@ const resizeMap = () => {
   requestAnimationFrame(() => { _rz = false; map.resize(); });
 };
 
-// 상단 탭: 산 편집 ↔ 큐레이션 ↔ 등반 기록 (뒤 둘은 지도 숨기고 전체 폭)
+// 상단 탭: 산 편집 ↔ 큐레이션 ↔ 등반 기록 ↔ 시트 (뒤 셋은 지도 숨기고 전체 폭)
 function showTab(name) {
   const cu = name === "cu";
   const rec = name === "rec";
-  const full = cu || rec;
+  const sheet = name === "sheet";
+  const full = cu || rec || sheet;
   $("editor-panel").hidden = full;
   $("map").hidden = full;
   $("mapcfg").hidden = full;
   $("curation-view").hidden = !cu;
   $("records-view").hidden = !rec;
+  $("sheet-view").hidden = !sheet;
   for (const b of document.querySelectorAll("#tabs .tab"))
     b.classList.toggle("active", b.dataset.tab === name);
   localStorage.setItem(TAB_KEY, name);
   if (!full) resizeMap();    // 숨김 상태에서 바뀐 컨테이너 크기를 지도에 알림
   if (cu) growSlideFields(); // 숨겨진 동안 잰 높이는 0 — 보일 때 다시 잰다
   if (rec) loadRecords();
+  if (sheet) loadSheet();
 }
 
 // 서브탭: 산 목록 / 등산로 / 스팟
@@ -1873,3 +1876,234 @@ loadSpotCfg().catch(() => {});
 loadPoiCfg().catch(() => {});
 loadCurations().catch(() => {});
 loadVersion().catch(() => {});
+
+// ── 시트 — 산 메타·스팟 일괄 편집 (그리드 + xlsx 왕복, /api/sheet*) ──────────
+// 행 스키마는 서버 sheet_lib 과 동일(왕복 대칭). 저장/가져오기는 서버가 diff 를 계산해
+// 자동 백업 후 병합한다. 시트 변경은 draft 만 바꾸므로 앱 반영에는 해당 산 재발행이 필요.
+const SHEET = { mnts: [], spots: [], backups: [], file: null };
+const SH_CATS = ["정상", "장소", "조망점", "화장실", "정자", "헬기장", "음수대",
+                 "주차장", "분기점", "시종점"];  // 서버 SPOT_DISPLAY_DEFAULT 와 일치 유지
+
+// api() 는 JSON 오류를 message 로만 던진다 — 시트는 행 단위 오류 배열이 필요해 원본을 받는다.
+async function shFetch(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (adminToken) headers["X-Admin-Token"] = adminToken;
+  const r = await fetch("/api" + path, { ...opts, headers });
+  if (r.status === 401) showLogin();
+  return r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+}
+
+async function loadSheet() {
+  $("sh-state").textContent = "불러오는 중…";
+  try {
+    const d = await shFetch("/sheet");
+    if (d.error) throw new Error(d.error);
+    SHEET.mnts = d.mountains;
+    SHEET.spots = d.spots;
+    SHEET.backups = d.backups || [];
+    renderSheet();
+    $("sh-state").textContent = `산 ${SHEET.mnts.length} · 스팟 ${SHEET.spots.length}`;
+  } catch (e) {
+    $("sh-state").textContent = "실패: " + e.message;
+  }
+}
+
+const shInput = (k, v, type, ro = false) => {
+  if (type === "bool")
+    return `<input type="checkbox" data-k="${k}" ${v ? "checked" : ""} ${ro ? "disabled" : ""}>`;
+  const val = v === null || v === undefined ? "" : escHtml(v);
+  if (ro) return `<span class="sh-ro" data-k="${k}">${val}</span>`;
+  const num = type === "num" ? ' type="number" step="any"' : "";
+  const list = type === "cat" ? ' list="sh-cats"' : "";
+  return `<input class="sh-in sh-${type}" data-k="${k}"${num}${list} value="${val}">`;
+};
+
+function renderSheet() {
+  $("sh-mnt").innerHTML =
+    `<tr><th>산코드</th><th>이름</th><th>지역</th><th>해발</th><th>순서</th>
+      <th>100대</th><th>BAC</th><th>KNPS</th><th>공개</th><th>발행</th></tr>` +
+    SHEET.mnts.map((m, i) => `<tr data-i="${i}" data-code="${m.code}">
+      <td class="dim">${m.code}</td>
+      <td>${shInput("name", m.name, "text")}</td>
+      <td>${shInput("region", m.region, "text")}</td>
+      <td>${shInput("elev", m.elev, "num")}</td>
+      <td>${shInput("sort_order", m.sort_order, "num")}</td>
+      <td>${shInput("famous", m.famous, "bool")}</td>
+      <td>${shInput("bac100", m.bac100, "bool")}</td>
+      <td>${shInput("knps", m.knps, "bool")}</td>
+      <td>${shInput("published", m.published, "bool")}</td>
+      <td class="dim">${m.pack_version ? "v" + m.pack_version : "—"}</td>
+    </tr>`).join("");
+
+  const fsel = $("sh-filter");
+  const cur = fsel.value;
+  fsel.innerHTML = `<option value="">전체 산</option>` +
+    SHEET.mnts.map((m) => `<option value="${m.code}">${escHtml(m.name)}</option>`).join("");
+  fsel.value = [...fsel.options].some((o) => o.value === cur) ? cur : "";
+  $("sh-addspot").disabled = !fsel.value;
+
+  if (!document.getElementById("sh-cats")) {
+    const dl = document.createElement("datalist");
+    dl.id = "sh-cats";
+    dl.innerHTML = SH_CATS.map((c) => `<option value="${c}">`).join("");
+    document.body.appendChild(dl);
+  }
+  renderSpotRows();
+  renderBackups();
+  $("sh-save").disabled = true;
+}
+
+function renderSpotRows() {
+  const code = $("sh-filter").value;
+  const rows = SHEET.spots.map((s, i) => ({ s, i }))
+    .filter(({ s }) => !code || s.code === code);
+  $("sh-spots").innerHTML =
+    `<tr><th>산</th><th>분류</th><th>이름</th><th>위도</th><th>경도</th><th>상세</th>
+      <th>비고</th><th>주봉</th><th>줌</th><th>기호</th><th>크기</th><th>볼드</th><th>삭제</th></tr>` +
+    rows.map(({ s, i }) => `<tr data-i="${i}" data-code="${s.code}" data-id="${escHtml(s.id || "")}"
+        class="${s.deleted ? "sh-del" : ""}${s.id ? "" : " sh-new"}">
+      <td class="dim">${escHtml(s.mountain || s.code)}${s.id ? "" : " <b>신규</b>"}</td>
+      <td>${shInput("category", s.category, "cat")}</td>
+      <td>${shInput("name", s.name, "text")}</td>
+      <td>${shInput("lat", s.lat, "num")}</td>
+      <td>${shInput("lng", s.lng, "num")}</td>
+      <td>${shInput("detail", s.detail, "text")}</td>
+      <td>${shInput("etc", s.etc, "text")}</td>
+      <td>${shInput("main", s.main, "bool")}</td>
+      <td>${shInput("disp_zoom", s.disp_zoom, "num")}</td>
+      <td>${shInput("disp_icon", s.disp_icon === true ? "TRUE" : s.disp_icon === false ? "FALSE" : s.disp_icon, "text")}</td>
+      <td>${shInput("disp_size", s.disp_size, "num")}</td>
+      <td>${shInput("disp_bold", s.disp_bold, "bool")}</td>
+      <td>${shInput("deleted", s.deleted, "bool")}</td>
+    </tr>`).join("");
+}
+
+function renderBackups() {
+  const sel = $("sh-backup");
+  sel.innerHTML = `<option value="">백업…</option>` +
+    SHEET.backups.map((b) =>
+      `<option value="${b.ts}">${b.ts} (${b.codes.length}산)</option>`).join("");
+  $("sh-restore").disabled = !sel.value;
+}
+
+// DOM → 서버 행 스키마. 그리드가 보여주는 값이 곧 보낼 값(행 = 전체 상태).
+function collectSheetRows() {
+  const read = (tr) => {
+    const out = {};
+    for (const el of tr.querySelectorAll("[data-k]"))
+      out[el.dataset.k] = el.type === "checkbox" ? el.checked
+        : (el.value ?? el.textContent).trim();
+    return out;
+  };
+  const mountains = [...$("sh-mnt").querySelectorAll("tr[data-i]")].map((tr) => ({
+    ...read(tr), code: tr.dataset.code, _row: `산 ${tr.dataset.code}`,
+  }));
+  const spots = [...$("sh-spots").querySelectorAll("tr[data-i]")].map((tr) => ({
+    ...read(tr), code: tr.dataset.code, id: tr.dataset.id, _row: `스팟 ${tr.dataset.id || "신규"}`,
+  }));
+  return { mountains, spots };
+}
+
+function sheetResult(res) {
+  if (res.errors?.length) {
+    $("sh-state").textContent = "오류: " + res.errors[0] +
+      (res.errors.length > 1 ? ` (외 ${res.errors.length - 1}건)` : "");
+    return false;
+  }
+  const codes = res.codes || [];
+  $("sh-state").textContent = codes.length
+    ? `적용 완료 (백업 ${res.backup}) — 재발행 필요: ${codes.join(", ")}`
+    : "변경 없음";
+  return true;
+}
+
+$("sh-reload").onclick = () => loadSheet();
+$("sh-mnt").addEventListener("input", () => { $("sh-save").disabled = false; });
+$("sh-spots").addEventListener("input", () => { $("sh-save").disabled = false; });
+$("sh-filter").onchange = () => { renderSpotRows(); $("sh-addspot").disabled = !$("sh-filter").value; };
+
+$("sh-addspot").onclick = () => {
+  const code = $("sh-filter").value;
+  if (!code) return;
+  const m = SHEET.mnts.find((x) => x.code === code);
+  SHEET.spots.push({ code, mountain: m?.name, id: "", category: "장소", name: null,
+                     lat: null, lng: null, detail: null, etc: null, main: false,
+                     disp_zoom: null, disp_icon: null, disp_size: null,
+                     disp_bold: null, deleted: false });
+  renderSpotRows();
+  $("sh-save").disabled = false;
+};
+
+$("sh-save").onclick = async () => {
+  $("sh-state").textContent = "저장 중…";
+  const res = await shFetch("/sheet", { method: "PUT", body: JSON.stringify(collectSheetRows()) });
+  if (res.error) { $("sh-state").textContent = "실패: " + res.error; return; }
+  if (sheetResult(res)) loadSheet();
+};
+
+$("sh-dl").onclick = () => {
+  const tok = adminToken ? `?token=${encodeURIComponent(adminToken)}` : "";
+  location.href = "/api/sheet/export" + tok;
+};
+
+$("sh-ul").onclick = () => $("sh-file").click();
+$("sh-file").onchange = async () => {
+  const f = $("sh-file").files[0];
+  $("sh-file").value = "";
+  if (!f) return;
+  SHEET.file = f;
+  $("sh-state").textContent = "검사 중…";
+  const plan = await shFetch("/sheet/import", { method: "POST", body: f });
+  if (plan.error) { $("sh-state").textContent = "실패: " + plan.error; return; }
+  showSheetDiff(plan);
+  $("sh-state").textContent = "";
+};
+
+const fmtV = (v) => v === null || v === undefined || v === "" ? "빈 값"
+  : Array.isArray(v) ? v.map((x) => Array.isArray(x) ? x.join(",") : x).join(" · ") || "빈 값"
+  : String(v);
+
+function showSheetDiff(plan) {
+  const rows = [];
+  if (plan.errors.length)
+    rows.push(`<div class="sh-err"><b>오류 ${plan.errors.length}건 — 수정 후 다시 올리세요</b><ul>` +
+      plan.errors.map((e) => `<li>${escHtml(e)}</li>`).join("") + "</ul></div>");
+  if (plan.warnings.length)
+    rows.push(`<div class="sh-warn"><ul>` +
+      plan.warnings.map((e) => `<li>${escHtml(e)}</li>`).join("") + "</ul></div>");
+  const chg = (c) => Object.entries(c).map(([k, [a, b]]) =>
+    `${k}: ${escHtml(fmtV(a))} → <b>${escHtml(fmtV(b))}</b>`).join(", ");
+  for (const m of plan.mountains)
+    rows.push(`<div class="sh-line">[산] ${escHtml(m.name)} (${m.code}) — ${chg(m.changes)}</div>`);
+  for (const s of plan.spots)
+    rows.push(`<div class="sh-line">[스팟 ${s.action}] ${s.code} · ${escHtml(s.category || "")} ` +
+      `${escHtml(s.name || "")}${s.changes ? " — " + chg(s.changes) : ""}</div>`);
+  if (!plan.mountains.length && !plan.spots.length && !plan.errors.length)
+    rows.push(`<div class="sh-line dim">변경 없음 — 현재 데이터와 동일합니다.</div>`);
+  $("sh-diff-body").innerHTML = rows.join("");
+  $("sh-diff-apply").disabled =
+    !!plan.errors.length || (!plan.mountains.length && !plan.spots.length);
+  $("sh-diff").hidden = false;
+}
+
+$("sh-diff-cancel").onclick = () => { $("sh-diff").hidden = true; SHEET.file = null; };
+$("sh-diff-apply").onclick = async () => {
+  if (!SHEET.file) return;
+  $("sh-diff-apply").disabled = true;
+  const res = await shFetch("/sheet/import?apply=1", { method: "POST", body: SHEET.file });
+  $("sh-diff").hidden = true;
+  SHEET.file = null;
+  if (res.error) { $("sh-state").textContent = "실패: " + res.error; return; }
+  if (sheetResult(res)) loadSheet();
+};
+
+$("sh-backup").onchange = () => { $("sh-restore").disabled = !$("sh-backup").value; };
+$("sh-restore").onclick = async () => {
+  const ts = $("sh-backup").value;
+  if (!ts) return;
+  if (!confirm(`백업 ${ts} 로 되돌립니다.\n대상 산의 현재 draft 가 백업 시점으로 교체됩니다.`)) return;
+  const res = await shFetch("/sheet/restore?ts=" + encodeURIComponent(ts), { method: "POST" });
+  if (res.error) { $("sh-state").textContent = "실패: " + res.error; return; }
+  $("sh-state").textContent = `복원 완료: ${res.codes.join(", ")} — 재발행 필요`;
+  loadSheet();
+};

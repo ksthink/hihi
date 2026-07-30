@@ -25,6 +25,7 @@
     <button id="tab-mnt" class="tab active" data-tab="mnt">산 편집</button>
     <button id="tab-cu" class="tab" data-tab="cu">큐레이션</button>
     <button id="tab-rec" class="tab" data-tab="rec">등반 기록</button>
+    <button id="tab-sheet" class="tab" data-tab="sheet">시트</button>
   </nav>
   <span class="head-right">
     <span id="save-state" title="draft 저장 상태"></span>
@@ -209,6 +210,41 @@
     </div>
     <div id="rec-summary"></div>
     <div id="rec-list"></div>
+  </section>
+
+  <!-- ── 시트 — 산 메타·스팟 일괄 편집 (그리드 + xlsx 왕복, 지도 불필요 — 전체 폭) ── -->
+  <section id="sheet-view" hidden>
+    <div id="sh-head">
+      <h2>시트 <span class="dim">산 메타·스팟 일괄 편집 — 저장 전 자동 백업, 변경된 산은 재발행 필요</span></h2>
+      <div class="row">
+        <button id="sh-save" disabled>저장</button>
+        <button id="sh-reload">새로고침</button>
+        <button id="sh-dl">xlsx 내려받기</button>
+        <button id="sh-ul">xlsx 업로드</button>
+        <input type="file" id="sh-file" accept=".xlsx" hidden>
+        <select id="sh-backup"><option value="">백업…</option></select>
+        <button id="sh-restore" disabled>복원</button>
+        <span id="sh-state" class="dim"></span>
+      </div>
+    </div>
+    <h3>산</h3>
+    <div class="sh-wrap"><table id="sh-mnt"></table></div>
+    <h3>스팟
+      <select id="sh-filter"><option value="">전체 산</option></select>
+      <button id="sh-addspot" disabled>＋ 스팟</button>
+    </h3>
+    <div class="sh-wrap"><table id="sh-spots"></table></div>
+    <!-- xlsx 가져오기 diff 미리보기 -->
+    <div id="sh-diff" hidden>
+      <div id="sh-diff-card">
+        <h3>가져오기 미리보기</h3>
+        <div id="sh-diff-body"></div>
+        <div class="row">
+          <button id="sh-diff-apply">적용</button>
+          <button id="sh-diff-cancel">취소</button>
+        </div>
+      </div>
+    </div>
   </section>
 </div>
 

@@ -33,3 +33,6 @@ cache/
 
 # 배포 산출물 (draft 에서 재생성: 관리자 배포 버튼 / publish_pack.py)
 data/packs/
+
+# 시트 탭 자동 백업 스냅샷 (복원용 운영 산출물 — 최근 30세트 자동 관리)
+admin_data/backups/

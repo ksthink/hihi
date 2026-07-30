@@ -33,6 +33,7 @@ from serve import Handler as BaseHandler, ROOT  # noqa: E402
 
 import draft_store  # noqa: E402
 import pack_lib as pl  # noqa: E402
+import sheet_lib  # noqa: E402
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
 BIND = os.environ.get("ADMIN_BIND", "0.0.0.0")
@@ -498,6 +499,49 @@ class AdminHandler(BaseHandler):
                 return self._json(_records(min(max(limit, 1), 1000)))
             except Exception as e:
                 return self._err(str(e), 500)
+
+        # ── 시트 — 산 메타·스팟 일괄 편집 (그리드 JSON + xlsx 왕복, sheet_lib) ──
+        # GET /api/sheet — 그리드 데이터 + 백업 목록
+        if method == "GET" and p == ["sheet"]:
+            return self._json({**sheet_lib.collect(), "backups": sheet_lib.list_backups()})
+
+        # GET /api/sheet/export — 전 산 통합 xlsx (mountains/spots/설명 3시트)
+        if method == "GET" and p == ["sheet", "export"]:
+            data = sheet_lib.export_xlsx()
+            self.send_response(200)
+            self.send_header("Content-Type",
+                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition",
+                             f'attachment; filename="hiheight-sheet-{time.strftime("%Y%m%d")}.xlsx"')
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
+        # POST /api/sheet/import[?apply=1] — xlsx 업로드 → 변경 계획(diff) / 적용
+        # apply 없이 호출하면 미리보기(무적용), apply=1 이면 스냅샷 백업 후 병합.
+        if method == "POST" and p == ["sheet", "import"]:
+            body = self._body()
+            if not body:
+                raise ValueError("xlsx 본문 없음")
+            plan = sheet_lib.build_plan(sheet_lib.parse_xlsx(body),
+                                        set(SPOT_DISPLAY_DEFAULT["categories"]))
+            if plan["errors"] or (q.get("apply") or ["0"])[0] != "1":
+                return self._json(sheet_lib.public_plan(plan))
+            return self._json({**sheet_lib.apply_plan(plan), **sheet_lib.public_plan(plan)})
+
+        # PUT /api/sheet — 그리드 저장 (행 스키마는 xlsx 와 동일, 즉시 적용 + 자동 백업)
+        if method == "PUT" and p == ["sheet"]:
+            data = json.loads(self._body())
+            plan = sheet_lib.build_plan(data, set(SPOT_DISPLAY_DEFAULT["categories"]))
+            if plan["errors"]:
+                return self._json(sheet_lib.public_plan(plan), 400)
+            return self._json({**sheet_lib.apply_plan(plan), **sheet_lib.public_plan(plan)})
+
+        # POST /api/sheet/restore?ts= — 백업 스냅샷 복원
+        if method == "POST" and p == ["sheet", "restore"]:
+            return self._json(sheet_lib.restore((q.get("ts") or [""])[0]))
 
         # GET /api/mnt-codes?q=
         if method == "GET" and p == ["mnt-codes"]:
