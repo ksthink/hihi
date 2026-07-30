@@ -1205,13 +1205,15 @@ function renderRecords() {
       : m.charged ? "충전 중"
       : m.bat_start < 0 ? "미측정"
       : `${m.bat_start}→${m.bat_end}%`;
-    const gps = !m ? "—"
-      : `${escHtml(m.gps_mode)} · ${m.fixes}fix${m.fixes_dropped ? ` <span class="warn">(-${m.fixes_dropped})</span>` : ""}`;
+    // GPS — 수준(정확도 설정 모드)과 지점 수(수신한 위치 fix 개수, 유실은 경고로)를 분리
+    const gpsMode = m ? escHtml(m.gps_mode) : "—";
+    const gpsFix = !m ? "—"
+      : `${m.fixes}${m.fixes_dropped ? ` <span class="warn">(-${m.fixes_dropped})</span>` : ""}`;
     const acc = m && m.acc_avg >= 0 ? `±${m.acc_avg}m` : "—";
-    // 환경 — meta v2 부터. 빌드·기기·OS 를 한 칸에 묶는다(열이 늘어나면 표가 가로로 터진다).
-    const env = m && m.build
-      ? `b${escHtml(m.build)} · ${escHtml(m.device || "?")} · ${escHtml(m.os || "?")}`
-      : "—";
+    // 환경 — meta v2 부터. 빌드·기기·OS 를 각각의 열로 분리
+    const build = m && m.build ? `b${escHtml(m.build)}` : "—";
+    const device = m && m.device ? escHtml(m.device) : "—";
+    const osVer = m && m.os ? escHtml(m.os) : "—";
     return `<tr>
       <td>${escHtml(when)}</td>
       <td>${escHtml(r.course_name || "—")}<span class="dim"> ${escHtml(r.mountain_id || "")}</span></td>
@@ -1219,9 +1221,12 @@ function renderRecords() {
       <td>${dur}</td>
       <td>${bat}</td>
       <td>${rate != null ? `<b>${rate.toFixed(1)}</b>` : "—"}</td>
-      <td>${gps}</td>
+      <td>${gpsMode}</td>
+      <td>${gpsFix}</td>
       <td>${acc}</td>
-      <td class="dim">${env}</td>
+      <td class="dim">${build}</td>
+      <td class="dim">${device}</td>
+      <td class="dim">${osVer}</td>
       <td>${r.points}점</td>
       <td class="dim">${escHtml((r.user_id || "").slice(0, 8))}</td>
     </tr>`;
@@ -1229,7 +1234,8 @@ function renderRecords() {
   $("rec-list").innerHTML = REC.rows.length
     ? `<table class="rec-tbl"><thead><tr>
          <th>시작</th><th>코스</th><th>거리</th><th>시간</th><th>배터리</th>
-         <th>%/h</th><th>GPS</th><th>평균정확도</th><th>환경</th><th>트랙</th><th>사용자</th>
+         <th>%/h</th><th>GPS 수준</th><th>GPS 지점</th><th>평균정확도</th>
+         <th>빌드</th><th>기기</th><th>OS</th><th>트랙</th><th>사용자</th>
        </tr></thead><tbody>${rows}</tbody></table>`
     : `<p class="dim">기록이 없습니다.</p>`;
 }
