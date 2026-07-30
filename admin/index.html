@@ -228,13 +228,16 @@
         <span id="sh-state" class="dim"></span>
       </div>
     </div>
-    <h3>산</h3>
-    <div class="sh-wrap"><table id="sh-mnt"></table></div>
-    <h3>스팟
-      <select id="sh-filter"><option value="">전체 산</option></select>
-      <button id="sh-addspot" disabled>＋ 스팟</button>
-    </h3>
-    <div class="sh-wrap"><table id="sh-spots"></table></div>
+    <div id="sh-tabs">
+      <button class="sh-tab active" data-sh="mnt">산</button>
+      <button class="sh-tab" data-sh="spots">스팟</button>
+      <span id="sh-spot-tools" hidden>
+        <select id="sh-filter"><option value="">전체 산</option></select>
+        <button id="sh-addspot" disabled>＋ 스팟</button>
+      </span>
+    </div>
+    <div class="sh-wrap" id="sh-sec-mnt"><table id="sh-mnt"></table></div>
+    <div class="sh-wrap" id="sh-sec-spots" hidden><table id="sh-spots"></table></div>
     <!-- xlsx 가져오기 diff 미리보기 -->
     <div id="sh-diff" hidden>
       <div id="sh-diff-card">

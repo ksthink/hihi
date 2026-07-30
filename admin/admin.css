@@ -454,8 +454,15 @@ button.active { background: #111; color: #fff; }
   gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
 }
 #sh-head h2 { margin: 0; }
-#sheet-view h3 { margin: 18px 0 6px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
-.sh-wrap { overflow: auto; max-height: 44vh; border: 1px solid #ddd; }
+#sh-tabs { display: flex; gap: 4px; align-items: center; margin: 14px 0 8px; }
+#sh-tabs .sh-tab {
+  border: 1px solid #ddd; background: #fff; color: #666;
+  padding: 5px 22px; border-radius: 6px; font-size: 12.5px;
+}
+#sh-tabs .sh-tab:hover { border-color: #111; color: #111; }
+#sh-tabs .sh-tab.active { background: #111; color: #fff; border-color: #111; }
+#sh-spot-tools { display: flex; gap: 6px; margin-left: 10px; }
+.sh-wrap { overflow: auto; max-height: calc(100vh - 220px); border: 1px solid #ddd; }
 #sh-mnt, #sh-spots { border-collapse: collapse; font-size: 12px; white-space: nowrap; min-width: 100%; }
 #sh-mnt th, #sh-spots th {
   position: sticky; top: 0; background: #fafafa; z-index: 1;

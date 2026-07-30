@@ -2027,6 +2027,17 @@ function sheetResult(res) {
   return true;
 }
 
+// 산 / 스팟 서브탭 — 표를 하나씩 전체 높이로. 스팟 도구(산 필터·추가)는 스팟 탭에서만.
+function showShSub(name) {
+  $("sh-sec-mnt").hidden = name !== "mnt";
+  $("sh-sec-spots").hidden = name !== "spots";
+  $("sh-spot-tools").hidden = name !== "spots";
+  for (const b of document.querySelectorAll("#sh-tabs .sh-tab"))
+    b.classList.toggle("active", b.dataset.sh === name);
+}
+for (const b of document.querySelectorAll("#sh-tabs .sh-tab"))
+  b.onclick = () => showShSub(b.dataset.sh);
+
 $("sh-reload").onclick = () => loadSheet();
 $("sh-mnt").addEventListener("input", () => { $("sh-save").disabled = false; });
 $("sh-spots").addEventListener("input", () => { $("sh-save").disabled = false; });
