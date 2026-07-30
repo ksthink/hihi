@@ -39,8 +39,10 @@ create policy own_profile on profiles for all
 -- track jsonb 포맷(웹·iOS 공용): { points: [[lng,lat,고도m|null,unix초]...](최대 2000점, 균등 솎음),
 --   elev: {min,max,ascent,descent}(고도 샘플 충분할 때만),
 --   meta: 진단 요약(2026-07-29 추가, iOS 만 기록 — 없는 기록은 키 자체가 없다) }
--- meta 포맷: { v:1, bat_start, bat_end(0~100·-1=미측정), low_power, charged,
---   gps_mode("Best"|"10m"|"100m"), fixes, fixes_dropped(정확도 게이트 탈락 수), acc_avg(m·-1=표본없음) }
+-- meta 포맷: { v:2, bat_start, bat_end(0~100·-1=미측정), low_power, charged,
+--   gps_mode("Best"|"10m"|"100m"), fixes, fixes_dropped(정확도 게이트 탈락 수), acc_avg(m·-1=표본없음),
+--   device("iPhone14,2"), os("26.0"), build(CFBundleVersion) }   ← v2 에서 추가(2026-07-30)
+--   v1 기록에는 device/os/build 가 없다. 소비 측은 키 없음을 허용할 것.
 --   목적: 백그라운드 GPS 의 시간당 배터리 소모를 기기·정확도 설정별로 비교(관리자 콘솔 "등반 기록" 탭).
 --   ⚠️ bat_* 는 기기 전체 소모다 — 앱별 소비 전력 API 는 iOS 에 없다. charged=true 면 소모량 무의미.
 -- 구형 기록은 points 가 [lng,lat,unix초] 3원소 — 소비 측에서 길이로 구분.

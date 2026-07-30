@@ -1092,23 +1092,91 @@ async function loadRecords() {
   }
 }
 
+// %/h 집계에서 빠진 사유. 무엇이 빠졌는지 보이지 않으면 남은 데이터가 전부인 줄 착각한다.
+function excludeReason(r) {
+  const m = r.meta;
+  if (!m) return "진단 없음";
+  if (m.charged) return "충전 중";
+  if (m.bat_start < 0 || m.bat_end < 0) return "잔량 미측정";
+  if ((r.duration_s || 0) / 3600 < 1 / 6) return "10분 미만";
+  return null;
+}
+
+const avgOf = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+
+// 그룹별 %/h 분포 — 개별 점 + 평균선(SVG 직접 생성, 라이브러리 의존 없음).
+// ⚠️ 평균 막대를 쓰지 않는다: 표본이 2~3건일 때 막대는 없는 확신을 만든다.
+//    점을 그대로 찍어야 "3건이 12~26 으로 흩어져 있다"가 눈에 들어온다.
+function dotPlot(groups, unit = "%/h") {
+  const W = 540, H = 220, L = 48, R = 16, T = 16, B = 34;
+  const all = groups.flatMap((g) => g.values);
+  if (!all.length) return "";
+  const yMax = Math.max(10, Math.ceil(Math.max(...all) * 1.15));
+  const cx = (i) => L + ((i + 0.5) * (W - L - R)) / groups.length;
+  const cy = (v) => H - B - (v / yMax) * (H - T - B);
+  const ticks = [0, yMax / 2, yMax];
+
+  const axis = ticks.map((t) =>
+    `<line x1="${L}" y1="${cy(t)}" x2="${W - R}" y2="${cy(t)}" stroke="#e3e3e3"/>
+     <text x="${L - 8}" y="${cy(t) + 4}" text-anchor="end" font-size="10" fill="#999">${t.toFixed(0)}</text>`
+  ).join("");
+
+  const body = groups.map((g, i) => {
+    const x = cx(i);
+    const mean = avgOf(g.values);
+    const thin = g.values.length < 3;   // 표본 부족 — 평균선을 흐리게
+    // 지터는 인덱스 기반(결정적) — 새로고침마다 점이 튀지 않게. 한 줄에 최대 5개씩
+    // 중심 대칭으로 벌린다(평균선 중앙과 점 무리의 중심이 어긋나지 않게).
+    const lane = Math.min(g.values.length - 1, 4) / 2;
+    const dots = g.values.map((v, j) =>
+      `<circle cx="${(x + ((j % 5) - lane) * 5).toFixed(1)}" cy="${cy(v).toFixed(1)}" r="3.4" fill="#111" fill-opacity="0.75"/>`
+    ).join("");
+    return `${dots}
+      <line x1="${x - 26}" y1="${cy(mean)}" x2="${x + 26}" y2="${cy(mean)}"
+            stroke="#111" stroke-width="2" stroke-opacity="${thin ? 0.3 : 1}"/>
+      <text x="${x}" y="${cy(mean) - 8}" text-anchor="middle" font-size="11"
+            font-weight="700" fill="#111" fill-opacity="${thin ? 0.45 : 1}">${mean.toFixed(1)}</text>
+      <text x="${x}" y="${H - B + 15}" text-anchor="middle" font-size="11" fill="#111">${escHtml(g.key)}</text>
+      <text x="${x}" y="${H - B + 27}" text-anchor="middle" font-size="9" fill="#999">n=${g.values.length}${thin ? " 표본부족" : ""}</text>`;
+  }).join("");
+
+  return `<svg class="rec-chart" viewBox="0 0 ${W} ${H}" role="img">
+    <text x="4" y="12" font-size="10" fill="#999">${escHtml(unit)}</text>
+    ${axis}${body}
+  </svg>`;
+}
+
 function renderRecords() {
-  // 요약 — GPS 정확도 모드별 평균 소모율. 이 표를 보려고 나머지가 있다.
+  // 요약 — GPS 정확도 모드별 소모율 분포. 이 그림을 보려고 나머지가 있다.
   const by = new Map();
+  const skipped = new Map();
   for (const r of REC.rows) {
     const v = drainRate(r);
-    if (v == null) continue;
+    if (v == null) {
+      const why = excludeReason(r) || "기타";
+      skipped.set(why, (skipped.get(why) || 0) + 1);
+      continue;
+    }
     const k = r.meta.gps_mode || "?";
     if (!by.has(k)) by.set(k, []);
     by.get(k).push(v);
   }
-  const avg = (a) => a.reduce((s, x) => s + x, 0) / a.length;
-  $("rec-summary").innerHTML = by.size
-    ? `<table class="rec-tbl"><thead><tr><th>GPS 모드</th><th>평균 소모</th><th>표본</th></tr></thead><tbody>${
-        [...by.entries()].map(([k, a]) =>
-          `<tr><td>${escHtml(k)}</td><td><b>${avg(a).toFixed(1)} %/h</b></td><td>${a.length}건</td></tr>`
-        ).join("")}</tbody></table>`
-    : `<p class="dim">아직 측정 가능한 기록이 없습니다 — 실기기에서 10분 이상, 충전하지 않고 등반한 기록이 필요합니다.</p>`;
+  const groups = [...by.entries()].map(([key, values]) => ({ key, values }));
+  const skipNote = skipped.size
+    ? `<p class="dim rec-skip">집계 제외 ${[...skipped.entries()].map(([k, n]) => `${k} ${n}건`).join(" · ")}</p>`
+    : "";
+
+  $("rec-summary").innerHTML = groups.length
+    ? `<h3 class="rec-h3">GPS 모드별 시간당 배터리 소모</h3>
+       ${dotPlot(groups)}
+       <table class="rec-tbl"><thead><tr><th>GPS 모드</th><th>평균</th><th>최소~최대</th><th>표본</th></tr></thead><tbody>${
+        groups.map((g) => {
+          const mn = Math.min(...g.values), mx = Math.max(...g.values);
+          return `<tr><td>${escHtml(g.key)}</td><td><b>${avgOf(g.values).toFixed(1)} %/h</b></td>
+            <td class="dim">${mn.toFixed(1)} ~ ${mx.toFixed(1)}</td>
+            <td>${g.values.length}건${g.values.length < 3 ? ' <span class="warn">표본부족</span>' : ""}</td></tr>`;
+        }).join("")}</tbody></table>${skipNote}`
+    : `<p class="dim">아직 측정 가능한 기록이 없습니다 — 실기기에서 10분 이상, 충전하지 않고 등반한 기록이 필요합니다.</p>${skipNote}`;
 
   // 목록
   const rows = REC.rows.map((r) => {
@@ -1123,6 +1191,10 @@ function renderRecords() {
     const gps = !m ? "—"
       : `${escHtml(m.gps_mode)} · ${m.fixes}fix${m.fixes_dropped ? ` <span class="warn">(-${m.fixes_dropped})</span>` : ""}`;
     const acc = m && m.acc_avg >= 0 ? `±${m.acc_avg}m` : "—";
+    // 환경 — meta v2 부터. 빌드·기기·OS 를 한 칸에 묶는다(열이 늘어나면 표가 가로로 터진다).
+    const env = m && m.build
+      ? `b${escHtml(m.build)} · ${escHtml(m.device || "?")} · ${escHtml(m.os || "?")}`
+      : "—";
     return `<tr>
       <td>${escHtml(when)}</td>
       <td>${escHtml(r.course_name || "—")}<span class="dim"> ${escHtml(r.mountain_id || "")}</span></td>
@@ -1132,6 +1204,7 @@ function renderRecords() {
       <td>${rate != null ? `<b>${rate.toFixed(1)}</b>` : "—"}</td>
       <td>${gps}</td>
       <td>${acc}</td>
+      <td class="dim">${env}</td>
       <td>${r.points}점</td>
       <td class="dim">${escHtml((r.user_id || "").slice(0, 8))}</td>
     </tr>`;
@@ -1139,7 +1212,7 @@ function renderRecords() {
   $("rec-list").innerHTML = REC.rows.length
     ? `<table class="rec-tbl"><thead><tr>
          <th>시작</th><th>코스</th><th>거리</th><th>시간</th><th>배터리</th>
-         <th>%/h</th><th>GPS</th><th>평균정확도</th><th>트랙</th><th>사용자</th>
+         <th>%/h</th><th>GPS</th><th>평균정확도</th><th>환경</th><th>트랙</th><th>사용자</th>
        </tr></thead><tbody>${rows}</tbody></table>`
     : `<p class="dim">기록이 없습니다.</p>`;
 }

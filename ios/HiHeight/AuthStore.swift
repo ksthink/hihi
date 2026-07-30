@@ -255,7 +255,7 @@ final class AuthStore: ObservableObject {
     private struct ElevStat: Encodable { let min, max, ascent, descent: Int }
 
     // track.meta — 배터리·GPS 진단 요약. 관리자 콘솔이 /api/records 로 읽어 소모율을 집계한다.
-    // v 는 포맷 버전(소비 측이 키 추가/변경을 구분).
+    // v 는 포맷 버전(소비 측이 키 추가/변경을 구분). v2 = device·os·build 추가(2026-07-30).
     private struct DiagJSON: Encodable {
         let v: Int
         let bat_start: Int        // 0~100, -1 = 미측정(시뮬레이터·이어하기)
@@ -266,14 +266,31 @@ final class AuthStore: ObservableObject {
         let fixes: Int
         let fixes_dropped: Int    // 정확도 게이트 탈락 수 — 신호 품질 지표
         let acc_avg: Double       // 평균 수평정확도(m), 표본 없으면 -1
+        // 비교 축 — 이 셋이 없으면 "최적화 전후로 나아졌나"(빌드)와 "기기 탓인가"(모델·OS)를
+        // 구분할 수 없다. 소모율은 기기 배터리 용량·노후도에 크게 좌우된다.
+        let device: String        // "iPhone14,2" — UIDevice.model 은 "iPhone" 만 주므로 uname
+        let os: String            // "26.0"
+        let build: String         // CFBundleVersion (= git 커밋 수, 스플래시 표시와 같은 값)
+    }
+
+    // 기기 모델 식별자 — uname(2) 의 machine. UIDevice 에는 이 값을 주는 API 가 없다.
+    private static var deviceModel: String {
+        var s = utsname(); uname(&s)
+        return withUnsafeBytes(of: &s.machine) { raw in
+            guard let base = raw.baseAddress else { return "?" }
+            return String(cString: base.assumingMemoryBound(to: CChar.self))
+        }
     }
 
     private static func diagJSON(_ d: ClimbDiag) -> DiagJSON {
-        DiagJSON(v: 1,
+        DiagJSON(v: 2,
                  bat_start: d.batStart, bat_end: d.batEnd,
                  low_power: d.lowPower, charged: d.charged,
                  gps_mode: d.gpsMode,
-                 fixes: d.fixes, fixes_dropped: d.fixesDropped, acc_avg: d.accAvg)
+                 fixes: d.fixes, fixes_dropped: d.fixesDropped, acc_avg: d.accAvg,
+                 device: deviceModel,
+                 os: UIDevice.current.systemVersion,
+                 build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?")
     }
 
     private func run(_ op: @escaping () async throws -> Void) async {

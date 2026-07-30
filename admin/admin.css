@@ -443,3 +443,6 @@ button.active { background: #111; color: #fff; }
 .rec-tbl th { font-weight: 600; font-size: 12px; opacity: .7; }
 .rec-tbl tbody tr:hover { background: rgba(127, 127, 127, .08); }
 .rec-tbl .warn { color: #c33; }
+.rec-h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.rec-chart { width: 100%; max-width: 540px; height: auto; display: block; margin-bottom: 10px; }
+.rec-skip { margin: 6px 0 0; font-size: 11px; }
