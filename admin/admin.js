@@ -1104,6 +1104,20 @@ function excludeReason(r) {
 
 const avgOf = (a) => a.reduce((s, x) => s + x, 0) / a.length;
 
+// started_at 은 timestamptz 라 Supabase 가 UTC(+00:00)로 준다. 문자열을 그대로 자르면
+// KST 와 9시간 어긋난다 — 11:17 저장분이 02:17 로 보였다(2026-07-30 발견).
+const KST_FMT = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", hourCycle: "h23",   // h23: 자정이 24 로 나오지 않게
+});
+function fmtKst(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return "—";
+  const p = Object.fromEntries(KST_FMT.formatToParts(d).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
+
 // 그룹별 %/h 분포 — 개별 점 + 평균선(SVG 직접 생성, 라이브러리 의존 없음).
 // ⚠️ 평균 막대를 쓰지 않는다: 표본이 2~3건일 때 막대는 없는 확신을 만든다.
 //    점을 그대로 찍어야 "3건이 12~26 으로 흩어져 있다"가 눈에 들어온다.
@@ -1182,7 +1196,7 @@ function renderRecords() {
   const rows = REC.rows.map((r) => {
     const m = r.meta;
     const rate = drainRate(r);
-    const when = (r.started_at || "").slice(0, 16).replace("T", " ");
+    const when = fmtKst(r.started_at);   // UTC → KST (문자열 자르기 금지)
     const dur = r.duration_s ? `${Math.floor(r.duration_s / 3600)}:${String(Math.floor(r.duration_s % 3600 / 60)).padStart(2, "0")}` : "—";
     const bat = !m ? "—"
       : m.charged ? "충전 중"

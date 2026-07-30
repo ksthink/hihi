@@ -43,6 +43,9 @@ create policy own_profile on profiles for all
 --   gps_mode("Best"|"10m"|"100m"), fixes, fixes_dropped(정확도 게이트 탈락 수), acc_avg(m·-1=표본없음),
 --   device("iPhone14,2"), os("26.0"), build(CFBundleVersion) }   ← v2 에서 추가(2026-07-30)
 --   v1 기록에는 device/os/build 가 없다. 소비 측은 키 없음을 허용할 것.
+--   ⚠️ track 은 points 가 2개 미만이어도 **meta 가 있으면 저장된다**(2026-07-30) —
+--   진단은 트랙과 독립이고, "GPS 를 거의 못 받았다"가 오히려 중요한 진단이기 때문.
+--   따라서 points: [] 인 행이 있을 수 있다. 소비 측은 length >= 2 를 확인할 것.
 --   목적: 백그라운드 GPS 의 시간당 배터리 소모를 기기·정확도 설정별로 비교(관리자 콘솔 "등반 기록" 탭).
 --   ⚠️ bat_* 는 기기 전체 소모다 — 앱별 소비 전력 API 는 iOS 에 없다. charged=true 면 소모량 무의미.
 -- 구형 기록은 points 가 [lng,lat,unix초] 3원소 — 소비 측에서 길이로 구분.

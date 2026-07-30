@@ -171,6 +171,12 @@ final class AuthStore: ObservableObject {
         let points: [[Double?]] = track.map { pt in
             [pt[0], pt[1], pt[2] >= 0 ? pt[2] : nil, pt[3]]
         }
+        // 진단(meta)은 트랙과 독립이다 — 점이 2개 미만이어도 meta 만 담아 보낸다.
+        // 예전엔 track 을 통째로 nil 로 두어 짧은 등반의 진단이 함께 사라졌다
+        // (2026-07-30: 21초·0km 기록의 track 이 NULL 이었다). 하필 "GPS 를 거의 못 받았다"는
+        // 사실 자체가 가장 중요한 진단인데 그때만 안 남는 구조였다.
+        // 소비 측은 points.length >= 2 를 확인하므로 빈 배열이어도 안전(웹 actualKm · iOS trackPoints).
+        let meta = d.diag.map(Self.diagJSON)
         let rec = ClimbInsert(
             user_id: uid.uuidString.lowercased(),
             mountain_id: d.mountainCode,
@@ -182,8 +188,8 @@ final class AuthStore: ObservableObject {
                                                            plannedAscent: d.plannedAscent,
                                                            plannedKm: d.plannedDistanceKm),
             duration_s: duration,
-            track: track.count >= 2
-                ? TrackJSON(points: points, elev: elev, meta: d.diag.map(Self.diagJSON))
+            track: (track.count >= 2 || meta != nil)
+                ? TrackJSON(points: points, elev: elev, meta: meta)
                 : nil)
 
         do {
