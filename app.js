@@ -209,52 +209,6 @@ class BaseControl {
 }
 map.addControl(new BaseControl(), "bottom-right");
 
-// 3D 지형 토글 — hillshade 와 같은 dem(raster-dem, kr-terrain GLO-30) 소스를
-// setTerrain 으로 승격해 지도를 기울인다. 탐험 미리보기 용도(등반 중 배터리 고려 비권장).
-// z12 원본이라 산 스케일 조망에 적합하고 바짝 확대하면 뭉툭하다.
-// 로컬 팩(오프라인) 기저에는 dem 소스가 없으므로(terrainFor) 자동 해제.
-// setStyle(테마·기저·POI 설정 변경)이 지형 상태를 지우므로 styledata 에서 재적용한다.
-let terrain3d = false;
-const TERRAIN_EX = 1.3;
-function applyTerrain3d(on) {
-  if (on && !map.getSource("dem")) on = false; // 오프라인 기저 — 3D 불가
-  terrain3d = on;
-  map.setTerrain(on ? { source: "dem", exaggeration: TERRAIN_EX } : null);
-  map.easeTo({ pitch: on ? 60 : 0, duration: 700 });
-  const btn = document.getElementById("terrain-toggle");
-  if (btn) {
-    btn.classList.toggle("on", on);
-    btn.title = on ? "3D 지형 끄기" : "3D 지형 보기";
-  }
-}
-class TerrainControl {
-  onAdd() {
-    const div = document.createElement("div");
-    div.className = "maplibregl-ctrl maplibregl-ctrl-group";
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "terrain-toggle";
-    btn.setAttribute("aria-label", "3D 지형");
-    btn.title = "3D 지형 보기";
-    btn.textContent = "3D";
-    btn.addEventListener("click", () => applyTerrain3d(!terrain3d));
-    div.appendChild(btn);
-    this._c = div;
-    return div;
-  }
-  onRemove() { this._c.remove(); }
-}
-map.addControl(new TerrainControl(), "bottom-right");
-// 스타일 교체 후 지형 재적용 — dem 소스가 사라진 기저(로컬 팩)면 평면으로 복귀
-map.on("styledata", () => {
-  if (!terrain3d) return;
-  if (map.getSource("dem")) {
-    if (!map.getTerrain()) map.setTerrain({ source: "dem", exaggeration: TERRAIN_EX });
-  } else {
-    applyTerrain3d(false);
-  }
-});
-
 // ── 지도 POI 아이콘 (흑백 뱃지, 런타임 캔버스 생성) ────
 // 기저지도 POI 아이콘 — 생성기는 poi-icons.js 공용 (관리자 콘솔과 같은 것을 쓴다)
 attachPoiIcons(map, () => theme);

@@ -109,9 +109,6 @@ html, body { height: 100%; font-family: "MonaS12", -apple-system, "Apple SD Goth
 /* 테마 토글 버튼 — MapLibre 컨트롤 프레임(흰 배경) 위에 얹힘 → 아이콘은 진한 색 고정 */
 #theme-toggle { display: flex; align-items: center; justify-content: center; color: #333; }
 #theme-toggle .icn { width: 18px; height: 18px; }
-/* 3D 지형 토글 — 켜짐 상태는 반전 채움 */
-#terrain-toggle { display: flex; align-items: center; justify-content: center; color: #333; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
-#terrain-toggle.on { background: #111; color: #fff; }
 
 /* 산 검색 (예전 테마 토글 자리, 좌상단) — 버튼에서 우측으로 확장되는 입력 바 */
 .search { position: absolute; top: 60px; left: 14px; z-index: 36; }
