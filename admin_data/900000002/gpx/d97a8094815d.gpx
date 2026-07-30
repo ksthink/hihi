@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="네이버지도" xmlns="http://www.topografix.com/GPX/1/1" xmlns:nmap="https://map.naver.com/gpx/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>대림도서관-서울 구로구 새말로 97_260730</name>
+    <desc>대림도서관-서울 영등포구 대림동 638-1-서울 영등포구 대림동 623-2-서울 구로구 새말로 110-서울 구로구 새말로 97</desc>
+    <author><name>네이버지도</name></author>
+    <link href="https://map.naver.com"><text>네이버지도</text></link>
+    <time>2026-07-30T05:20:56.478Z</time>
+    <bounds minlat="37.5029139" minlon="126.8908977" maxlat="37.5074696" maxlon="126.8961637"/>
+    <extensions>
+      <nmap:walkCourse schemaVersion="1.0">
+        <nmap:distance>1163</nmap:distance>
+        <nmap:duration>1106.4</nmap:duration>
+        <nmap:stepCount>1817</nmap:stepCount>
+        <nmap:calories>64</nmap:calories>
+        <nmap:totalAscent>1</nmap:totalAscent>
+        <nmap:totalDescent>1</nmap:totalDescent>
+        <nmap:altMin>10</nmap:altMin>
+        <nmap:altMax>11</nmap:altMax>
+      </nmap:walkCourse>
+    </extensions>
+  </metadata>
+  <wpt lat="37.5041972" lon="126.8961637">
+    <name>대림도서관</name>
+    <desc>서울 영등포구 도신로 27 대림도서관</desc>
+  </wpt>
+  <wpt lat="37.5052631" lon="126.8941503">
+    <name>경유지 #1</name>
+    <desc>서울 영등포구 대림동 638-1</desc>
+  </wpt>
+  <wpt lat="37.5073607" lon="126.8940077">
+    <name>경유지 #2</name>
+    <desc>서울 영등포구 대림동 623-2</desc>
+  </wpt>
+  <wpt lat="37.5063774" lon="126.8919203">
+    <name>경유지 #3</name>
+    <desc>서울 구로구 새말로 110</desc>
+  </wpt>
+  <wpt lat="37.5070473" lon="126.8908977">
+    <name>도착지</name>
+    <desc>서울 구로구 새말로 97</desc>
+  </wpt>
+  <rte>
+    <name>대림도서관-서울 구로구 새말로 97_260730</name>
+    <desc>대림도서관-서울 영등포구 대림동 638-1-서울 영등포구 대림동 623-2-서울 구로구 새말로 110-서울 구로구 새말로 97</desc>
+    <type>walking</type>
+    <rtept lat="37.5041972" lon="126.8961637">
+      <name>대림도서관</name>
+      <desc>서울 영등포구 도신로 27 대림도서관</desc>
+      <type>start</type>
+    </rtept>
+    <rtept lat="37.5052631" lon="126.8941503">
+      <name>경유지 #1</name>
+      <desc>서울 영등포구 대림동 638-1</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5073607" lon="126.8940077">
+      <name>경유지 #2</name>
+      <desc>서울 영등포구 대림동 623-2</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5063774" lon="126.8919203">
+      <name>경유지 #3</name>
+      <desc>서울 구로구 새말로 110</desc>
+      <type>waypoint</type>
+    </rtept>
+    <rtept lat="37.5070473" lon="126.8908977">
+      <name>도착지</name>
+      <desc>서울 구로구 새말로 97</desc>
+      <type>goal</type>
+    </rtept>
+  </rte>
+  <trk>
+    <name>대림도서관-서울 구로구 새말로 97_260730</name>
+    <desc>대림도서관-서울 영등포구 대림동 638-1-서울 영등포구 대림동 623-2-서울 구로구 새말로 110-서울 구로구 새말로 97</desc>
+    <type>walking</type>
+    <trkseg>
+      <trkpt lat="37.5041972" lon="126.8961637"><ele>10</ele></trkpt>
+      <trkpt lat="37.504132" lon="126.8961031"><ele>10</ele></trkpt>
+      <trkpt lat="37.5040721" lon="126.8960301"><ele>10</ele></trkpt>
+      <trkpt lat="37.5040522" lon="126.8960065"><ele>10</ele></trkpt>
+      <trkpt lat="37.5040467" lon="126.8959997"><ele>10</ele></trkpt>
+      <trkpt lat="37.5039904" lon="126.8959074"><ele>10</ele></trkpt>
+      <trkpt lat="37.503895" lon="126.8957588"><ele>10</ele></trkpt>
+      <trkpt lat="37.5029761" lon="126.8939142"><ele>10.75</ele></trkpt>
+      <trkpt lat="37.5029139" lon="126.8937461"><ele>10.67</ele></trkpt>
+      <trkpt lat="37.5029318" lon="126.89372"><ele>10.49</ele></trkpt>
+      <trkpt lat="37.5029615" lon="126.8937073"><ele>10.35</ele></trkpt>
+      <trkpt lat="37.5030137" lon="126.8936967"><ele>10.05</ele></trkpt>
+      <trkpt lat="37.5030886" lon="126.8937096"><ele>10.02</ele></trkpt>
+      <trkpt lat="37.5033493" lon="126.8937618"><ele>10</ele></trkpt>
+      <trkpt lat="37.5048832" lon="126.8940617"><ele>10</ele></trkpt>
+      <trkpt lat="37.5052631" lon="126.8941503"><ele>10</ele></trkpt>
+      <trkpt lat="37.5052613" lon="126.8941503"><ele>10</ele></trkpt>
+      <trkpt lat="37.5053326" lon="126.8941655"><ele>10</ele></trkpt>
+      <trkpt lat="37.5058831" lon="126.8942991"><ele>10</ele></trkpt>
+      <trkpt lat="37.5060548" lon="126.8943894"><ele>10</ele></trkpt>
+      <trkpt lat="37.506553" lon="126.8943367"><ele>10</ele></trkpt>
+      <trkpt lat="37.506961" lon="126.8942701"><ele>10</ele></trkpt>
+      <trkpt lat="37.5074696" lon="126.8941494"><ele>10</ele></trkpt>
+      <trkpt lat="37.5074021" lon="126.8939961"><ele>10</ele></trkpt>
+      <trkpt lat="37.5073607" lon="126.8940077"><ele>10</ele></trkpt>
+      <trkpt lat="37.5073598" lon="126.8940077"><ele>10</ele></trkpt>
+      <trkpt lat="37.5074021" lon="126.8939961"><ele>10</ele></trkpt>
+      <trkpt lat="37.5069837" lon="126.8930807"><ele>10</ele></trkpt>
+      <trkpt lat="37.5069537" lon="126.8930244"><ele>10</ele></trkpt>
+      <trkpt lat="37.5069236" lon="126.8929669"><ele>10</ele></trkpt>
+      <trkpt lat="37.5067689" lon="126.8926684"><ele>10</ele></trkpt>
+      <trkpt lat="37.5066387" lon="126.8924171"><ele>10</ele></trkpt>
+      <trkpt lat="37.5065576" lon="126.8922594"><ele>10</ele></trkpt>
+      <trkpt lat="37.5063774" lon="126.8919203"><ele>10</ele></trkpt>
+      <trkpt lat="37.5063765" lon="126.891918"><ele>10</ele></trkpt>
+      <trkpt lat="37.5063256" lon="126.8918223"><ele>10</ele></trkpt>
+      <trkpt lat="37.50655" lon="126.8916394"><ele>10</ele></trkpt>
+      <trkpt lat="37.5065217" lon="126.8915876"><ele>10</ele></trkpt>
+      <trkpt lat="37.5064699" lon="126.8914941"><ele>10</ele></trkpt>
+      <trkpt lat="37.5064153" lon="126.8913961"><ele>10</ele></trkpt>
+      <trkpt lat="37.5070473" lon="126.8908977"><ele>10</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

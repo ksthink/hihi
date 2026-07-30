@@ -16,23 +16,16 @@
      "logo": "© 하이하잇",
      "credit": "leeAin",
      "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/113050202.jpg"
-    }
-   ]
-  },
-  {
-   "id": "cu-e5bvt54x",
-   "title": "HI^HIKE 이달의 매거진",
-   "items": [
+    },
     {
      "type": "course",
-     "code": "411900201",
-     "name": "소사역 - 원미도서관",
-     "mountain": "원미산",
-     "sub": "부천의 유일무이 산",
-     "title": "원미산 · 소사역 - 원미도서관",
-     "desc": "소사역에서 시립도서관까지",
+     "code": "111100101",
+     "name": "북악산 둘레길",
+     "mountain": "북악산",
+     "sub": "북악산",
+     "desc": "광화문 거리가 한눈에",
      "logo": "© 하이하잇",
-     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/411900201.jpg"
+     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/111100101.webp"
     }
    ]
   }
