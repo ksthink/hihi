@@ -4,6 +4,7 @@ import SwiftUI
 // 탐험만 지도+검색+바텀시트 구현(M1 진행분), 나머지 3탭은 웹 헤더를 맞춘 플레이스홀더(후속 슬라이스).
 struct ContentView: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.scenePhase) private var scenePhase   // 등반 진단 — 전경/배경 시간 분리(IOS.md §7-4)
     @StateObject private var catalog = CatalogStore()
     @StateObject private var auth = AuthStore()
     @StateObject private var climb = ClimbStore()
@@ -54,6 +55,9 @@ struct ContentView: View {
                 WeatherService.prefetch(lat: m.center[1], lon: m.center[0])
             }
         }
+        // 등반 중 전경/배경 시간 누적 — 소모에서 화면 기여분을 분리하려면 필요하다(IOS.md §7-4).
+        // .active 만 전경으로 본다(.inactive = 알림센터·전화 등으로 화면이 가려진 상태).
+        .onChange(of: scenePhase) { _, phase in climb.notePhase(foreground: phase == .active) }
         // 중단된 등반 복구 — 강제 종료는 막을 수 없으므로 진행 중 저장해 둔 세션으로 되살린다(IOS.md §9 S3).
         // 시스템 다이얼로그 대신 앱 UI 로 통일한 전용 팝업(ClimbResumeView).
         .overlay {

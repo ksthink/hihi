@@ -28,6 +28,13 @@ struct ClimbDiag {
     let fixes: Int           // 수신한 위치 총 수
     let fixesDropped: Int    // 정확도 게이트(<0 또는 >50m)로 버린 수 — 신호 품질의 직접 지표
     let accAvg: Double       // 게이트를 통과한 fix 의 평균 수평정확도(m). 표본 없으면 -1
+    // ── 계측 보강 (IOS.md §7-4, 2026-07-31 분석에서 필요성 확인) ──
+    // Best 1Hz 27분 측정이 11.1%/h 로 예산(4h ≤25% = 6.25%/h)의 1.8배였는데,
+    // ① 화면 기여분과 GPS 기여분을 나눌 수 없었고 ② 잔량 15% 구간이라 저전력모드가
+    // 중간에 켜졌는지도 알 수 없었다. 아래 셋이 그 두 구멍을 메운다.
+    let lpm: Bool            // 세션 중 **1회라도** 저전력 모드였나 (lowPower 는 시작 시점만)
+    let fgSec: Int           // 전경(화면 켜짐) 누적 초 — 화면 기여분 분리용
+    let bgSec: Int           // 백그라운드 누적 초 — 순수 GPS 기여분 추정용
 }
 
 // 등반 세션 관리 — 웹 startClimb/stopClimb(app.js:1362-1446) 이식.
@@ -78,6 +85,14 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var diagDropped = 0
     private var diagAccSum = 0.0
     private var diagAccN = 0
+    // §7-4 — 저전력모드는 "세션 중 1회라도"를 봐야 한다(잔량이 떨어져 중간에 켜지는 경우가 많다).
+    // 전경/배경 시간은 scenePhase 전환마다 직전 구간을 누적한다(ContentView 가 notePhase 로 알림).
+    private var diagLpm = false
+    private var diagFg: TimeInterval = 0
+    private var diagBg: TimeInterval = 0
+    private var diagPhaseAt: Date?          // 현재 구간이 시작된 시각
+    private var diagForeground = true       // 현재 구간이 전경인가
+    private var lpmObserver: NSObjectProtocol?
 
     override init() {
         super.init()
@@ -133,6 +148,8 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     // 트랙 반환. 세션 종료·리셋(라이브 트랙 지움 — 종료 후 지도에서 사라지게).
     @discardableResult
     func stop() -> [[Double]] {
+        flushPhase()        // 종료 시점까지의 구간을 전경/배경 누적에 반영(endDiag 가 읽는다)
+        endDiagWatch()      // 저전력모드 관찰 해제 — 취소 경로(finish 없이 stop)에서도 새지 않게
         manager.stopUpdatingLocation()
         manager.allowsBackgroundLocationUpdates = false   // 백그라운드 위치 해제(배터리)
         timer?.invalidate(); timer = nil
@@ -169,6 +186,37 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         diagBatStart = batteryPercent()
         diagLowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         diagFixes = 0; diagDropped = 0; diagAccSum = 0; diagAccN = 0
+        // 등반 시작은 항상 전경이다(사용자가 버튼을 눌렀다).
+        diagLpm = diagLowPower
+        diagFg = 0; diagBg = 0
+        diagForeground = true
+        diagPhaseAt = Date()
+        // 세션 도중 저전력 모드가 켜지는 순간을 잡는다 — 시작 시점만 보면 놓친다.
+        lpmObserver = NotificationCenter.default.addObserver(
+            forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            if ProcessInfo.processInfo.isLowPowerModeEnabled { self?.diagLpm = true }
+        }
+    }
+
+    // scenePhase 전환 — ContentView 가 알려준다. 화면이 켜져 있던 시간과 아닌 시간을 나눠야
+    // 소모에서 화면 기여분과 GPS 기여분을 분리할 수 있다(IOS.md §7-4).
+    func notePhase(foreground: Bool) {
+        guard tracking, foreground != diagForeground else { return }
+        flushPhase()
+        diagForeground = foreground
+    }
+
+    // 직전 구간의 경과를 전경/배경 누적에 반영하고 구간을 다시 연다.
+    private func flushPhase() {
+        guard let at = diagPhaseAt else { return }
+        let d = Date().timeIntervalSince(at)
+        if diagForeground { diagFg += d } else { diagBg += d }
+        diagPhaseAt = Date()
+    }
+
+    private func endDiagWatch() {
+        if let o = lpmObserver { NotificationCenter.default.removeObserver(o); lpmObserver = nil }
     }
 
     private func endDiag() -> ClimbDiag {
@@ -179,7 +227,9 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
             charged: diagBatStart >= 0 && end > diagBatStart,
             gpsMode: Self.accuracyLabel(manager.desiredAccuracy),
             fixes: diagFixes, fixesDropped: diagDropped,
-            accAvg: diagAccN > 0 ? ((diagAccSum / Double(diagAccN)) * 10).rounded() / 10 : -1)
+            accAvg: diagAccN > 0 ? ((diagAccSum / Double(diagAccN)) * 10).rounded() / 10 : -1,
+            lpm: diagLpm,
+            fgSec: Int(diagFg.rounded()), bgSec: Int(diagBg.rounded()))
     }
 
     private static func accuracyLabel(_ a: CLLocationAccuracy) -> String {

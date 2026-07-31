@@ -396,8 +396,11 @@ def _records_xlsx(limit=1000):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "records"
+    # 저전력·전경/배경은 §7-4 계측 보강(meta v3) — 소모율만으로는 원인을 못 가른다.
+    # 전경/배경은 분석용이라 분(minute) 수치로 따로 낸다(피벗·산점도에 바로 쓰도록).
     head = ["시작(KST)", "종료(KST)", "산코드", "코스", "거리(km)", "시간(분)",
-            "누적상승(m)", "배터리 시작(%)", "배터리 끝(%)", "충전중", "소모율(%/h)",
+            "누적상승(m)", "배터리 시작(%)", "배터리 끝(%)", "충전중", "저전력", "소모율(%/h)",
+            "전경(분)", "배경(분)",
             "GPS 수준", "GPS 지점", "GPS 유실", "평균정확도(m)",
             "빌드", "기기", "OS", "트랙 점수", "사용자", "기록 id"]
     ws.append(head)
@@ -416,7 +419,10 @@ def _records_xlsx(limit=1000):
             m.get("bat_start") if m.get("bat_start", -1) >= 0 else None,
             m.get("bat_end") if m.get("bat_end", -1) >= 0 else None,
             bool(m.get("charged")) if m else None,
+            bool(m["lpm"]) if m.get("lpm") is not None else None,   # v3~
             rate,
+            round(m["fg_s"] / 60) if m.get("fg_s") is not None else None,
+            round(m["bg_s"] / 60) if m.get("bg_s") is not None else None,
             m.get("gps_mode"), m.get("fixes"), m.get("fixes_dropped"),
             m.get("acc_avg") if m.get("acc_avg", -1) >= 0 else None,
             f"b{m['build']}" if m.get("build") else None,
