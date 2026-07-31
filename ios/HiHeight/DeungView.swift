@@ -26,9 +26,14 @@ struct DeungView: View {
         let t = Theme(scheme: scheme)
         VStack(spacing: 0) {
             header(t)                       // 상단 고정
-            ScrollView {
-                cardArea(t)                 // 등반 카드 — 저장된 산을 고르면 카드 자체가 코스 페이저
-                savedMaps(t)
+            // 저장된 지도를 누르면 상단 카드(코스 캐러셀)로 자동 스크롤한다 — 목록이 길면
+            // 카드가 화면 밖이라 "눌렀는데 아무 일도 안 난 것"처럼 보인다.
+            ScrollViewReader { proxy in
+                ScrollView {
+                    cardArea(t)             // 등반 카드 — 저장된 산을 고르면 카드 자체가 코스 페이저
+                        .id(Self.cardAnchor)
+                    savedMaps(t, proxy)
+                }
             }
         }
         .background(t.bg)
@@ -53,6 +58,25 @@ struct DeungView: View {
             }
         }
         .animation(.easeOut(duration: 0.18), value: showPackPrompt)
+        // 지도 업데이트 확인 — 시스템 confirmationDialog 는 커스텀 폰트가 안 먹어 앱 UI 로 통일.
+        .overlay {
+            if let m = updateTarget {
+                ConfirmPromptView(
+                    title: "지도 업데이트",
+                    message: "\(m.name)의 지도를 새 버전으로 다시 받습니다.",
+                    confirmLabel: "업데이트",
+                    onConfirm: {
+                        updateTarget = nil
+                        Task {
+                            packs.delete(m.id)                                       // 기존 팩 제거
+                            _ = await packs.download(m.id, version: m.pack_version)  // 새로 다운로드
+                        }
+                    },
+                    onCancel: { updateTarget = nil })
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: updateTarget?.id)
     }
 
     // 고정 헤더 — 웹 view-head "등반 | [산 배지]" + 부제
@@ -230,7 +254,10 @@ struct DeungView: View {
 
     // 저장된 지도 — 다운로드된 오프라인 팩 목록(웹 renderSavedMaps). 탭=코스 캐러셀, 스와이프=삭제.
     // 카탈로그 pack_version(배포마다 +1)이 설치본보다 높으면 우측에 [업데이트] 노출.
-    @ViewBuilder private func savedMaps(_ t: Theme) -> some View {
+    // 카드 영역 스크롤 앵커 — 저장된 지도 탭 시 여기로 올린다.
+    private static let cardAnchor = "climb-card"
+
+    @ViewBuilder private func savedMaps(_ t: Theme, _ proxy: ScrollViewProxy) -> some View {
         // 업데이트로 재다운로드 중인 산도 목록 유지(삭제 후 받는 동안 행이 사라지지 않게).
         let saved = catalog.mountains.filter { packs.downloaded.contains($0.id) || packs.downloadingCode == $0.id }
         if !saved.isEmpty {
@@ -238,55 +265,60 @@ struct DeungView: View {
                 Text("저장된 지도").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
                 // 기록 탭과 동일한 커스텀 스와이프 삭제(카드가 삭제 버튼 위로 미끄러짐).
                 ForEach(saved) { m in
+                    // 선택 표시 — 배경/글자를 뒤집는다(라이트=검정 배경 흰 글씨, 다크는 자동 반전).
+                    let on = carouselMountain?.id == m.id
                     SwipeToDeleteRow(corner: 12, onDelete: { deletePackTarget = m }) {
                         HStack(spacing: 12) {
-                            Image(systemName: "map").font(.system(size: 15)).foregroundStyle(t.muted)
+                            Image(systemName: "map").font(.system(size: 15))
+                                .foregroundStyle(on ? t.bg.opacity(0.75) : t.muted)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(m.name).font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                                Text(m.name).font(.kakao(size: 14, weight: .semibold))
+                                    .foregroundStyle(on ? t.bg : t.text)
                                 Text(packs.downloadingCode == m.id ? "업데이트 중…" : "오프라인 사용 가능")
-                                    .font(.kakao(size: 11)).foregroundStyle(t.muted)
+                                    .font(.kakao(size: 11))
+                                    .foregroundStyle(on ? t.bg.opacity(0.75) : t.muted)
                             }
                             Spacer(minLength: 0)
                             if packs.downloadingCode == m.id {           // 재다운로드 진행률
                                 Text("\(Int(packs.progress * 100))%")
-                                    .font(.kakao(size: 12, weight: .semibold)).foregroundStyle(t.muted)
+                                    .font(.kakao(size: 12, weight: .semibold))
+                                    .foregroundStyle(on ? t.bg.opacity(0.75) : t.muted)
                                     .monospacedDigit()
                             } else if updateAvailable(m) {
+                                // 선택 행에서는 accent 가 검정 배경에 묻히므로 버튼도 반전한다.
                                 Button { updateTarget = m } label: {
                                     Text("업데이트").font(.kakao(size: 12, weight: .semibold))
-                                        .foregroundStyle(t.onAccent)
+                                        .foregroundStyle(on ? t.text : t.onAccent)
                                         .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(t.accent, in: Capsule())
+                                        .background(on ? t.bg : t.accent, in: Capsule())
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
+                        .background(on ? t.text : t.elevated, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? t.text : t.line))
                         .contentShape(Rectangle())
-                        .onTapGesture { openCarousel(m) }
+                        .onTapGesture {
+                            openCarousel(m)
+                            // 카드가 화면 밖일 수 있으므로 상단으로 올린다(선택 = 카드 갱신이라 같이 보여야 한다).
+                            withAnimation(.easeOut(duration: 0.35)) {
+                                proxy.scrollTo(Self.cardAnchor, anchor: .top)
+                            }
+                        }
                     }
                 }
             }
             .padding(.horizontal, 20).padding(.bottom, 20)
+            .animation(.easeOut(duration: 0.18), value: carouselMountain?.id)   // 선택 전환을 부드럽게
             .confirmationDialog("오프라인 지도 삭제", isPresented: Binding(
                 get: { deletePackTarget != nil }, set: { if !$0 { deletePackTarget = nil } }),
                 titleVisibility: .visible, presenting: deletePackTarget) { m in
                 Button("삭제", role: .destructive) { packs.delete(m.id); Task { await auth.removeSavedPack(m.id) } }
             } message: { m in Text("\(m.name)의 저장된 지도를 삭제합니다.") }
             // 업데이트 확인 — 예: 기존 팩 삭제 후 새 버전 다운로드(성공 시 설치 버전 기록 → 버튼 사라짐).
-            .confirmationDialog("지도 업데이트", isPresented: Binding(
-                get: { updateTarget != nil }, set: { if !$0 { updateTarget = nil } }),
-                titleVisibility: .visible, presenting: updateTarget) { m in
-                Button("예") {
-                    Task {
-                        packs.delete(m.id)                                          // 기존 팩 제거
-                        _ = await packs.download(m.id, version: m.pack_version)     // 새로 다운로드
-                    }
-                }
-            } message: { m in Text("\(m.name)의 지도를 업데이트하겠습니까?") }
+            // 업데이트 확인은 앱 UI 팝업(ConfirmPromptView)으로 — body 상단 overlay 에 있다.
         }
     }
 
