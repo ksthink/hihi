@@ -148,4 +148,56 @@ enum PackLoader {
         }
         return lines
     }
+
+    // 내비게이션용 — **선택한 코스 하나**의 좌표를 진행 순서대로 이어 붙인다.
+    // routeLines 는 산 전체를 코스 구분 없이 평탄화하므로 "이 코스의 남은 거리"를 못 낸다.
+    // MultiLineString 은 조각 순서를 신뢰하지 않고, 직전 조각의 끝점에 가까운 쪽부터 이어
+    // 붙인다(발행 데이터의 조각 순서·방향이 뒤섞인 코스가 있다 — 그대로 이으면 선이 튄다).
+    // 오프라인에서도 써야 하므로 저장된 팩(localURL)을 우선한다.
+    static func courseLine(_ code: String, name: String, localURL: URL? = nil) async -> [[Double]] {
+        var data: Data?
+        if let localURL { data = try? Data(contentsOf: localURL) }
+        if data == nil, let url = Config.routesURL(code) {
+            data = try? await URLSession.shared.data(from: url).0
+        }
+        guard let data,
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let feats = obj["features"] as? [[String: Any]] else { return [] }
+        for f in feats {
+            guard let props = f["properties"] as? [String: Any],
+                  (props["name"] as? String) == name,
+                  let g = f["geometry"] as? [String: Any], let t = g["type"] as? String else { continue }
+            if t == "LineString", let co = g["coordinates"] as? [[Double]] { return co }
+            if t == "MultiLineString", let parts = g["coordinates"] as? [[[Double]]] {
+                return stitch(parts)
+            }
+        }
+        return []
+    }
+
+    // 조각들을 끝점 근접 기준으로 이어 붙인다(필요하면 뒤집는다).
+    private static func stitch(_ parts: [[[Double]]]) -> [[Double]] {
+        var rest = parts.filter { $0.count >= 2 }
+        guard var line = rest.first else { return [] }
+        rest.removeFirst()
+        while !rest.isEmpty {
+            guard let tail = line.last else { break }
+            var bestI = 0, bestD = Double.greatestFiniteMagnitude, bestFlip = false
+            for (i, p) in rest.enumerated() {
+                let dHead = sqDist(tail, p.first!), dTail = sqDist(tail, p.last!)
+                if dHead < bestD { bestD = dHead; bestI = i; bestFlip = false }
+                if dTail < bestD { bestD = dTail; bestI = i; bestFlip = true }
+            }
+            var next = rest.remove(at: bestI)
+            if bestFlip { next.reverse() }
+            line.append(contentsOf: next)
+        }
+        return line
+    }
+
+    private static func sqDist(_ a: [Double], _ b: [Double]) -> Double {
+        guard a.count >= 2, b.count >= 2 else { return .greatestFiniteMagnitude }
+        let dx = a[0] - b[0], dy = a[1] - b[1]
+        return dx * dx + dy * dy
+    }
 }

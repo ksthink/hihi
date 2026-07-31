@@ -59,6 +59,13 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var track: [[Double]] = [] // [lng, lat, 고도(m·없으면 -1), unix초]
     @Published var note: String?         // 위치 접근 실패 등 안내
     @Published var currentCoord: CLLocationCoordinate2D?  // 최신 GPS 위치(국가지점번호용)
+    @Published var currentAltitude: Double = -1           // 최신 고도(m). -1 = 미측정
+    // 기기 방향 — 내비 화면(NavView) 전용. ⚠️ 자력계는 산에서 철 구조물·기기 간섭으로 어긋나며,
+    // 틀린 방향을 자신 있게 가리키는 것은 안 보여주는 것보다 위험하다(2026-07-28 헤딩 화살표
+    // 제거 사유). 그래서 정확도를 함께 공개해 화면이 신뢰도를 드러내게 한다.
+    // 자력계는 소모가 있으므로 내비 화면에 있는 동안만 구독한다(startHeading/stopHeading).
+    @Published var heading: Double = -1                   // 진북 기준 0~360°. -1 = 없음
+    @Published var headingAccuracy: Double = -1           // ±°. 음수면 무효
 
     var pointCount: Int { track.count }
 
@@ -148,6 +155,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     // 트랙 반환. 세션 종료·리셋(라이브 트랙 지움 — 종료 후 지도에서 사라지게).
     @discardableResult
     func stop() -> [[Double]] {
+        stopHeading()       // 내비 화면을 띄운 채 종료해도 자력계가 남지 않게
         flushPhase()        // 종료 시점까지의 구간을 전경/배경 누적에 반영(endDiag 가 읽는다)
         endDiagWatch()      // 저전력모드 관찰 해제 — 취소 경로(finish 없이 stop)에서도 새지 않게
         manager.stopUpdatingLocation()
@@ -252,6 +260,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         diagAccSum += loc.horizontalAccuracy; diagAccN += 1   // 진단 — 통과분 평균 정확도
         if note != nil { note = nil }               // 위치 수신 성공 → 이전 일시 오류 안내 해제
         currentCoord = loc.coordinate               // 국가지점번호는 매 위치마다 갱신(5m 게이트 이전)
+        currentAltitude = loc.verticalAccuracy >= 0 ? loc.altitude : -1   // 내비 화면 고도 표시
         // 잡음 제거: 직전 점에서 5m 미만 이동은 무시(app.js:1413)
         if let last {
             let d = loc.distance(from: last)
@@ -372,6 +381,25 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
                    plannedAscent: s.plannedAscent,
                    plannedDistanceKm: s.plannedDistanceKm,
                    track: s.track, diag: nil)   // 복구본만 저장 — 계측한 세션이 아니라 진단 없음
+    }
+
+    // MARK: 기기 방향 — 내비 화면에 있는 동안만 구독(자력계 소모).
+    func startHeading() {
+        guard CLLocationManager.headingAvailable() else { return }
+        manager.headingFilter = 2                   // 2° 미만 변화는 무시(화살표 떨림·소모 억제)
+        manager.startUpdatingHeading()
+    }
+
+    func stopHeading() {
+        manager.stopUpdatingHeading()
+        heading = -1; headingAccuracy = -1
+    }
+
+    func locationManager(_ m: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        // trueHeading 은 위치가 있어야 나온다(자북→진북 보정). 없으면 자북 값으로 대체하되
+        // 정확도를 그대로 노출해 화면이 "믿을 수 없음"을 표시할 수 있게 한다.
+        headingAccuracy = newHeading.headingAccuracy
+        heading = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
     }
 
     func locationManager(_ m: CLLocationManager, didFailWithError error: Error) {
