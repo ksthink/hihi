@@ -94,8 +94,9 @@ struct NavView: View {
 
     @ViewBuilder private func arrow(_ t: Theme) -> some View {
         VStack(spacing: 18) {
-            PixelArrow(color: t.text)
-                .frame(width: 168, height: 168)
+            Image(systemName: "arrow.up")
+                .font(.system(size: 132, weight: .heavy))
+                .foregroundStyle(t.text)
                 .opacity(headingBad ? 0.28 : 1)
                 .rotationEffect(.degrees(angle))
                 .accessibilityLabel("진행 방향")
@@ -188,45 +189,5 @@ struct NavView: View {
         guard let c = climb.currentCoord,
               let code = NPN.code(lat: c.latitude, lon: c.longitude) else { return "국가지점번호 –" }
         return code
-    }
-}
-
-// 픽셀아트 화살표 — 격자 패턴을 그대로 사각형으로 찍는다.
-// SF Symbol 은 곡선·베벨이 있어 "매끈한" 인상인데, 이 앱은 흑백·저해상 도트 톤이라
-// 계단 모서리가 살아 있는 쪽이 어울린다. Canvas 로 그려 셀 수만큼만 그린다(가벼움).
-private struct PixelArrow: View {
-    let color: Color
-
-    // 위쪽을 향한 화살표. '#' 가 채운 칸.
-    private static let rows: [String] = [
-        ".....#.....",
-        "....###....",
-        "...#####...",
-        "..#######..",
-        ".#########.",
-        "###########",
-        "....###....",
-        "....###....",
-        "....###....",
-        "....###....",
-        "....###....",
-    ]
-
-    var body: some View {
-        Canvas { ctx, size in
-            let cols = Self.rows.first?.count ?? 1
-            let cell = min(size.width / CGFloat(cols), size.height / CGFloat(Self.rows.count))
-            let ox = (size.width - cell * CGFloat(cols)) / 2
-            let oy = (size.height - cell * CGFloat(Self.rows.count)) / 2
-            for (r, row) in Self.rows.enumerated() {
-                for (c, ch) in row.enumerated() where ch == "#" {
-                    // 인접 칸 경계에 안티앨리어싱 실선이 비치지 않게 0.5pt 씩 겹쳐 찍는다.
-                    let rect = CGRect(x: ox + CGFloat(c) * cell - 0.5,
-                                      y: oy + CGFloat(r) * cell - 0.5,
-                                      width: cell + 1, height: cell + 1)
-                    ctx.fill(Path(rect), with: .color(color))
-                }
-            }
-        }
     }
 }
