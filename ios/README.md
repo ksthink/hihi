@@ -68,5 +68,7 @@ xcrun devicectl device process launch --device <UDID> --terminate-existing dev.m
 ## App Store 전 남은 과제(요약, 상세 ../IOS.md)
 
 - 백그라운드 GPS 트래킹·기록 영속화(CoreLocation/SwiftData) 실구현.
+- 등반 진단 계측 보강 — `track.meta` 에 전경/배경 시간(`fg_s`/`bg_s`)·저전력모드(`lpm`) 추가
+  (배터리 %/h 에서 화면 기여분 분리 — 상세 ../IOS.md §7-4).
 - 출처표기(OSM ODbL·Protomaps·산림청·국립공원공단·Copernicus DEM·기상청) 정보화면.
 - Apple Developer Program·App Privacy·백그라운드 위치 사유서.
