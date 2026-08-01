@@ -506,3 +506,8 @@ tr.sh-new td { background: rgba(0, 128, 0, .05); }
   box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
 }
 .cs-meta .cu-results li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 빈 카드 추가 — 검색 입력과 한 줄 */
+.cu-add { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.cu-add input { flex: 1 1 auto; width: auto; min-width: 200px; }
+.cu-free-add { flex: 0 0 auto; font-size: 12px; white-space: nowrap; }
+.cu-add .cu-results { flex-basis: 100%; }

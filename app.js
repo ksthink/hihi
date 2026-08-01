@@ -1177,7 +1177,9 @@ const RECO = [
   { name: "천불동계곡 코스", park: "428302602", parkLabel: "설악산", diff: "중급", why: "비선대·양폭을 지나는 설악의 대표 계곡길" }
 ];
 // 큐레이션 항목 클릭 → 산(탐험 탭에서 산 열기) 또는 코스(코스 선택·포커스)
+// free(빈 카드 — 산/코스 연결 없음, 순수 콘텐츠 슬라이드)는 클릭해도 이동하지 않는다.
 function openCurationItem(it) {
+  if (it.type === "free") return;
   if (it.type === "mountain") { showTab("tam"); loadPark(it.code); }
   else openTrailByName(it.code, it.name);
 }
@@ -1245,7 +1247,8 @@ function pickCarousel(cu, items) {
 
 // 항목의 대표산 이름 (지난 매거진 목록 메타)
 const itemMountainName = (it) =>
-  it.type === "mountain" ? it.name : (it.mountain || PARKS[it.code]?.label || "");
+  it.type === "free" ? ""
+    : it.type === "mountain" ? it.name : (it.mountain || PARKS[it.code]?.label || "");
 
 let recoView = 0; // 추천 탭에서 보고 있는 매거진 인덱스 (0 = 노출 중)
 function renderReco() {
@@ -1256,7 +1259,7 @@ function renderReco() {
   // 목록을 누르면 그 매거진이 캐러셀로 전환돼 자세히 볼 수 있다.
   if (curations?.length) {
     const valid = curations
-      .map((cu, i) => ({ cu, i, items: (cu.items || []).filter((it) => PARKS[it.code]) }))
+      .map((cu, i) => ({ cu, i, items: (cu.items || []).filter((it) => it.type === "free" || PARKS[it.code]) }))
       .filter((v) => v.items.length);
     if (valid.length) {
       if (recoView >= valid.length) recoView = 0;

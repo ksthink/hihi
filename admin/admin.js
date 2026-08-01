@@ -1712,7 +1712,8 @@ function itemCard(cu, it, commitItems) {
 
   // 커버 이미지 → R2 images/mountains/<산코드> (같은 산 항목끼리 재사용)
   const file = Object.assign(document.createElement("input"), {
-    type: "file", accept: "image/jpeg,image/png,image/webp", hidden: true,
+    // gif = 큐레이션 움짤 — 앱 캐러셀 <img> 에서 자동 재생 (iOS 는 GifView)
+    type: "file", accept: "image/jpeg,image/png,image/webp,image/gif", hidden: true,
   });
   const imgBtn = Object.assign(document.createElement("button"), {
     className: "cs-img-btn", textContent: it.img ? "사진 교체" : "＋ 사진",
@@ -1767,10 +1768,14 @@ function itemCard(cu, it, commitItems) {
     title: "연결된 산/코스를 바꿉니다 — 문구·사진은 유지(다른 산이면 사진은 그 산 커버로)",
   });
   meta.append(
-    Object.assign(document.createElement("span"), { className: "cu-kind", textContent: it.type === "mountain" ? "산" : "코스" }),
+    Object.assign(document.createElement("span"), {
+      className: "cu-kind",
+      textContent: it.type === "free" ? "자유" : it.type === "mountain" ? "산" : "코스",
+    }),
     Object.assign(document.createElement("span"), {
       className: "cu-name",
-      textContent: it.type === "course" ? `${it.mountain} · ${it.name}` : it.name,
+      textContent: it.type === "free" ? "연결 없음"
+        : it.type === "course" ? `${it.mountain} · ${it.name}` : it.name,
     }),
     swapBtn);
 
@@ -1804,8 +1809,12 @@ function itemCard(cu, it, commitItems) {
         li2.onclick = () => {
           // 문구·사진 전부 유지 — 사진이 새 대상과 안 맞으면 운영자가 [사진 교체]로 바꾼다
           // (자동 제거는 애써 올린 썸네일을 날리는 부작용이 더 컸다, 2026-08-01 피드백).
-          it.type = tgt.type; it.code = tgt.code; it.name = tgt.name;
-          if (tgt.type === "course") it.mountain = tgt.mountain; else delete it.mountain;
+          it.type = tgt.type; it.code = tgt.code;
+          if (tgt.type === "free") { delete it.name; delete it.mountain; }
+          else {
+            it.name = tgt.name;
+            if (tgt.type === "course") it.mountain = tgt.mountain; else delete it.mountain;
+          }
           renderCurations(); cuDirty();
         };
         res.appendChild(li2);
@@ -1816,6 +1825,9 @@ function itemCard(cu, it, commitItems) {
       for (const c of courses.slice(0, 10))
         pick(`코스 · ${c.mountain} — ${c.name}${c.status !== "ready" ? " (비공개 코스)" : ""}`,
           { type: "course", code: c.code, name: c.name, mountain: c.mountain });
+      if (it.type !== "free")
+        pick("자유 · 연결 없음(빈 카드)으로 전환",
+          { type: "free", code: "free-" + Math.random().toString(16).slice(2, 10) });
       if (!res.children.length) res.innerHTML = '<li class="dup">검색 결과 없음</li>';
       res.hidden = false;
     };
@@ -1926,7 +1938,17 @@ function curationBlock(cu) {
     if (!res.children.length) res.innerHTML = '<li class="dup">검색 결과 없음</li>';
     res.hidden = false;
   };
-  addWrap.append(q, res);
+  // 빈 카드 — 산/코스 연결 없는 순수 콘텐츠 슬라이드 (문구·사진·움짤만, 탭해도 이동 없음)
+  const freeBtn = Object.assign(document.createElement("button"), {
+    className: "cu-free-add", textContent: "＋ 빈 카드",
+    title: "산/코스 연결 없는 슬라이드 — 문구·사진(움짤)만 노출, 탭해도 이동하지 않음",
+  });
+  freeBtn.onclick = () => {
+    cu.items.push({ type: "free", code: "free-" + Math.random().toString(16).slice(2, 10),
+                    logo: "© 하이하잇" });
+    renderCurations(); cuDirty();
+  };
+  addWrap.append(q, freeBtn, res);
 
   div.append(head, ul, addWrap);
   return div;

@@ -396,12 +396,20 @@ def _norm_curations(cus):
         if not isinstance(cu.get("items"), list):
             raise ValueError(f"{cu['title']}: items 배열 필요")
         for it in cu["items"]:
-            if it.get("type") not in ("mountain", "course"):
-                raise ValueError(f"{cu['title']}: 항목 type 은 mountain|course")
-            if not re.fullmatch(r"\d{9}", str(it.get("code", ""))):
-                raise ValueError(f"{cu['title']}: 항목 code 는 9자리 산코드")
-            if not str(it.get("name", "")).strip():
-                raise ValueError(f"{cu['title']}: 항목 name 필요")
+            if it.get("type") not in ("mountain", "course", "free"):
+                raise ValueError(f"{cu['title']}: 항목 type 은 mountain|course|free")
+            if it.get("type") == "free":
+                # 빈 카드 — 산/코스 연결 없는 순수 콘텐츠 슬라이드. code 는 합성 키
+                # (이미지 R2 키 겸용 + 구버전 iOS 디코드 호환 — code 가 필수 String).
+                if not it.get("code"):
+                    it["code"] = f"free-{uuid.uuid4().hex[:8]}"
+                if not re.fullmatch(r"free-[0-9a-f]{4,16}", str(it["code"])):
+                    raise ValueError(f"{cu['title']}: free 항목 code 는 free-<hex> 형식")
+            else:
+                if not re.fullmatch(r"\d{9}", str(it.get("code", ""))):
+                    raise ValueError(f"{cu['title']}: 항목 code 는 9자리 산코드")
+                if not str(it.get("name", "")).strip():
+                    raise ValueError(f"{cu['title']}: 항목 name 필요")
             if it.get("img") is not None and not str(it["img"]).startswith("https://"):
                 raise ValueError(f"{cu['title']}: img 는 https URL")
     return {"version": 1, "curations": [
@@ -431,7 +439,7 @@ def _write_curations(cfg):
 _CU_COLS = ["cu_id", "cu_title", "type", "code", "name", "mountain",
             "sub", "title", "desc", "logo", "credit", "img"]
 _CU_LABELS = {"cu_id": "큐레이션ID(수정 금지)", "cu_title": "큐레이션 이름",
-              "type": "종류(mountain|course)", "code": "산코드", "name": "이름(산/코스명)",
+              "type": "종류(mountain|course|free)", "code": "산코드(free=자동)", "name": "이름(산/코스명)",
               "mountain": "산(코스일 때)", "sub": "부가설명", "title": "제목",
               "desc": "설명", "logo": "로고", "credit": "출처", "img": "커버 이미지 URL"}
 
@@ -463,6 +471,7 @@ def _curations_xlsx():
                  "· 같은 큐레이션의 행은 cu_id(또는 cu_id 가 비면 cu_title)로 묶입니다.",
                  "· 새 큐레이션은 cu_id 를 비우고 cu_title 만 적으세요.",
                  "· type 이 빈 행은 항목 없는 큐레이션 제목 행입니다.",
+                 "· type=free 는 산/코스 연결 없는 빈 카드 — code 를 비우면 자동 발급됩니다.",
                  "· 업로드하면 전체가 파일 내용으로 교체됩니다(직전 상태는 자동 백업)."):
         rd.append([line])
     rd.column_dimensions["A"].width = 80
@@ -840,12 +849,15 @@ class AdminHandler(BaseHandler):
         # 본문 = 이미지 바이트 그대로 (Content-Type 으로 형식 판별) → R2 images/mountains/
         if method == "POST" and p == ["mountain-image"]:
             code = (q.get("code") or [""])[0]
-            if not re.fullmatch(r"\d{9}", code):
-                raise ValueError("9자리 산코드 필요")
+            # 9자리 산코드 또는 free-<hex>(빈 카드의 합성 이미지 키)
+            if not re.fullmatch(r"\d{9}|free-[0-9a-f]{4,16}", code):
+                raise ValueError("9자리 산코드 또는 free-<hex> 키 필요")
             ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
-            ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}.get(ctype)
+            # gif 는 큐레이션 움짤용 — 웹은 <img> 로 자동 재생, iOS 는 GifView 로 재생
+            ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
+                   "image/gif": "gif"}.get(ctype)
             if not ext:
-                raise ValueError("이미지 형식은 jpeg/png/webp")
+                raise ValueError("이미지 형식은 jpeg/png/webp/gif")
             body = self._body()
             if not body:
                 raise ValueError("이미지 본문 없음")
