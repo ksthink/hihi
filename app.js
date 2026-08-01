@@ -1179,7 +1179,11 @@ const RECO = [
 // 큐레이션 항목 클릭 → 산(탐험 탭에서 산 열기) · 코스(코스 선택·포커스) ·
 // 스팟(산 로드 후 그 좌표로 카메라 — 관리자 스팟 카드). free 는 이동 없음.
 async function openCurationItem(it) {
-  if (it.type === "free") return;
+  if (it.type === "free") {
+    // 링크가 있으면 외부 이동(https 만 저장됨), 없으면 순수 콘텐츠 — 무동작
+    if (it.url) window.open(it.url, "_blank", "noopener");
+    return;
+  }
   if (it.type === "mountain") { showTab("tam"); loadPark(it.code); return; }
   if (it.type === "spot") {
     showTab("tam");

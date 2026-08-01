@@ -425,6 +425,12 @@ def _norm_curations(cus):
                     raise ValueError(f"{cu['title']}: 항목 name 필요")
             if it.get("img") is not None and not str(it["img"]).startswith("https://"):
                 raise ValueError(f"{cu['title']}: img 는 https URL")
+            if it.get("url"):
+                # 링크 카드 — 빈 카드(free) 전용. 탭하면 외부 URL 로 이동(웹 새 탭 / iOS 사파리 뷰).
+                if it.get("type") != "free":
+                    raise ValueError(f"{cu['title']}: url 은 빈 카드(free)에만 넣을 수 있음")
+                if not str(it["url"]).startswith("https://"):
+                    raise ValueError(f"{cu['title']}: url 은 https:// 로 시작해야 함")
     return {"version": 1, "curations": [
         {"id": cu.get("id") or f"cu-{uuid.uuid4().hex[:8]}",
          "title": str(cu["title"]).strip(),
@@ -432,7 +438,7 @@ def _norm_curations(cus):
          # title 큰 제목, desc 중앙 하단 설명, logo 좌하단 마크,
          # credit 우하단 출처(사진 저작자), img 배경 이미지
          "items": [{k: it[k] for k in
-                    ("type", "code", "name", "mountain", "coord",
+                    ("type", "code", "name", "mountain", "coord", "url",
                      "sub", "title", "desc", "logo", "credit", "img")
                     if it.get(k) not in (None, "")} for it in cu["items"]]}
         for cu in cus]}
@@ -449,12 +455,13 @@ def _write_curations(cfg):
     return cfg
 
 
-_CU_COLS = ["cu_id", "cu_title", "type", "code", "name", "mountain", "coord",
+_CU_COLS = ["cu_id", "cu_title", "type", "code", "name", "mountain", "coord", "url",
             "sub", "title", "desc", "logo", "credit", "img"]
 _CU_LABELS = {"cu_id": "큐레이션ID(수정 금지)", "cu_title": "큐레이션 이름",
               "type": "종류(mountain|course|spot|free)", "code": "산코드(free=자동)",
               "name": "이름(산/코스/스팟명)", "mountain": "산(코스·스팟일 때)",
-              "coord": "좌표 lng,lat (스팟)", "sub": "부가설명", "title": "제목",
+              "coord": "좌표 lng,lat (스팟)", "url": "링크 URL(free 전용·https)",
+              "sub": "부가설명", "title": "제목",
               "desc": "설명", "logo": "로고", "credit": "출처", "img": "커버 이미지 URL"}
 
 

@@ -511,3 +511,5 @@ tr.sh-new td { background: rgba(0, 128, 0, .05); }
 .cu-add input { flex: 1 1 auto; width: auto; min-width: 200px; }
 .cu-free-add { flex: 0 0 auto; font-size: 12px; white-space: nowrap; }
 .cu-add .cu-results { flex-basis: 100%; }
+/* 빈 카드 링크 URL 입력 (메타 줄) */
+.cs-meta .cu-url { flex: 1 1 auto; min-width: 0; font-size: 11px; padding: 2px 6px; }

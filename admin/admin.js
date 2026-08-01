@@ -1776,10 +1776,25 @@ function itemCard(cu, it, commitItems) {
     }),
     Object.assign(document.createElement("span"), {
       className: "cu-name",
-      textContent: it.type === "free" ? "연결 없음"
+      textContent: it.type === "free" ? (it.url ? "" : "연결 없음")
         : it.type === "course" || it.type === "spot" ? `${it.mountain} · ${it.name}` : it.name,
     }),
     swapBtn);
+
+  // 빈 카드 전용 — 외부 링크 URL (탭하면 이동, https 만 저장됨)
+  if (it.type === "free") {
+    const urlIn = Object.assign(document.createElement("input"), {
+      className: "cu-url", type: "url", value: it.url || "",
+      placeholder: "링크 URL (선택 — 탭하면 이동, https://)",
+      title: "비우면 순수 콘텐츠 카드(탭해도 이동 없음)",
+    });
+    urlIn.onchange = () => {
+      const v = urlIn.value.trim();
+      if (v) it.url = v; else delete it.url;
+      cuDirty();
+    };
+    meta.insertBefore(urlIn, swapBtn);
+  }
 
   // 대상 변경 — 메타 줄을 검색 입력으로 바꿔 산·코스를 다시 고른다(추가 검색과 동일한 소스).
   // 문구(sub/title/desc/logo/credit)는 유지, 사진은 산이 달라지면 그 산의 기존 커버로 교체(없으면 제거).
@@ -1819,6 +1834,7 @@ function itemCard(cu, it, commitItems) {
             if (tgt.mountain) it.mountain = tgt.mountain; else delete it.mountain;
           }
           if (tgt.coord) it.coord = tgt.coord; else delete it.coord;
+          if (tgt.type !== "free") delete it.url;   // 링크는 빈 카드 전용
           renderCurations(); cuDirty();
         };
         res.appendChild(li2);
