@@ -17,6 +17,9 @@ struct ExploreView: View {
     @State private var locateTick = 0
     @State private var headingOn = false                             // 나침반(헤딩) 추적 중 — 위치 버튼 강조
     @State private var courseFitTick = 0              // 코스 탭 → 지도 fitBounds
+    // 스팟 큐레이션 카드 진입 — 그 좌표로 지도 이동(줌 최소 14.6). tick 증가로 1회 실행.
+    @State private var spotFitTick = 0
+    @State private var spotTarget: [Double]?
     @State private var metersPerPoint: Double = 0     // 커스텀 스케일바 축척
     @Binding var searching: Bool                     // 검색 모드 — ContentView 가 하단 네비바 숨김에 사용
     @State private var query = ""
@@ -106,6 +109,7 @@ struct ExploreView: View {
                             return (useLocal && packs.downloaded.contains(m.id))
                                 ? packs.localFile(m.id, "base.pmtiles") : nil },
                         locateTick: locateTick, fitCourseTick: courseFitTick,
+                        spotTick: spotFitTick, spotTarget: spotTarget,
                         bottomInset: peek + 40,
                         onScaleChanged: { metersPerPoint = $0 },
                         onCourseTapped: { name in                       // 지도에서 등산로/배지 탭 → 코스 선택 + 목록 노출·스크롤
@@ -275,6 +279,7 @@ struct ExploreView: View {
                 climb.fitRequested = false
                 if climb.course?.bbox != nil { courseFitTick += 1; detent = .peek }
             }
+            applyWantedSpot()          // 스팟 카드 진입이면 그 좌표로(코스 프레이밍보다 우선 표시)
             // 프레이밍이 끝난 뒤 나머지를 채운다 — 시트가 열려 있으면 도착하는 대로 갱신된다.
             info = await inf
             weather = await wx
@@ -283,6 +288,8 @@ struct ExploreView: View {
         // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
         // 않으므로 여기서 이미 로드된 목록에 적용한다. (없으면 코스가 안 바뀜)
         .onChange(of: climb.wantedCourseName) { _, _ in applyWantedCourse() }
+        // 스팟 카드 — 산이 그대로면 위 task 가 안 돌므로 여기서 좌표를 적용한다.
+        .onChange(of: climb.wantedSpot?.first) { _, _ in applyWantedSpot() }
         // 루트 보기 진입(새 기록)마다 토글·커서·겹침 캐시 초기화 — 이전 루트의 상태가 남지 않게.
         .onChange(of: climb.routeRecord?.id) { _, _ in
             routeShowCourses = false; routeCursor = nil; routeOverlap = nil
@@ -837,6 +844,16 @@ struct ExploreView: View {
     // 큐레이션이 지정한 코스를 이미 로드된 목록에 적용.
     // 목록에 없으면 **소비하지 않고 남겨 둔다** — 산 전환 직후라 아직 이전 산의 목록이거나
     // 로드 전일 수 있고, 그때 지워버리면 팩 로드 후 task 가 매칭할 값을 잃는다.
+    // 스팟 큐레이션 좌표를 지도에 적용(1회용). 코스 선택과 달리 목록 매칭이 필요 없어
+    // 도착 즉시 소비한다. 시트는 접어 지도를 보여준다 — 지점을 보러 온 진입이므로.
+    private func applyWantedSpot() {
+        guard let sp = climb.wantedSpot, sp.count >= 2 else { return }
+        climb.wantedSpot = nil
+        spotTarget = sp
+        spotFitTick += 1
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) { detent = .peek }
+    }
+
     private func applyWantedCourse() {
         guard let want = climb.wantedCourseName,
               let c = courses.first(where: { $0.name == want }) else { return }

@@ -4,7 +4,7 @@ import SwiftUI
 struct ContentView: View {
 
     // 하단 네비 탭. 순서는 웹과 같다 — **탐험·등반·추천·기록**
-    // (2026-08-02 웹 `3e8eb1d` 와 맞춤: 핵심 루프인 탐험↔등반을 붙이고 여정 순서로).
+    // (2026-08-01 웹 `3e8eb1d` 와 맞춤: 핵심 루프인 탐험↔등반을 붙이고 여정 순서로).
     //
     // ⚠️ 예전엔 정수 인덱스(0/1/2/3)였다. 그 구조에서는 탭 순서를 바꿀 때마다 `tab = 0`,
     //    `tab = 3` 같은 배선을 전부 손봐야 하고 하나만 놓쳐도 엉뚱한 탭으로 간다.
@@ -148,13 +148,17 @@ struct ContentView: View {
 
     // 큐레이션 슬라이드 탭 → 해당 산 + 코스를 선택하고 탐험 탭으로 이동.
     // 코스명은 팩 로드가 끝난 뒤에야 매칭할 수 있어 ClimbStore 에 담아 둔다(ExploreView.task).
-    private func openCuration(_ code: String, _ courseName: String?) {
+    // spot 카드면 coord 로 그 지점까지 이동한다(웹 openCurationItem 의 spot 분기).
+    // free 카드는 여기까지 오지 않는다 — RecoView 가 사파리 또는 무동작으로 끝낸다.
+    private func openCuration(_ code: String, _ courseName: String?, _ coord: [Double]?) {
         if let m = catalog.mountains.first(where: { $0.id == code }) {
             catalog.selected = m
         }
         climb.wantedCourseName = courseName
         climb.routeRecord = nil
-        climb.fitRequested = true       // 코스 로드 후 지도를 코스 범위로 프레이밍
+        climb.wantedSpot = coord
+        // 스팟은 지점으로 이동하므로 코스 범위 프레이밍과 겹치면 안 된다(둘이 카메라를 다툰다).
+        climb.fitRequested = coord == nil
         tab = .tam
     }
 

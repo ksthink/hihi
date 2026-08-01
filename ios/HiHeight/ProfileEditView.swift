@@ -24,7 +24,7 @@ struct ProfileEditView: View {
         NavigationStack {
             // ⚠️ ScrollView 필수 — 배터리 모드 설정(§7-5)이 들어오면서 내용이 한 화면을 넘겼다.
             //    예전 VStack + maxHeight 구조에서는 위(아바타가 내비바에 겹침)·아래(개발자 모드
-            //    토글)가 잘려 손댈 수 없었다(2026-08-02 실기기 보고).
+            //    토글)가 잘려 손댈 수 없었다(2026-08-01 실기기 보고).
             ScrollView {
             VStack(spacing: 18) {
                 // 아바타 미리보기

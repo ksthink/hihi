@@ -91,6 +91,9 @@ struct MapView: UIViewRepresentable {
     var offlineBaseURL: URL? = nil       // 다운로드된 팩의 로컬 base.pmtiles(있으면 오프라인 렌더)
     var locateTick: Int = 0              // 증가 시 현재위치로 이동 + 정북·수평 복원(위치/나침반 통합 버튼)
     var fitCourseTick: Int = 0           // 증가 시 선택 코스 범위로 fitBounds(코스 탭)
+    // 스팟 큐레이션 진입 — 증가 시 spotTarget 좌표로 이동(줌은 최소 14.6 유지, 웹과 동일).
+    var spotTick: Int = 0
+    var spotTarget: [Double]? = nil      // [lng, lat]
     var bottomInset: CGFloat = 306       // 시트가 가리는 하단 높이(기기별) — fitBounds·저작권 배치
     var onCenterChanged: ((CLLocationCoordinate2D) -> Void)? = nil
     var onScaleChanged: ((Double) -> Void)? = nil    // 지도 이동 시 축척(m/point) 통지 → 커스텀 스케일바
@@ -139,6 +142,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.saver = saver                                       // 절전 스로틀 여부(setTrack 이 참조)
         context.coordinator.applyTrailSelection(selectedCourse?.name, on: mv)   // 선택 코스 강조(검정/회색·배지)
         context.coordinator.fitCourse(fitCourseTick, on: mv)
+        context.coordinator.flyToSpot(spotTick, spotTarget, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
         context.coordinator.setRecordTrack(recordTrack, on: mv)
         context.coordinator.setCoursesVisible(showCourses, route: routeMode, on: mv)   // 정규 코스 토글(루트 보기=2배 레이어)
@@ -584,6 +588,18 @@ struct MapView: UIViewRepresentable {
             // 가시 영역(시트 위) 에 코스 전체를 꽉 차게: 상단=상단 오버레이 아래, 하단=시트 위(기기별).
             let pad = UIEdgeInsets(top: 96, left: 24, bottom: bottomInset, right: 24)
             mv.setVisibleCoordinateBounds(bounds, edgePadding: pad, animated: true, completionHandler: nil)
+        }
+
+        // 스팟 큐레이션 카드 진입 — 그 좌표로 이동. 줌은 **현재 값과 14.6 중 큰 쪽**을 쓴다
+        // (웹 `Math.max(map.getZoom(), 14.6)` 과 동일 — 이미 더 확대해 보고 있으면 축소하지 않는다).
+        // 산 팩 로드보다 이 호출이 먼저 와도 좌표 이동 자체는 문제없다(타일은 뒤따라 그려진다).
+        private var lastSpotTick = 0
+        func flyToSpot(_ tick: Int, _ target: [Double]?, on mv: MLNMapView) {
+            guard tick != lastSpotTick else { return }
+            lastSpotTick = tick
+            guard let t = target, t.count >= 2 else { return }
+            let c = CLLocationCoordinate2D(latitude: t[1], longitude: t[0])
+            mv.setCenter(c, zoomLevel: max(mv.zoomLevel, 14.6), animated: true)
         }
 
         private func setCourseEnds(_ c: Course?, on mv: MLNMapView) {
