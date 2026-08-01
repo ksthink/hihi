@@ -3,7 +3,7 @@
  "mountain": {
   "code": "114100301",
   "name": "안산",
-  "region": "서울특별시 서대문구 봉원동",
+  "region": "서울 서대문",
   "elev": 296,
   "center": [
    126.95,
@@ -18,7 +18,8 @@
   ],
   "sort_order": 100,
   "famous": true,
-  "published": true
+  "published": true,
+  "lists": []
  },
  "courses": [
   {

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="네이버지도" xmlns="http://www.topografix.com/GPX/1/1" xmlns:nmap="https://map.naver.com/gpx/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>서울 강서구 공항대로45길 63-염창역2번출구_260730</name>
+    <desc>서울 강서구 공항대로45길 63-서울 강서구 등촌동 666-102-염창역2번출구</desc>
+    <author><name>네이버지도</name></author>
+    <link href="https://map.naver.com"><text>네이버지도</text></link>
+    <time>2026-07-30T10:57:38.567Z</time>
+    <bounds minlat="37.5471478" minlon="126.8541597" maxlat="37.5579428" maxlon="126.8749626"/>
+    <extensions>
+      <nmap:walkCourse schemaVersion="1.0">
+        <nmap:distance>2438</nmap:distance>
+        <nmap:duration>2285.6</nmap:duration>
+        <nmap:stepCount>3809</nmap:stepCount>
+        <nmap:calories>133</nmap:calories>
+        <nmap:totalAscent>19</nmap:totalAscent>
+        <nmap:totalDescent>14</nmap:totalDescent>
+        <nmap:altMin>10</nmap:altMin>
+        <nmap:altMax>22</nmap:altMax>
+        <nmap:waypoints>
+          <nmap:waypoint index="0" lat="37.5579428" lon="126.8564019">
+            <nmap:type>start</nmap:type>
+            <nmap:name>출발지</nmap:name>
+            <nmap:desc>서울 강서구 공항대로45길 63</nmap:desc>
+          </nmap:waypoint>
+          <nmap:waypoint index="1" lat="37.5554987" lon="126.8541597">
+            <nmap:type>waypoint</nmap:type>
+            <nmap:name>경유지 #1</nmap:name>
+            <nmap:desc>서울 강서구 등촌동 666-102</nmap:desc>
+          </nmap:waypoint>
+          <nmap:waypoint index="2" lat="37.5471776" lon="126.8749411">
+            <nmap:type>goal</nmap:type>
+            <nmap:name>염창역2번출구</nmap:name>
+            <nmap:desc>서울 강서구 염창동</nmap:desc>
+          </nmap:waypoint>
+        </nmap:waypoints>
+      </nmap:walkCourse>
+    </extensions>
+  </metadata>
+  <trk>
+    <name>서울 강서구 공항대로45길 63-염창역2번출구_260730</name>
+    <desc>서울 강서구 공항대로45길 63-서울 강서구 등촌동 666-102-염창역2번출구</desc>
+    <type>walking</type>
+    <trkseg>
+      <trkpt lat="37.5579428" lon="126.8564019"><ele>10</ele></trkpt>
+      <trkpt lat="37.5579375" lon="126.8564246"><ele>10</ele></trkpt>
+      <trkpt lat="37.5576139" lon="126.8560968"><ele>10</ele></trkpt>
+      <trkpt lat="37.5575931" lon="126.8560709"><ele>10</ele></trkpt>
+      <trkpt lat="37.5573905" lon="126.8561168"><ele>10</ele></trkpt>
+      <trkpt lat="37.557367" lon="126.8560944"><ele>10</ele></trkpt>
+      <trkpt lat="37.5567632" lon="126.8554667"><ele>10</ele></trkpt>
+      <trkpt lat="37.5566862" lon="126.8553881"><ele>10</ele></trkpt>
+      <trkpt lat="37.5565521" lon="126.8552602"><ele>10</ele></trkpt>
+      <trkpt lat="37.5563608" lon="126.8550603"><ele>10</ele></trkpt>
+      <trkpt lat="37.5563382" lon="126.8550379"><ele>10</ele></trkpt>
+      <trkpt lat="37.5560426" lon="126.8547268"><ele>10</ele></trkpt>
+      <trkpt lat="37.5559592" lon="126.8546426"><ele>10</ele></trkpt>
+      <trkpt lat="37.5558151" lon="126.8544955"><ele>10</ele></trkpt>
+      <trkpt lat="37.5557245" lon="126.8544001"><ele>10</ele></trkpt>
+      <trkpt lat="37.555604" lon="126.8542902"><ele>10</ele></trkpt>
+      <trkpt lat="37.5555487" lon="126.8542374"><ele>10</ele></trkpt>
+      <trkpt lat="37.5555188" lon="126.8542128"><ele>10.02</ele></trkpt>
+      <trkpt lat="37.5554872" lon="126.8541904"><ele>10.09</ele></trkpt>
+      <trkpt lat="37.5554987" lon="126.8541597"><ele>10.05</ele></trkpt>
+      <trkpt lat="37.5554987" lon="126.8541597"><ele>10.05</ele></trkpt>
+      <trkpt lat="37.5554872" lon="126.8541904"><ele>10.09</ele></trkpt>
+      <trkpt lat="37.5553043" lon="126.8547026"><ele>11.04</ele></trkpt>
+      <trkpt lat="37.5552537" lon="126.8548491"><ele>11.53</ele></trkpt>
+      <trkpt lat="37.5551535" lon="126.8551409"><ele>12.39</ele></trkpt>
+      <trkpt lat="37.5549804" lon="126.8556281"><ele>14.35</ele></trkpt>
+      <trkpt lat="37.5547256" lon="126.8563458"><ele>17.41</ele></trkpt>
+      <trkpt lat="37.5544746" lon="126.8571009"><ele>17.69</ele></trkpt>
+      <trkpt lat="37.5540303" lon="126.858427"><ele>18</ele></trkpt>
+      <trkpt lat="37.553913" lon="126.8587439"><ele>17.84</ele></trkpt>
+      <trkpt lat="37.5537718" lon="126.8591244"><ele>17.43</ele></trkpt>
+      <trkpt lat="37.5536474" lon="126.8594696"><ele>17.07</ele></trkpt>
+      <trkpt lat="37.5534258" lon="126.8599866"><ele>15.31</ele></trkpt>
+      <trkpt lat="37.553222" lon="126.8604627"><ele>15.41</ele></trkpt>
+      <trkpt lat="37.5529381" lon="126.861132"><ele>17.16</ele></trkpt>
+      <trkpt lat="37.5529043" lon="126.8612149"><ele>17.24</ele></trkpt>
+      <trkpt lat="37.5526078" lon="126.8618967"><ele>17.15</ele></trkpt>
+      <trkpt lat="37.5518136" lon="126.8637024"><ele>12.17</ele></trkpt>
+      <trkpt lat="37.5517664" lon="126.8638092"><ele>12.25</ele></trkpt>
+      <trkpt lat="37.5517281" lon="126.8638911"><ele>12.24</ele></trkpt>
+      <trkpt lat="37.5516818" lon="126.8640058"><ele>12.22</ele></trkpt>
+      <trkpt lat="37.5516381" lon="126.8640968"><ele>12.23</ele></trkpt>
+      <trkpt lat="37.5514688" lon="126.8644492"><ele>12.61</ele></trkpt>
+      <trkpt lat="37.5514242" lon="126.8645469"><ele>12.71</ele></trkpt>
+      <trkpt lat="37.55132" lon="126.8647765"><ele>13.01</ele></trkpt>
+      <trkpt lat="37.5511836" lon="126.865055"><ele>13.4</ele></trkpt>
+      <trkpt lat="37.5511578" lon="126.8651141"><ele>13.49</ele></trkpt>
+      <trkpt lat="37.5508109" lon="126.8658189"><ele>14.35</ele></trkpt>
+      <trkpt lat="37.5506449" lon="126.8661237"><ele>14.67</ele></trkpt>
+      <trkpt lat="37.5502609" lon="126.8667926"><ele>15</ele></trkpt>
+      <trkpt lat="37.5501591" lon="126.8669633"><ele>15.08</ele></trkpt>
+      <trkpt lat="37.5500456" lon="126.8671432"><ele>16.12</ele></trkpt>
+      <trkpt lat="37.549751" lon="126.8676834"><ele>19.75</ele></trkpt>
+      <trkpt lat="37.5496474" lon="126.8678541"><ele>20</ele></trkpt>
+      <trkpt lat="37.5496197" lon="126.8678985"><ele>20</ele></trkpt>
+      <trkpt lat="37.5494909" lon="126.8680795"><ele>20.44</ele></trkpt>
+      <trkpt lat="37.5494078" lon="126.8682195"><ele>20.88</ele></trkpt>
+      <trkpt lat="37.5492541" lon="126.8684676"><ele>21.66</ele></trkpt>
+      <trkpt lat="37.5485562" lon="126.8696021"><ele>21.03</ele></trkpt>
+      <trkpt lat="37.5484813" lon="126.8697477"><ele>20.01</ele></trkpt>
+      <trkpt lat="37.5482471" lon="126.8701176"><ele>19.99</ele></trkpt>
+      <trkpt lat="37.5480613" lon="126.8704282"><ele>19.44</ele></trkpt>
+      <trkpt lat="37.5479943" lon="126.8705476"><ele>19.02</ele></trkpt>
+      <trkpt lat="37.5479345" lon="126.8706557"><ele>18.7</ele></trkpt>
+      <trkpt lat="37.5478311" lon="126.8708705"><ele>17.77</ele></trkpt>
+      <trkpt lat="37.5476638" lon="126.8712715"><ele>15.58</ele></trkpt>
+      <trkpt lat="37.5475047" lon="126.8717087"><ele>15</ele></trkpt>
+      <trkpt lat="37.5474933" lon="126.8717654"><ele>15</ele></trkpt>
+      <trkpt lat="37.5474775" lon="126.8718357"><ele>15</ele></trkpt>
+      <trkpt lat="37.5473574" lon="126.8723156"><ele>15</ele></trkpt>
+      <trkpt lat="37.5473099" lon="126.8725209"><ele>15</ele></trkpt>
+      <trkpt lat="37.5472381" lon="126.8729177"><ele>15</ele></trkpt>
+      <trkpt lat="37.5472363" lon="126.8729279"><ele>15</ele></trkpt>
+      <trkpt lat="37.5472008" lon="126.8731976"><ele>15</ele></trkpt>
+      <trkpt lat="37.5471569" lon="126.8735806"><ele>15</ele></trkpt>
+      <trkpt lat="37.5471511" lon="126.8736825"><ele>15</ele></trkpt>
+      <trkpt lat="37.5471478" lon="126.8737437"><ele>15</ele></trkpt>
+      <trkpt lat="37.5471541" lon="126.8740832"><ele>15</ele></trkpt>
+      <trkpt lat="37.5471628" lon="126.8743605"><ele>15</ele></trkpt>
+      <trkpt lat="37.5471876" lon="126.8749626"><ele>15</ele></trkpt>
+      <trkpt lat="37.5471776" lon="126.8749411"><ele>15</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -3,7 +3,7 @@
  "mountain": {
   "code": "282600201",
   "name": "계양산",
-  "region": "인천광역시 계양구 목상동",
+  "region": "인천 계양",
   "elev": 395,
   "center": [
    126.715,
@@ -14245,30 +14245,10 @@
    "no": 1
   }
  ],
- "spots": [
-  {
-   "id": "sp-man-9jphe7",
-   "category": "장소",
-   "name": "우리나라 만세",
-   "coord": [
-    126.709675,
-    37.560749
-   ],
-   "detail": null,
-   "etc": null,
-   "origin": "manual",
-   "moved": true,
-   "deleted": false,
-   "main": false,
-   "disp_zoom": 12,
-   "disp_icon": true,
-   "disp_size": 13,
-   "disp_bold": true
-  }
- ],
+ "spots": [],
  "publish": {
-  "pack_version": 15,
-  "published_at": "2026-07-22T19:16:16.289952+00:00",
+  "pack_version": 16,
+  "published_at": "2026-07-30T10:26:14.119697+00:00",
   "pack_size_kb": 2508,
   "tiles_bbox": [
    126.68,

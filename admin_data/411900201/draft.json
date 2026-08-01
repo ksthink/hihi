@@ -3,7 +3,7 @@
  "mountain": {
   "code": "411900201",
   "name": "원미산",
-  "region": "경기도 부천시 원미동",
+  "region": "경기 부천",
   "elev": 124,
   "center": [
    126.8,
@@ -18,7 +18,8 @@
   ],
   "sort_order": 100,
   "famous": false,
-  "published": true
+  "published": true,
+  "lists": []
  },
  "courses": [
   {
