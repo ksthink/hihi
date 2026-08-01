@@ -37,6 +37,7 @@ struct ExploreView: View {
     @State private var deletePackTarget: Mountain?        // 저장된 지도 삭제 확인 대상
     @State private var dlLoginHint = false                // 지도 다운 — 비로그인 시 로그인 안내
     @State private var showEndConfirm = false             // 등반 종료 오터치 방지 확인 팝업
+    @State private var showNav = false                    // 내비(지도 없는 방향·거리 화면)
     @State private var showShortConfirm = false           // 100m 이하 짧은 등반 저장 확인 팝업
     @State private var endCode = ""                       // 팝업에 제시할 랜덤 2자리 확인번호
     // 기록 루트 보기 전용 모드 — climb.routeRecord 가 있으면 진입(등반 중이 아닐 때).
@@ -284,6 +285,13 @@ struct ExploreView: View {
         .onChange(of: climb.routeRecord?.id) { _, _ in
             routeShowCourses = false; routeCursor = nil; routeOverlap = nil
         }
+        // 내비 — 지도를 끄고 방향·거리·고도만. 닫으면 지도(등반 HUD)로 돌아온다.
+        .fullScreenCover(isPresented: $showNav) {
+            NavView(climb: climb,
+                    mountainCode: catalog.selected?.id,
+                    onMap: { showNav = false },
+                    onClose: { showNav = false })
+        }
         // 등반 종료 오터치 방지 — 확인번호가 일치할 때만 종료 + 기록 저장.
         .sheet(isPresented: $showEndConfirm) {
             ClimbEndConfirmView(code: endCode) { finishClimb() }
@@ -484,6 +492,19 @@ struct ExploreView: View {
                 hudStat(climb.course?.distance_km.map { String(format: "%.1f", $0) } ?? "–", "코스(km)", t)
                 hudStat("\(climb.pointCount)", "GPS 지점", t)
             }
+            // 내비 — 지도를 끄고 방향·거리·고도만 보는 화면. 지도 렌더를 멈춰 배터리를 아낀다.
+            Button { showNav = true } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "location.north.line.fill").font(.system(size: 14, weight: .semibold))
+                    Text("내비").font(.kakao(size: 15, weight: .semibold))
+                }
+                .foregroundStyle(t.text)
+                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                .background(t.surface, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
+            }
+            .buttonStyle(.plain)
+
             Button {
                 // 오터치 방지 — 랜덤 2자리 확인번호를 키패드로 입력해야 실제 종료된다.
                 endCode = String(format: "%02d", Int.random(in: 10...99))

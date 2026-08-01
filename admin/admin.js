@@ -1214,13 +1214,23 @@ function renderRecords() {
     const build = m && m.build ? `b${escHtml(m.build)}` : "—";
     const device = m && m.device ? escHtml(m.device) : "—";
     const osVer = m && m.os ? escHtml(m.os) : "—";
+    // §7-4 두 열 — meta v3 부터.
+    // 저전력: low_power(시작 시점)만으로는 "잔량이 떨어져 중간에 켜진" 경우를 놓쳐 lpm 을 쓴다.
+    // 전경/배경: 소모에서 화면 기여분과 순수 GPS 기여분을 가르는 열쇠.
+    const lpm = !m || m.lpm === undefined ? "—"
+      : m.lpm ? '<span class="warn">ON</span>' : "OFF";
+    const mins = (s) => Math.round((s || 0) / 60);
+    const phase = !m || m.fg_s === undefined ? "—"
+      : `${mins(m.fg_s)} / ${mins(m.bg_s)}분`;
     return `<tr>
       <td>${escHtml(when)}</td>
       <td>${escHtml(r.course_name || "—")}<span class="dim"> ${escHtml(r.mountain_id || "")}</span></td>
       <td>${r.distance_km != null ? r.distance_km.toFixed(2) : "—"}km</td>
       <td>${dur}</td>
       <td>${bat}</td>
+      <td>${lpm}</td>
       <td>${rate != null ? `<b>${rate.toFixed(1)}</b>` : "—"}</td>
+      <td class="dim">${phase}</td>
       <td>${gpsMode}</td>
       <td>${gpsFix}</td>
       <td>${acc}</td>
@@ -1234,7 +1244,9 @@ function renderRecords() {
   $("rec-list").innerHTML = REC.rows.length
     ? `<table class="rec-tbl"><thead><tr>
          <th>시작</th><th>코스</th><th>거리</th><th>시간</th><th>배터리</th>
-         <th>%/h</th><th>GPS 수준</th><th>GPS 지점</th><th>평균정확도</th>
+         <th title="세션 중 1회라도 저전력 모드">저전력</th>
+         <th>%/h</th><th title="전경(화면 켜짐) / 배경 누적">전경/배경</th>
+         <th>GPS 수준</th><th>GPS 지점</th><th>평균정확도</th>
          <th>빌드</th><th>기기</th><th>OS</th><th>트랙</th><th>사용자</th>
        </tr></thead><tbody>${rows}</tbody></table>`
     : `<p class="dim">기록이 없습니다.</p>`;

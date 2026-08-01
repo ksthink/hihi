@@ -4,11 +4,18 @@ import SwiftUI
 // 탐험만 지도+검색+바텀시트 구현(M1 진행분), 나머지 3탭은 웹 헤더를 맞춘 플레이스홀더(후속 슬라이스).
 struct ContentView: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.scenePhase) private var scenePhase   // 등반 진단 — 전경/배경 시간 분리(IOS.md §7-4)
     @StateObject private var catalog = CatalogStore()
     @StateObject private var auth = AuthStore()
     @StateObject private var climb = ClimbStore()
     @State private var tab = 0
-    @State private var navBarH: CGFloat = 56   // 하단 네비 실측 높이 — 스크롤 탭 하단 공간 확보용
+    // 하단 네비 높이 — 아이콘 21pt·라벨 10pt 모두 고정 크기라 값이 변하지 않는다. 그래서 상수로
+    // 박고 bottomNav 에도 같은 높이를 강제한다.
+    // ⚠️ 예전엔 GeometryReader 로 실측해 @State 에 넣었는데, **레이아웃 측정 → 상태 변경 →
+    //    재레이아웃** 순환이 생겼다. 이 값이 각 탭 safeAreaInset 높이라 순환이 도는 동안
+    //    스크롤뷰 contentInset 이 계속 바뀌고, 그때 시작된 스크롤 제스처가 취소된다
+    //    — "처음 두세 번은 스크롤이 안 먹는" 증상의 원인이었다(2026-07-31, 전 탭 공통).
+    private static let navBarHeight: CGFloat = 52
     @State private var searching = false                            // 탐험 검색 모드 — 켜지면 하단 네비바 숨김
     @State private var showSplash = true                            // 인트로 스플래시
     @AppStorage("hiheight-theme") private var themePref = "system"   // system·light·dark (지도 컨트롤 토글)
@@ -18,7 +25,7 @@ struct ContentView: View {
     ]
 
     // 스크롤 탭이 확보할 하단 공간 — 네비가 떠 있을 때만(검색·등반·루트 보기 중엔 네비가 없으니 0).
-    private var navReserve: CGFloat { (searching || climb.tracking || climb.routeRecord != nil) ? 0 : navBarH }
+    private var navReserve: CGFloat { (searching || climb.tracking || climb.routeRecord != nil) ? 0 : Self.navBarHeight }
 
     var body: some View {
         // 네이티브 탭바(iOS 26 글래스 플로팅) 숨기고 웹식 평평·불투명 하단 네비를 직접 그린다.
@@ -54,6 +61,9 @@ struct ContentView: View {
                 WeatherService.prefetch(lat: m.center[1], lon: m.center[0])
             }
         }
+        // 등반 중 전경/배경 시간 누적 — 소모에서 화면 기여분을 분리하려면 필요하다(IOS.md §7-4).
+        // .active 만 전경으로 본다(.inactive = 알림센터·전화 등으로 화면이 가려진 상태).
+        .onChange(of: scenePhase) { _, phase in climb.notePhase(foreground: phase == .active) }
         // 중단된 등반 복구 — 강제 종료는 막을 수 없으므로 진행 중 저장해 둔 세션으로 되살린다(IOS.md §9 S3).
         // 시스템 다이얼로그 대신 앱 UI 로 통일한 전용 팝업(ClimbResumeView).
         .overlay {
@@ -104,12 +114,11 @@ struct ContentView: View {
             }
         }
         .padding(.top, 4)
+        // 높이를 상수로 못 박는다 — navReserve 와 같은 값이라 둘이 어긋날 일이 없고,
+        // 측정이 없으니 레이아웃 순환도 생기지 않는다(위 navBarHeight 주석 참조).
+        .frame(height: Self.navBarHeight, alignment: .top)
         .background(t.surface.ignoresSafeArea(edges: .bottom))   // 배경만 홈 인디케이터까지 확장
         .overlay(alignment: .top) { Rectangle().fill(t.line).frame(height: 0.5) }
-        // 네비 실측 높이 → 스크롤 탭 하단 확보값(navReserve)에 반영 (안전영역 위 콘텐츠 높이)
-        .background(GeometryReader { g in Color.clear
-            .onAppear { navBarH = g.size.height }
-            .onChange(of: g.size.height) { navBarH = $0 } })
     }
 
     // 큐레이션 슬라이드 탭 → 해당 산 + 코스를 선택하고 탐험 탭으로 이동.

@@ -41,8 +41,12 @@ create policy own_profile on profiles for all
 --   meta: 진단 요약(2026-07-29 추가, iOS 만 기록 — 없는 기록은 키 자체가 없다) }
 -- meta 포맷: { v:2, bat_start, bat_end(0~100·-1=미측정), low_power, charged,
 --   gps_mode("Best"|"10m"|"100m"), fixes, fixes_dropped(정확도 게이트 탈락 수), acc_avg(m·-1=표본없음),
---   device("iPhone14,2"), os("26.0"), build(CFBundleVersion) }   ← v2 에서 추가(2026-07-30)
---   v1 기록에는 device/os/build 가 없다. 소비 측은 키 없음을 허용할 것.
+--   device("iPhone14,2"), os("26.0"), build(CFBundleVersion),   ← v2 에서 추가(2026-07-30)
+--   lpm(세션 중 1회라도 저전력모드), fg_s/bg_s(전경·배경 누적 초) }  ← v3 에서 추가(2026-07-31, IOS.md §7-4)
+--   v1 에는 device/os/build 가, v2 에는 lpm/fg_s/bg_s 가 없다. 소비 측은 키 없음을 허용할 것.
+--   ⚠️ low_power 는 **시작 시점** 값이고 lpm 은 **세션 중 1회라도**다 — 잔량이 떨어져 중간에
+--   켜지는 경우가 많아 둘을 나눠 둔다. fg_s/bg_s 는 소모에서 화면 기여분과 순수 GPS
+--   기여분을 분리하려고 넣었다(§7-4: 11.1%/h 측정이 예산의 1.8배였으나 원인을 못 갈랐다).
 --   ⚠️ track 은 points 가 2개 미만이어도 **meta 가 있으면 저장된다**(2026-07-30) —
 --   진단은 트랙과 독립이고, "GPS 를 거의 못 받았다"가 오히려 중요한 진단이기 때문.
 --   따라서 points: [] 인 행이 있을 수 있다. 소비 측은 length >= 2 를 확인할 것.

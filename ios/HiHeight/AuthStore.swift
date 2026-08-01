@@ -277,6 +277,12 @@ final class AuthStore: ObservableObject {
         let device: String        // "iPhone14,2" — UIDevice.model 은 "iPhone" 만 주므로 uname
         let os: String            // "26.0"
         let build: String         // CFBundleVersion (= git 커밋 수, 스플래시 표시와 같은 값)
+        // v3 (IOS.md §7-4) — 소모율만으로는 원인을 못 가른다.
+        // lpm: 세션 중 1회라도 저전력 모드(low_power 는 시작 시점만 — 잔량이 떨어져 중간에 켜지면 놓친다)
+        // fg_s/bg_s: 화면 켜짐/꺼짐 누적 초. 화면 기여분과 순수 GPS 기여분을 분리한다.
+        let lpm: Bool
+        let fg_s: Int
+        let bg_s: Int
     }
 
     // 기기 모델 식별자 — uname(2) 의 machine. UIDevice 에는 이 값을 주는 API 가 없다.
@@ -289,14 +295,15 @@ final class AuthStore: ObservableObject {
     }
 
     private static func diagJSON(_ d: ClimbDiag) -> DiagJSON {
-        DiagJSON(v: 2,
+        DiagJSON(v: 3,
                  bat_start: d.batStart, bat_end: d.batEnd,
                  low_power: d.lowPower, charged: d.charged,
                  gps_mode: d.gpsMode,
                  fixes: d.fixes, fixes_dropped: d.fixesDropped, acc_avg: d.accAvg,
                  device: deviceModel,
                  os: UIDevice.current.systemVersion,
-                 build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?")
+                 build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?",
+                 lpm: d.lpm, fg_s: d.fgSec, bg_s: d.bgSec)
     }
 
     private func run(_ op: @escaping () async throws -> Void) async {
