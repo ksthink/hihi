@@ -972,6 +972,24 @@ $("publish").onclick = async () => {
   });
 };
 
+// 통합배포 — 등록된 모든 산을 잡 하나로 순차 재발행 (산별 실패는 로그로 격리)
+$("publish-all").onclick = async () => {
+  const list = await api("/mountains");
+  if (!list.length) return alert("등록된 산이 없습니다");
+  if (!confirm(`통합배포 — 등록된 ${list.length}개 산을 순서대로 전부 재발행합니다.\n`
+    + `변경이 없는 산도 다시 발행되며 몇 분 걸릴 수 있습니다. 진행할까요?`)) return;
+  if (S.code && S.dirty) await saveDraft();   // 보고 있던 초안의 미저장분 먼저 반영
+  const { job_id } = await api("/publish-all", { method: "POST" });
+  $("publish-all").disabled = true;
+  $("publish").disabled = true;
+  pollJob(job_id, async () => {
+    $("publish-all").disabled = false;
+    $("publish").disabled = false;
+    if (S.code) { S.draft = await api(`/mountains/${S.code}/draft`); renderMountain(); }
+    refreshList();
+  });
+};
+
 $("prod-del").onclick = async () => {
   if (!S.code) return;
   const nm = S.draft.mountain.name, code = S.code;
@@ -1003,7 +1021,7 @@ function pollJob(id, onDone) {
       if (j.state === "done" || j.state === "error") {
         clearInterval(t);
         if (j.state === "done") onDone?.(j);
-        else $("publish").disabled = false;
+        else { $("publish").disabled = false; $("publish-all").disabled = false; }
       }
     } catch { clearInterval(t); }
   }, 1000);

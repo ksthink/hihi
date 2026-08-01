@@ -1063,6 +1063,33 @@ class AdminHandler(BaseHandler):
                 return self._json({"job_id": jid})
 
 
+        # POST /api/publish-all — 통합배포: 등록된 모든 산을 순서대로 재발행 (잡 1개)
+        # 산별 실패는 격리(로그에 남기고 다음 산 진행). 잡이 하나라 진행바·로그도 하나로 흐른다.
+        # ⚠️ code=None 잡이라 개별 산 삭제와의 레이스 가드(busy)가 걸리지 않는다 —
+        #    운영자 1인 전제. 통합배포 중 산 삭제는 하지 말 것.
+        if method == "POST" and p == ["publish-all"]:
+            import publish_pack
+            metas = draft_store.list_drafts()
+            if not metas:
+                raise ValueError("등록된 산이 없습니다")
+
+            def run(job):
+                n = len(metas)
+                errors = []
+                for i, m in enumerate(metas):
+                    def sub(j, s, prog, _i=i, _nm=m["name"]):
+                        job_step(j, f"[{_i + 1}/{n}] {_nm} — {s}", (_i + prog) / n)
+                    try:
+                        publish_pack.publish(m["code"], job, sub)
+                    except Exception as e:  # 한 산의 실패가 전체를 멈추지 않게
+                        errors.append(f"{m['name']}({m['code']})")
+                        job["log"].append(f"⚠ {m['name']} 실패: {e}")
+                tail = f" · 실패 {len(errors)}: {', '.join(errors)}" if errors else ""
+                job_step(job, f"통합배포 완료 — {n - len(errors)}/{n} 성공{tail}", 1.0)
+
+            jid = JOBS.submit(f"통합배포 ({len(metas)}개 산)", run)
+            return self._json({"job_id": jid, "count": len(metas)})
+
         # GET /api/jobs/<id>
         if method == "GET" and len(p) == 2 and p[0] == "jobs":
             job = JOBS.jobs.get(p[1])
