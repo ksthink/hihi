@@ -63,6 +63,11 @@ const URBAN_KINDS = {
   "문화·체육": ["museum", "library", "stadium", "arts_centre", "theatre", "sports_centre"],
 };
 
+// 전국 버스정류장 자체 타일 URL — 기저(kr-base) 경로에서 파일명만 치환해 파생.
+// 로컬 팩 기저("local-<산코드>" 등)는 해당 없음 → null (소스·레이어 모두 생략).
+const BUS_URL = (base) =>
+  /kr-base\.pmtiles$/.test(base) ? base.replace(/kr-base\.pmtiles$/, "kr-bus.pmtiles") : null;
+
 // baseMode: "terrain"(기본) = 지형 전용 — OSM 벡터 채움/도시POI/건물/경계를 걷어내고
 //   배경 + 음영기복 + 최소 오리엔테이션(물길·이름, 얇은 도로, 지명·사찰 라벨, 등산 편의시설)만.
 //   저데이터·저배터리 취지: 드로우콜을 줄이고 지형(음영+등고선)을 주 정보로 읽게 한다.
@@ -105,10 +110,11 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
   // 지형 전용에서 제거하는 OSM 벡터 레이어 — 채움(earth/landcover/landuse)·건물·경계·
   // 도시POI·도로 케이싱·부가 라벨. 남기는 것: 음영·물(면+선+이름)·얇은 도로·등산로(paths)·
   // 편의시설(화장실·식수·주차·안내)·사찰·동네/지명 라벨. (등고선·루트·스팟은 app.js 오버레이)
+  // POI 류(전철역·버스정류장·도시 POI·지명 라벨)는 지형 모드에서도 표시한다 —
+  // "기저지도 POI 는 지도 전체에서 보이게" (2026-08-02 결정). 끄기는 표시 설정(zoom=끔)으로.
   const TERRAIN_DROP = new Set([
     "earth", "landcover-grass", "landuse-park", "landuse-farm", "roads-casing",
-    "rail", "buildings", "boundaries", "road-names", "poi-urban", "bus-stops",
-    "stations", "admin-labels"
+    "rail", "buildings", "boundaries", "road-names"
   ]);
   const dropTerrain = (arr) => terrain ? arr.filter((l) => !TERRAIN_DROP.has(l.id)) : arr;
 
@@ -125,6 +131,11 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         attribution:
           '<a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
       },
+      // 전국 버스정류장 자체 타일(kr-bus, 공공데이터) — 기저 소스와 같은 위치에서 파일명만
+      // 치환해 파생(웹 프록시·R2 직결 모두 성립). 로컬 팩 기저(오프라인)에는 없음 → 소스 생략.
+      ...(BUS_URL(pmtilesUrl) ? {
+        bus: { type: "vector", url: "pmtiles://" + BUS_URL(pmtilesUrl) }
+      } : {}),
       ...(useTerrainRaster ? {
         dem: {
           type: "raster-dem", url: "pmtiles://" + terrainUrl,
@@ -321,10 +332,12 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
       },
-      {
-        // 버스정류장: 아이콘 + 이름(아이콘 뒤 +1 줌부터)
-        id: "bus-stops", type: "symbol", source: "protomaps", "source-layer": "pois",
-        minzoom: P.버스정류장.zoom ?? 0, filter: ["==", "kind", "bus_stop"],
+      ...(BUS_URL(pmtilesUrl) ? [{
+        // 버스정류장: 아이콘 + 이름(아이콘 뒤 +1 줌부터).
+        // 기저(pois)에는 bus_stop 이 원천 부재(z14 아카이브·Protomaps 는 고줌 전용) →
+        // 자체 전국 타일(bus 소스, scripts/build_bus_tiles.py)로 전 지역 표시.
+        id: "bus-stops", type: "symbol", source: "bus", "source-layer": "stops",
+        minzoom: P.버스정류장.zoom ?? 0,
         layout: {
           visibility: P.버스정류장.zoom != null ? "visible" : "none",
           ...(useIcon(P.버스정류장.icon) ? {
@@ -341,7 +354,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
           "text-optional": true
         },
         paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
-      },
+      }] : []),
       {
         // 사찰·암자 — 卍 아이콘 + 이름 (한국 산행 랜드마크)
         // OSM kind=place_of_worship 은 종교 통합 분류라 교회·성당까지 걸림 →

@@ -6,7 +6,7 @@
 // 앱은 /pmtiles/<파일명> 을 이 함수로 rewrite(vercel.json, ?f=파일명) → 허용 목록 파일명만
 // 해당 R2 객체로, 그 외(레거시 v4.pmtiles 등)는 base 로 폴백.
 const R2_PUB = process.env.R2_PUB || "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev";
-const PMTILES_FILES = new Set(["kr-base.pmtiles", "kr-terrain.pmtiles"]);
+const PMTILES_FILES = new Set(["kr-base.pmtiles", "kr-terrain.pmtiles", "kr-bus.pmtiles"]);
 const PMTILES_URL = process.env.PMTILES_URL || `${R2_PUB}/kr-base.pmtiles`;
 
 module.exports = async function handler(req, res) {

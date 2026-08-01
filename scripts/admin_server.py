@@ -50,7 +50,6 @@ SPOT_DISPLAY_DEFAULT = {"version": 2, "categories": {
     "헬기장": {"zoom": 18, "icon": True, "size": 8, "bold": False},
     "음수대": {"zoom": 18, "icon": True, "size": 8, "bold": False},
     "주차장": {"zoom": None, "icon": True, "size": 8, "bold": False},
-    "버스정류장": {"zoom": 14, "icon": True, "size": 8, "bold": False},
     "분기점": {"zoom": None, "icon": True, "size": 8, "bold": False},
     "시종점": {"zoom": None, "icon": True, "size": 8, "bold": False},
 }}

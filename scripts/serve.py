@@ -21,7 +21,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 # range 접근이라 불필요(폐기 대상). 앱은 /pmtiles/* 로 요청 → R2 고정 객체로 매핑.
 R2_PUB = os.environ.get("R2_PUB", "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev")
 # /pmtiles/<파일명> → R2 객체. 허용 목록 밖 파일명(레거시 v4.pmtiles 등)은 base 로 폴백.
-PMTILES_FILES = {"kr-base.pmtiles", "kr-terrain.pmtiles"}
+PMTILES_FILES = {"kr-base.pmtiles", "kr-terrain.pmtiles", "kr-bus.pmtiles"}
 PMTILES_URL = os.environ.get("PMTILES_URL", f"{R2_PUB}/kr-base.pmtiles")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 로컬 원본(데이터 제작 산출물)이 디스크에 있으면 R2 왕복 없이 그 파일을 Range 서빙 —
