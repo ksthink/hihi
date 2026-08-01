@@ -8,8 +8,9 @@ struct Curation: Decodable, Identifiable {
 }
 
 struct CurationItem: Decodable, Identifiable {
-    let type: String          // "mountain" | "course"
-    let code: String          // 산코드 (course 도 대표 산코드)
+    // "mountain" | "course" | "spot"(2026-08-01) | "free"(빈 카드 — 이동 대상 없음)
+    let type: String
+    let code: String          // 산코드 (course 도 대표 산코드). free 는 free-<hex> 합성 키
     let name: String?
     let sub: String?
     let title: String?
@@ -18,9 +19,24 @@ struct CurationItem: Decodable, Identifiable {
     let credit: String?       // 사진 저작자(우하단)
     let img: String?
     let mountain: String?
+    // spot 카드의 목표 좌표 [lng, lat] — 탭하면 이 지점으로 지도를 옮긴다(웹 openCurationItem).
+    let coord: [Double]?
+    // free 카드의 외부 링크(관리자가 https 만 저장). 있으면 탭 시 사파리로 연다.
+    let url: String?
 
     var id: String { code + "-" + (title ?? name ?? "") }
     var displayMountain: String { type == "mountain" ? (name ?? "") : (mountain ?? name ?? "") }
+
+    // 빈 카드 — 산·코스로 이동하지 않는다. code 가 free-<hex> 합성 키라 산 탐색에 넘기면 안 된다.
+    var isFree: Bool { type == "free" }
+    var linkURL: URL? {
+        guard let url, url.hasPrefix("https://") else { return nil }   // https 만(관리자 저장 규칙)
+        return URL(string: url)
+    }
+    var spotCoord: [Double]? {
+        guard type == "spot", let c = coord, c.count >= 2 else { return nil }
+        return c
+    }
 }
 
 enum CurationLoader {

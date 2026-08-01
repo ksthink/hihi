@@ -81,6 +81,9 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     // ② 같은 산이면 task 가 안 돌므로(id 불변) onChange 가 이미 로드된 목록에서 매칭.
     // ②가 없으면 이미 그 산을 보고 있을 때 코스가 바뀌지 않는다.
     @Published var wantedCourseName: String?
+    // 스팟 큐레이션 진입 — 탐험이 산을 연 뒤 이 좌표로 지도를 옮긴다 [lng, lat]. 1회용.
+    // (코스가 아니라 지점을 가리키는 카드라 wantedCourseName 과 별개로 둔다.)
+    @Published var wantedSpot: [Double]?
 
     private let manager = CLLocationManager()
     private var startedAt: Date?

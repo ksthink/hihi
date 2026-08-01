@@ -1,15 +1,17 @@
 import SwiftUI
+import SafariServices   // 빈 카드 외부 링크(SFSafariViewController)
 
 // 추천 탭 — 웹 renderReco/pickCarousel(app.js:1160) 이식.
 // 노출 매거진 1세트만 PICK 캐러셀(82% 폭 정사각·옆 카드 살짝 보임·스냅·점 인디케이터),
 // 나머지는 "지난 매거진 보기" 아코디언. 공식 추천 3종 아코디언(다크 필). 슬라이드 탭 → onOpen.
 struct RecoView: View {
     @ObservedObject var catalog: CatalogStore
-    // (산코드, 코스명) — 코스 큐레이션이면 코스명까지 넘겨야 그 코스가 선택된다.
-    // 산 목록(아코디언)에서는 코스 지정이 없으므로 nil.
-    let onOpen: (String, String?) -> Void
+    // (산코드, 코스명, 스팟좌표) — 코스 큐레이션이면 코스명까지 넘겨야 그 코스가 선택되고,
+    // 스팟 카드면 좌표까지 넘겨야 그 지점으로 지도가 이동한다. 산 목록(아코디언)은 둘 다 nil.
+    let onOpen: (String, String?, [Double]?) -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var curations: [Curation] = []
+    @State private var safariLink: SafariLink?   // 빈 카드(free) 외부 링크 — 사파리 시트
     @State private var magIndex = 0              // 캐러셀에 표시 중인 매거진
     @State private var pickID: String?           // 캐러셀 스크롤 위치(점 인디케이터)
     @State private var openLists: Set<String> = []
@@ -48,6 +50,22 @@ struct RecoView: View {
         }
         .background(t.bg)
         .task { await reload() }
+        // 빈 카드 외부 링크 — 앱을 벗어나지 않고 사파리 뷰로 연다(웹은 새 탭).
+        .sheet(item: $safariLink) { SafariView(url: $0.url) }
+    }
+
+    // 카드 탭 — 웹 openCurationItem(app.js:1181) 과 같은 분기.
+    //  free    : 링크가 있으면 사파리, 없으면 **무동작**
+    //  spot    : 산 로드 + 그 좌표로 이동
+    //  course  : 산 로드 + 코스명으로 선택
+    //  mountain: 산만 로드
+    private func tapItem(_ it: CurationItem) {
+        if it.isFree {
+            // ⚠️ code 가 free-<hex> 합성 키라 산 탐색으로 넘기면 안 된다(어떤 산과도 매칭되지 않음).
+            if let u = it.linkURL { safariLink = SafariLink(url: u) }
+            return
+        }
+        onOpen(it.code, it.type == "course" ? it.name : nil, it.spotCoord)
     }
 
     // 큐레이션 로드 — 최초 표시(.task)와 당겨서 새로고침(.refreshable) 공용.
@@ -72,7 +90,7 @@ struct RecoView: View {
                         slide(it, cardW)
                             .id(it.id)
                             .contentShape(Rectangle())
-                            .onTapGesture { onOpen(it.code, it.type == "course" ? it.name : nil) }
+                            .onTapGesture { tapItem(it) }
                     }
                 }
                 .scrollTargetLayout()
@@ -97,7 +115,12 @@ struct RecoView: View {
         ZStack {
             Group {
                 if let s = it.img, let url = URL(string: s) {
-                    AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { fallbackGradient }
+                    // GIF 는 AsyncImage 가 첫 프레임만 그린다 — UIImageView 로 재생한다.
+                    if url.isGif {
+                        GifView(url: url)
+                    } else {
+                        AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { fallbackGradient }
+                    }
                 } else { fallbackGradient }
             }
             // ps-shade — 아래 어둡게(글자 가독)
@@ -166,7 +189,7 @@ struct RecoView: View {
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
                     } else {
                         ForEach(members) { m in
-                            memberRow(m.name, "\(m.elev.map { "\($0)m" } ?? "") · \(m.region ?? "")", t) { onOpen(m.id, nil) }
+                            memberRow(m.name, "\(m.elev.map { "\($0)m" } ?? "") · \(m.region ?? "")", t) { onOpen(m.id, nil, nil) }
                         }
                     }
                 }
@@ -229,4 +252,19 @@ struct RecoView: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+// 빈 카드(free)의 외부 링크 — 앱 안에서 사파리 뷰로 연다(웹은 새 탭 window.open).
+// item 기반 시트라 URL 을 감싸는 Identifiable 래퍼가 필요하다.
+struct SafariLink: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+struct SafariView: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        SFSafariViewController(url: url)
+    }
+    func updateUIViewController(_ vc: SFSafariViewController, context: Context) {}
 }

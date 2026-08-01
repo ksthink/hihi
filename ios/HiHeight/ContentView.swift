@@ -148,13 +148,17 @@ struct ContentView: View {
 
     // 큐레이션 슬라이드 탭 → 해당 산 + 코스를 선택하고 탐험 탭으로 이동.
     // 코스명은 팩 로드가 끝난 뒤에야 매칭할 수 있어 ClimbStore 에 담아 둔다(ExploreView.task).
-    private func openCuration(_ code: String, _ courseName: String?) {
+    // spot 카드면 coord 로 그 지점까지 이동한다(웹 openCurationItem 의 spot 분기).
+    // free 카드는 여기까지 오지 않는다 — RecoView 가 사파리 또는 무동작으로 끝낸다.
+    private func openCuration(_ code: String, _ courseName: String?, _ coord: [Double]?) {
         if let m = catalog.mountains.first(where: { $0.id == code }) {
             catalog.selected = m
         }
         climb.wantedCourseName = courseName
         climb.routeRecord = nil
-        climb.fitRequested = true       // 코스 로드 후 지도를 코스 범위로 프레이밍
+        climb.wantedSpot = coord
+        // 스팟은 지점으로 이동하므로 코스 범위 프레이밍과 겹치면 안 된다(둘이 카메라를 다툰다).
+        climb.fitRequested = coord == nil
         tab = .tam
     }
 
