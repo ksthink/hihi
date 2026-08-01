@@ -114,7 +114,7 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
   // "기저지도 POI 는 지도 전체에서 보이게" (2026-08-02 결정). 끄기는 표시 설정(zoom=끔)으로.
   const TERRAIN_DROP = new Set([
     "earth", "landcover-grass", "landuse-park", "landuse-farm", "roads-casing",
-    "rail", "buildings", "boundaries", "road-names"
+    "rail", "buildings", "boundaries"
   ]);
   const dropTerrain = (arr) => terrain ? arr.filter((l) => !TERRAIN_DROP.has(l.id)) : arr;
 
@@ -253,17 +253,8 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         paint: { "line-color": C.boundary, "line-width": 1, "line-dasharray": [3, 2], "line-opacity": 0.7 }
       },
       // ── 라벨류 (아래 = 우선순위 낮음, places-labels 가 최상위) ──
-      {
-        // 도로명 (고줌)
-        id: "road-names", type: "symbol", source: "protomaps", "source-layer": "roads",
-        minzoom: 14.5, filter: ["in", "kind", "major_road", "minor_road"],
-        layout: {
-          "symbol-placement": "line",
-          "text-field": ["coalesce", ["get", "name:ko"], ["get", "name"]],
-          "text-font": ["MonaS12 Regular"], "text-size": 8.9, "symbol-spacing": 400
-        },
-        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
-      },
+      // 도로명 라벨(예: 대림로44길)은 그리지 않는다 — 등산앱에서 정보가치 대비 소음이
+      // 커서 전 모드 제거(2026-08-02 결정). 필요해지면 이 자리에 road-names 레이어 복원.
       {
         // 계곡·하천 이름 — 등산 중 위치 확인용
         id: "water-names", type: "symbol", source: "protomaps", "source-layer": "water",
