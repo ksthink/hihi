@@ -1710,7 +1710,9 @@ function itemCard(cu, it, commitItems) {
     field("logo", "cs-logo", "로고"),
     field("credit", "cs-credit", "출처"));
 
-  // 커버 이미지 → R2 images/mountains/<산코드> (같은 산 항목끼리 재사용)
+  // 커버 이미지 → R2 images/mountains/<카드별 고유 키>
+  // 예전엔 산코드 키를 같은 산 카드끼리 공유했는데, 한 카드의 교체가 다른 카드까지
+  // 바꾸는 결합이 생겨 폐기(2026-08-02) — 업로드마다 <산코드>-<hex> 고유 키를 쓴다.
   const file = Object.assign(document.createElement("input"), {
     // gif = 큐레이션 움짤 — 앱 캐러셀 <img> 에서 자동 재생 (iOS 는 GifView)
     type: "file", accept: "image/jpeg,image/png,image/webp,image/gif", hidden: true,
@@ -1723,12 +1725,12 @@ function itemCard(cu, it, commitItems) {
     if (!f) return;
     imgBtn.textContent = "올리는 중…"; imgBtn.disabled = true;
     try {
-      const r = await api(`/mountain-image?code=${it.code}`, {
+      const key = it.type === "free" ? it.code
+        : `${it.code}-${Math.random().toString(16).slice(2, 8)}`;
+      const r = await api(`/mountain-image?code=${key}`, {
         method: "POST", headers: { "Content-Type": f.type }, body: f,
       });
       it.img = r.url;
-      for (const c2 of curDoc.curations) for (const x of c2.items)
-        if (x.code === it.code && !x.img) x.img = r.url;
       cuDirty(); renderCurations();
     } catch (e) {
       imgBtn.textContent = "실패"; imgBtn.title = e.message; imgBtn.disabled = false;
@@ -1926,10 +1928,9 @@ function curationBlock(cu) {
         li.classList.add("dup"); li.title = "이미 추가됨";
       } else {
         li.onclick = () => {
-          // 로고 기본값 프리필 (비우면 미표시), 같은 산의 기존 커버 이미지 재사용
-          const img = curDoc.curations.flatMap((c2) => c2.items)
-            .find((x) => x.code === item.code && x.img)?.img;
-          cu.items.push({ ...item, logo: "© 하이하잇", ...(img ? { img } : {}) });
+          // 로고 기본값만 프리필. 같은 산 커버 자동 재사용은 폐기(2026-08-02) —
+          // 스팟 카드가 엉뚱한 산 사진을 물려받는 혼란이 커서 새 카드는 항상 빈 배경.
+          cu.items.push({ ...item, logo: "© 하이하잇" });
           renderCurations(); cuDirty();
         };
       }

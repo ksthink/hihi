@@ -866,9 +866,9 @@ class AdminHandler(BaseHandler):
         # 본문 = 이미지 바이트 그대로 (Content-Type 으로 형식 판별) → R2 images/mountains/
         if method == "POST" and p == ["mountain-image"]:
             code = (q.get("code") or [""])[0]
-            # 9자리 산코드 또는 free-<hex>(빈 카드의 합성 이미지 키)
-            if not re.fullmatch(r"\d{9}|free-[0-9a-f]{4,16}", code):
-                raise ValueError("9자리 산코드 또는 free-<hex> 키 필요")
+            # 9자리 산코드(-hex 카드별 고유 접미 허용) 또는 free-<hex>(빈 카드 키)
+            if not re.fullmatch(r"\d{9}(-[0-9a-f]{4,10})?|free-[0-9a-f]{4,16}", code):
+                raise ValueError("9자리 산코드(-hex 접미 가능) 또는 free-<hex> 키 필요")
             ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
             # gif 는 큐레이션 움짤용 — 웹은 <img> 로 자동 재생, iOS 는 GifView 로 재생
             ext = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
