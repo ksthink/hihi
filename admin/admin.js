@@ -178,10 +178,10 @@ function ensureEditorLayers() {
     paint: { "text-color": "#8a857c", "text-halo-color": "#ffffff", "text-halo-width": 1.4 } });
 
   // 산림청 구간망 원본 — 회색 참조선 (GPX 매칭 검토·클릭 컴포저 대상 배경)
-  // 두께 1.2 → 2.4: 클릭 대상인데 너무 가늘어 잘 안 보인다는 피드백(2026-08-02).
-  // 코스 선(2.2/4.5, 더 진한 색)이 위에 얹히므로 두꺼워도 위계는 유지된다.
+  // 두께 1.2 → 4: 클릭 대상인데 너무 가늘어 잘 안 보인다는 피드백(2026-08-02).
+  // 코스 선이 더 진한 색으로 위에 얹히므로 두꺼워도 위계는 유지된다.
   map.addLayer({ id: "network-line", type: "line", source: "network",
-    paint: { "line-color": "#c9c9c9", "line-width": 2.4 } });
+    paint: { "line-color": "#c9c9c9", "line-width": 4 } });
 
   map.addLayer({ id: "courses-line", type: "line", source: "courses",
     layout: { "line-cap": "round", "line-join": "round" },
