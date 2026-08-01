@@ -283,6 +283,8 @@ final class AuthStore: ObservableObject {
         let lpm: Bool
         let fg_s: Int
         let bg_s: Int
+        // v4 (IOS.md §7-5) — 등반 배터리 모드. 모드별 %/h 비교의 축이라 없으면 §7-5 검증이 안 된다.
+        let bat_mode: String      // "normal" | "saver" | "max"
     }
 
     // 기기 모델 식별자 — uname(2) 의 machine. UIDevice 에는 이 값을 주는 API 가 없다.
@@ -295,7 +297,7 @@ final class AuthStore: ObservableObject {
     }
 
     private static func diagJSON(_ d: ClimbDiag) -> DiagJSON {
-        DiagJSON(v: 3,
+        DiagJSON(v: 4,
                  bat_start: d.batStart, bat_end: d.batEnd,
                  low_power: d.lowPower, charged: d.charged,
                  gps_mode: d.gpsMode,
@@ -303,7 +305,8 @@ final class AuthStore: ObservableObject {
                  device: deviceModel,
                  os: UIDevice.current.systemVersion,
                  build: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?",
-                 lpm: d.lpm, fg_s: d.fgSec, bg_s: d.bgSec)
+                 lpm: d.lpm, fg_s: d.fgSec, bg_s: d.bgSec,
+                 bat_mode: d.batMode)
     }
 
     private func run(_ op: @escaping () async throws -> Void) async {

@@ -43,7 +43,12 @@ create policy own_profile on profiles for all
 --   gps_mode("Best"|"10m"|"100m"), fixes, fixes_dropped(정확도 게이트 탈락 수), acc_avg(m·-1=표본없음),
 --   device("iPhone14,2"), os("26.0"), build(CFBundleVersion),   ← v2 에서 추가(2026-07-30)
 --   lpm(세션 중 1회라도 저전력모드), fg_s/bg_s(전경·배경 누적 초) }  ← v3 에서 추가(2026-07-31, IOS.md §7-4)
---   v1 에는 device/os/build 가, v2 에는 lpm/fg_s/bg_s 가 없다. 소비 측은 키 없음을 허용할 것.
+--   bat_mode("normal"|"saver"|"max") }  ← v4 에서 추가(2026-08-02, IOS.md §7-5 등반 배터리 모드)
+--   v1 에는 device/os/build 가, v2 에는 lpm/fg_s/bg_s 가, v3 에는 bat_mode 가 없다.
+--   소비 측은 키 없음을 허용할 것.
+--   ⚠️ bat_mode 는 **등반 시작 시점**의 설정값으로 고정된다(중간에 바꿔도 그 세션은 그대로) —
+--   한 세션이 한 모드로 측정돼야 모드별 %/h 비교가 성립하기 때문.
+--   어느 모드든 GPS 기록은 1Hz 로 동일하다. 절전은 화면 갱신만 스로틀한다(트랙 무손실).
 --   ⚠️ low_power 는 **시작 시점** 값이고 lpm 은 **세션 중 1회라도**다 — 잔량이 떨어져 중간에
 --   켜지는 경우가 많아 둘을 나눠 둔다. fg_s/bg_s 는 소모에서 화면 기여분과 순수 GPS
 --   기여분을 분리하려고 넣었다(§7-4: 11.1%/h 측정이 예산의 1.8배였으나 원인을 못 갈랐다).

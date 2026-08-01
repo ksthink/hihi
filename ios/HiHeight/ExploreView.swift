@@ -38,6 +38,7 @@ struct ExploreView: View {
     @State private var dlLoginHint = false                // 지도 다운 — 비로그인 시 로그인 안내
     @State private var showEndConfirm = false             // 등반 종료 오터치 방지 확인 팝업
     @State private var showNav = false                    // 내비(지도 없는 방향·거리 화면)
+    @StateObject private var settings = ClimbSettings.shared   // 등반 배터리 모드(IOS.md §7-5)
     @State private var showShortConfirm = false           // 100m 이하 짧은 등반 저장 확인 팝업
     @State private var endCode = ""                       // 팝업에 제시할 랜덤 2자리 확인번호
     // 기록 루트 보기 전용 모드 — climb.routeRecord 가 있으면 진입(등반 중이 아닐 때).
@@ -82,6 +83,7 @@ struct ExploreView: View {
                 MapView(styleResource: "basemap-\(scheme == .dark ? "dark" : "light")\(baseMode == "osm" ? "-osm" : "")",
                         mountain: catalog.selected, courses: courses, selectedCourse: climb.course,
                         climbTrack: climb.track, tracking: climb.tracking,
+                        saver: settings.batteryMode.throttlesMap,   // 절전 — 표시 갱신만 스로틀(§7-5)
                         recordTrack: climb.recordTrack,
                         showCourses: inRoute ? routeShowCourses : true,   // 루트 보기에선 토글, 그 외 항상 표시
                         routeMode: inRoute,                                // 코스 2배 두께·출발/도착 텍스트 숨김
@@ -284,6 +286,11 @@ struct ExploreView: View {
         // 루트 보기 진입(새 기록)마다 토글·커서·겹침 캐시 초기화 — 이전 루트의 상태가 남지 않게.
         .onChange(of: climb.routeRecord?.id) { _, _ in
             routeShowCourses = false; routeCursor = nil; routeOverlap = nil
+        }
+        // 최대절전 — 등반이 시작되면 곧바로 내비로 들어간다(IOS.md §7-5). 새 화면을 만들지 않고
+        // 기존 NavView 를 그대로 쓴다. 닫으면 지도로 돌아오므로 사용자가 언제든 확인할 수 있다.
+        .onChange(of: climb.tracking) { _, on in
+            if on, settings.batteryMode.entersNav { showNav = true }
         }
         // 내비 — 지도를 끄고 방향·거리·고도만. 닫으면 지도(등반 HUD)로 돌아온다.
         .fullScreenCover(isPresented: $showNav) {

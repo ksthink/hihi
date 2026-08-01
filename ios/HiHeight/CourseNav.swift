@@ -110,12 +110,119 @@ enum CourseNav {
         return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
     }
 
-    /// 코스를 정방향으로 걷는지 판단 — 시작 위치가 끝점보다 시작점에 가까우면 정방향.
-    /// (등반 시작 시 1회 정해두고 쓴다. 매 위치마다 다시 재면 중간에서 뒤집힌다.)
+    /// 근접 휴리스틱 — 시작점에 더 가까우면 정방향.
+    /// ⚠️ **최후 폴백 전용이다.** 이 함수만으로 방향을 정하면 코스 중간점을 지난 뒤 내비를
+    ///    열었을 때 도착점이 더 가까워 하산으로 오판한다(ISSUE #4, 2026-08-01).
+    ///    움직임을 알 수 있는 상황에서는 반드시 `NavDirector` 를 쓴다.
     static func isForward(line: [[Double]], from c: CLLocationCoordinate2D) -> Bool {
         guard let s = line.first, let e = line.last, s.count >= 2, e.count >= 2 else { return true }
         let ds = hypot(s[0] - c.longitude, s[1] - c.latitude)
         let de = hypot(e[0] - c.longitude, e[1] - c.latitude)
         return ds <= de
+    }
+
+    /// 두 좌표 사이 거리(m) — 평면 근사(위도 보정).
+    static func meters(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
+        let mLat = 111_320.0, mLon = 111_320.0 * cos(a.latitude * .pi / 180)
+        return hypot((b.longitude - a.longitude) * mLon, (b.latitude - a.latitude) * mLat)
+    }
+
+    /// 정방향 기준 남은 거리 — 방향 판정의 단일 척도.
+    private static func remainForward(_ line: [[Double]], _ c: CLLocationCoordinate2D) -> Double? {
+        fix(line: line, at: c, reverse: false)?.remainM
+    }
+}
+
+/// 코스 진행 방향 판정기 — 위치가 갱신될 때마다 먹여서 방향을 유지하거나 뒤집는다.
+///
+/// ISSUE #4(2026-08-01) 수정. 예전에는 `isForward` 로 **진입 시 1회**, 그것도 "시작·도착점 중
+/// 어디에 더 가까운가"라는 **위치**로만 판정했다. 그래서 코스 중간점을 지난 뒤 내비를 열면
+/// 하산으로 오판했고(도착점이 더 가까우므로), 아무리 걸어도 바로잡히지 않아 화살표가 계속
+/// 걸어온 방향을 가리켰다. 지도를 보지 않는 화면이라 방향 오판은 곧 안전 문제다.
+///
+/// 세 가지를 함께 쓴다.
+/// 1. **움직임 기반** — 위치가 아니라 "정방향 기준 남은 거리가 줄어드는가"로 본다.
+///    이동 벡터 내적 대신 이 척도를 쓰는 이유: 굽잇길에서 순간 방위가 뒤집혀도 코스를 따른
+///    누적값은 흔들리지 않는다. 코스에서 벗어나 걸어도 부호는 유지된다.
+/// 2. **지속 판정 + 히스테리시스** — 반대 방향이 `flipSeconds` 이상, 그동안 `flipMeters`
+///    이상 실제로 움직였을 때만 뒤집는다. GPS 지터로 화살표가 펄럭이지 않게.
+/// 3. **수동 안전판** — 사용자가 헤더를 탭해 고정하면(`locked`) 자동 전환을 멈춘다.
+///    판정이 틀려도 즉시 교정할 수 있어야 한다.
+struct NavDirector {
+    private(set) var forward = true
+    private(set) var locked = false          // 사용자가 직접 지정 — 자동 전환 금지
+
+    static let flipSeconds: TimeInterval = 25
+    static let flipMeters: Double = 25
+    private static let moveGate: Double = 3  // 이보다 덜 움직였으면 정지·지터로 보고 판정 보류
+
+    private var lastRemain: Double?
+    private var lastCoord: CLLocationCoordinate2D?
+    private var lastAt: Date?
+    private var againstSec: TimeInterval = 0
+    private var againstM: Double = 0
+
+    init() {}
+
+    /// 진입 시 초기 방향. 진행 중 트랙이 있으면 **움직임으로** 정하고(중간 진입도 즉시 정확),
+    /// 없을 때만 근접 휴리스틱으로 떨어진다.
+    /// - track: `ClimbStore.track` 형식 `[lng, lat, 고도, unix초]`.
+    init(line: [[Double]], at c: CLLocationCoordinate2D, track: [[Double]] = []) {
+        forward = Self.initialForward(line: line, at: c, track: track)
+        lastRemain = CourseNav.fix(line: line, at: c, reverse: false)?.remainM
+        lastCoord = c
+        lastAt = Date()
+    }
+
+    private static func initialForward(line: [[Double]], at c: CLLocationCoordinate2D,
+                                       track: [[Double]]) -> Bool {
+        // 최근 트랙에서 현재 위치와 30m 이상 떨어진 가장 가까운 과거 점을 찾아 남은 거리를 비교.
+        // 30m 는 GPS 오차(±10m 안팎)보다 충분히 커서 부호가 뒤집히지 않는 최소 거리다.
+        let recent = track.suffix(120)   // 1Hz 기준 최근 2분
+        for p in recent.reversed() where p.count >= 2 {
+            let past = CLLocationCoordinate2D(latitude: p[1], longitude: p[0])
+            guard CourseNav.meters(past, c) >= 30 else { continue }
+            guard let r0 = CourseNav.fix(line: line, at: past, reverse: false)?.remainM,
+                  let r1 = CourseNav.fix(line: line, at: c, reverse: false)?.remainM,
+                  abs(r0 - r1) > 5 else { break }
+            return r1 < r0
+        }
+        return CourseNav.isForward(line: line, from: c)   // 폴백 — 움직임을 모를 때만
+    }
+
+    /// 위치 갱신마다 호출. 방향이 뒤집혔으면 true(호출부가 다시 계산하도록).
+    mutating func update(line: [[Double]], at c: CLLocationCoordinate2D, now: Date = Date()) -> Bool {
+        guard let remain = CourseNav.fix(line: line, at: c, reverse: false)?.remainM else { return false }
+        guard let prevRemain = lastRemain, let prevC = lastCoord, let prevAt = lastAt else {
+            lastRemain = remain; lastCoord = c; lastAt = now
+            return false
+        }
+
+        // ⚠️ 기준점은 **게이트를 넘을 때만** 옮긴다. 매 갱신마다 옮기면 1Hz 보행(한 걸음 ~1.3m)이
+        //    항상 게이트 아래라 판정이 영영 일어나지 않는다(2026-08-02 단위 검증에서 발견).
+        //    이렇게 두면 3m 쌓일 때마다(보행 2~3초) 한 번씩 판정한다.
+        let moved = CourseNav.meters(prevC, c)
+        guard moved >= Self.moveGate else { return false }           // 정지 중엔 판정하지 않는다
+        let dt = now.timeIntervalSince(prevAt)
+        lastRemain = remain; lastCoord = c; lastAt = now
+        guard !locked, dt > 0 else { return false }
+
+        let goingForward = remain < prevRemain
+        if goingForward == forward {                  // 현재 방향과 일치 — 반대 누적 리셋
+            againstSec = 0; againstM = 0
+            return false
+        }
+        againstSec += dt; againstM += moved
+        guard againstSec >= Self.flipSeconds, againstM >= Self.flipMeters else { return false }
+        forward.toggle()
+        againstSec = 0; againstM = 0
+        return true
+    }
+
+    /// 헤더 탭 등 사용자 지정 — 이후 자동 전환을 멈춘다(다시 탭해도 잠금은 유지).
+    mutating func setManual(_ f: Bool) {
+        forward = f
+        locked = true
+        againstSec = 0; againstM = 0
     }
 }

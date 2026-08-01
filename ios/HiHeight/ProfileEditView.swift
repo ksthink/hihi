@@ -13,6 +13,7 @@ struct ProfileEditView: View {
     @State private var removeImage = false        // 기본 이미지로 되돌림
     @State private var saving = false
     @State private var cropping: UIImage?         // 크롭 화면에 올릴 원본(선택 직후)
+    @StateObject private var settings = ClimbSettings.shared   // 등반 배터리 모드(IOS.md §7-5)
 
     // 미리보기 이미지 — 새로 고른 것 > (되돌림 아니면)현재 아바타 > 기본
     private var preview: UIImage? { pickedImage ?? (removeImage ? nil : auth.avatar) }
@@ -76,6 +77,9 @@ struct ProfileEditView: View {
                 }
                 .padding(.top, 2)
 
+                Divider().overlay(t.line).padding(.top, 8)
+                batterySection(t)
+
                 DevGate().padding(.top, 6)   // DEVMODE — 개발자 모드 토글 (제거 시 이 줄 삭제)
 
                 Spacer(minLength: 0)
@@ -87,6 +91,7 @@ struct ProfileEditView: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         }
         .onAppear { nickname = auth.nickname ?? "" }
+        // (배터리 섹션은 아래 batterySection — 저장은 UserDefaults 즉시, 적용은 등반 시작 시점)
         .onChange(of: pickerItem) { item in
             guard let item else { return }
             Task {
@@ -108,5 +113,47 @@ struct ProfileEditView: View {
                                })
             }
         }
+    }
+
+    // MARK: 등반 배터리 모드 (IOS.md §7-5)
+    // 라디오 3행 — 라벨 + 한 줄 설명. 초 단위·기술 용어는 노출하지 않는다.
+    private func batterySection(_ t: Theme) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("등반 배터리").font(.kakao(size: 12)).foregroundStyle(t.muted)
+
+            VStack(spacing: 0) {
+                ForEach(BatteryMode.allCases) { m in
+                    let on = settings.batteryMode == m
+                    Button { settings.batteryMode = m } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: on ? "largecircle.fill.circle" : "circle")
+                                .font(.system(size: 16))
+                                .foregroundStyle(on ? t.text : t.line)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(m.label).font(.kakao(size: 14, weight: .semibold))
+                                    .foregroundStyle(t.text)
+                                Text(m.detail).font(.kakao(size: 11)).foregroundStyle(t.muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .multilineTextAlignment(.leading)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 10).padding(.horizontal, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if m != BatteryMode.allCases.last { Divider().overlay(t.line) }
+                }
+            }
+            .background(t.elevated, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(t.line))
+
+            // ⚠️ 필수 문구(IOS.md §7-5) — "절전은 기록이 성겨진다"는 오해를 막는다.
+            //    스로틀은 화면 표시에만 걸리고 트랙·거리·고도는 무손실이다.
+            Text("어느 모드에서도 등반 기록은 똑같이 저장됩니다. 화면 표시만 달라집니다.")
+                .font(.kakao(size: 11)).foregroundStyle(t.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -1069,6 +1069,9 @@ function setMountainVisible(on) {
 // service_role 로 대신 조회한다. track.meta 는 iOS 앱이 기록한 배터리·GPS 요약(schema.sql 참조).
 const REC = { rows: [] };
 
+// 등반 배터리 모드(IOS.md §7-5) — meta.bat_mode 원값 → 표시 라벨.
+const BAT_MODE_LABEL = { normal: "일반", saver: "절전", max: "최대절전" };
+
 const escHtml = (s) => String(s ?? "").replace(/[&<>"]/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -1164,9 +1167,16 @@ function dotPlot(groups, unit = "%/h") {
 }
 
 function renderRecords() {
-  // 요약 — GPS 정확도 모드별 소모율 분포. 이 그림을 보려고 나머지가 있다.
-  const by = new Map();
+  // 요약 — 소모율 분포를 두 축으로 본다.
+  //  ① GPS 정확도 모드별 (정확도를 낮추면 실제로 덜 먹는가)
+  //  ② 등반 배터리 모드별 (IOS.md §7-5 — 일반/절전/최대절전이 실제로 차이를 만드는가)
+  const byGps = new Map();
+  const byMode = new Map();
   const skipped = new Map();
+  const push = (map, key, v) => {
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(v);
+  };
   for (const r of REC.rows) {
     const v = drainRate(r);
     if (v == null) {
@@ -1174,25 +1184,35 @@ function renderRecords() {
       skipped.set(why, (skipped.get(why) || 0) + 1);
       continue;
     }
-    const k = r.meta.gps_mode || "?";
-    if (!by.has(k)) by.set(k, []);
-    by.get(k).push(v);
+    push(byGps, r.meta.gps_mode || "?", v);
+    if (r.meta.bat_mode) push(byMode, BAT_MODE_LABEL[r.meta.bat_mode] || r.meta.bat_mode, v);
   }
-  const groups = [...by.entries()].map(([key, values]) => ({ key, values }));
+  const toGroups = (map) => [...map.entries()].map(([key, values]) => ({ key, values }));
+  const groups = toGroups(byGps);
+  const modeGroups = toGroups(byMode);
   const skipNote = skipped.size
     ? `<p class="dim rec-skip">집계 제외 ${[...skipped.entries()].map(([k, n]) => `${k} ${n}건`).join(" · ")}</p>`
     : "";
 
+  // 분포표 — 평균만 보여주지 않는다(표본이 적을 때 평균은 위험하다).
+  const table = (gs, head) =>
+    `<table class="rec-tbl"><thead><tr><th>${head}</th><th>평균</th><th>최소~최대</th><th>표본</th></tr></thead><tbody>${
+      gs.map((g) => {
+        const mn = Math.min(...g.values), mx = Math.max(...g.values);
+        return `<tr><td>${escHtml(g.key)}</td><td><b>${avgOf(g.values).toFixed(1)} %/h</b></td>
+          <td class="dim">${mn.toFixed(1)} ~ ${mx.toFixed(1)}</td>
+          <td>${g.values.length}건${g.values.length < 3 ? ' <span class="warn">표본부족</span>' : ""}</td></tr>`;
+      }).join("")}</tbody></table>`;
+
+  const modeBlock = modeGroups.length
+    ? `<h3 class="rec-h3">등반 배터리 모드별 시간당 소모</h3>${dotPlot(modeGroups)}${table(modeGroups, "배터리 모드")}`
+    : "";
+
   $("rec-summary").innerHTML = groups.length
-    ? `<h3 class="rec-h3">GPS 모드별 시간당 배터리 소모</h3>
+    ? `${modeBlock}
+       <h3 class="rec-h3">GPS 모드별 시간당 배터리 소모</h3>
        ${dotPlot(groups)}
-       <table class="rec-tbl"><thead><tr><th>GPS 모드</th><th>평균</th><th>최소~최대</th><th>표본</th></tr></thead><tbody>${
-        groups.map((g) => {
-          const mn = Math.min(...g.values), mx = Math.max(...g.values);
-          return `<tr><td>${escHtml(g.key)}</td><td><b>${avgOf(g.values).toFixed(1)} %/h</b></td>
-            <td class="dim">${mn.toFixed(1)} ~ ${mx.toFixed(1)}</td>
-            <td>${g.values.length}건${g.values.length < 3 ? ' <span class="warn">표본부족</span>' : ""}</td></tr>`;
-        }).join("")}</tbody></table>${skipNote}`
+       ${table(groups, "GPS 모드")}${skipNote}`
     : `<p class="dim">아직 측정 가능한 기록이 없습니다 — 실기기에서 10분 이상, 충전하지 않고 등반한 기록이 필요합니다.</p>${skipNote}`;
 
   // 목록
@@ -1222,11 +1242,14 @@ function renderRecords() {
     const mins = (s) => Math.round((s || 0) / 60);
     const phase = !m || m.fg_s === undefined ? "—"
       : `${mins(m.fg_s)} / ${mins(m.bg_s)}분`;
+    // §7-5 — meta v4 부터. 모드별 %/h 비교의 축이라 요약 그래프도 이 값으로 묶는다.
+    const batMode = !m || !m.bat_mode ? "—" : BAT_MODE_LABEL[m.bat_mode] || escHtml(m.bat_mode);
     return `<tr>
       <td>${escHtml(when)}</td>
       <td>${escHtml(r.course_name || "—")}<span class="dim"> ${escHtml(r.mountain_id || "")}</span></td>
       <td>${r.distance_km != null ? r.distance_km.toFixed(2) : "—"}km</td>
       <td>${dur}</td>
+      <td>${batMode}</td>
       <td>${bat}</td>
       <td>${lpm}</td>
       <td>${rate != null ? `<b>${rate.toFixed(1)}</b>` : "—"}</td>
@@ -1243,7 +1266,9 @@ function renderRecords() {
   }).join("");
   $("rec-list").innerHTML = REC.rows.length
     ? `<table class="rec-tbl"><thead><tr>
-         <th>시작</th><th>코스</th><th>거리</th><th>시간</th><th>배터리</th>
+         <th>시작</th><th>코스</th><th>거리</th><th>시간</th>
+         <th title="등반 배터리 모드 — 일반/절전/최대절전 (IOS.md §7-5)">모드</th>
+         <th>배터리</th>
          <th title="세션 중 1회라도 저전력 모드">저전력</th>
          <th>%/h</th><th title="전경(화면 켜짐) / 배경 누적">전경/배경</th>
          <th>GPS 수준</th><th>GPS 지점</th><th>평균정확도</th>

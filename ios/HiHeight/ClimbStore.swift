@@ -35,6 +35,9 @@ struct ClimbDiag {
     let lpm: Bool            // 세션 중 **1회라도** 저전력 모드였나 (lowPower 는 시작 시점만)
     let fgSec: Int           // 전경(화면 켜짐) 누적 초 — 화면 기여분 분리용
     let bgSec: Int           // 백그라운드 누적 초 — 순수 GPS 기여분 추정용
+    // 등반 배터리 모드(IOS.md §7-5) — 모드별 %/h 를 관리자 표에서 비교하려면 어느 모드로
+    // 걸었는지 알아야 한다. 세션 시작 시점 값으로 고정(중간에 설정을 바꿔도 이 세션은 그대로).
+    let batMode: String      // "normal" | "saver" | "max"
 }
 
 // 등반 세션 관리 — 웹 startClimb/stopClimb(app.js:1362-1446) 이식.
@@ -97,6 +100,7 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var diagLpm = false
     private var diagFg: TimeInterval = 0
     private var diagBg: TimeInterval = 0
+    private var diagBatMode = BatteryMode.normal.rawValue   // 세션 시작 시점의 배터리 모드
     private var diagPhaseAt: Date?          // 현재 구간이 시작된 시각
     private var diagForeground = true       // 현재 구간이 전경인가
     private var lpmObserver: NSObjectProtocol?
@@ -194,6 +198,9 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
         diagBatStart = batteryPercent()
         diagLowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         diagFixes = 0; diagDropped = 0; diagAccSum = 0; diagAccN = 0
+        // 배터리 모드는 **시작 시점 값으로 고정** — 진행 중 설정을 바꿔도 이 세션의 통계는
+        // 한 모드로 잰 값이어야 관리자 표의 모드별 비교가 성립한다(IOS.md §7-5).
+        diagBatMode = BatteryMode.saved().rawValue
         // 등반 시작은 항상 전경이다(사용자가 버튼을 눌렀다).
         diagLpm = diagLowPower
         diagFg = 0; diagBg = 0
@@ -237,7 +244,8 @@ final class ClimbStore: NSObject, ObservableObject, CLLocationManagerDelegate {
             fixes: diagFixes, fixesDropped: diagDropped,
             accAvg: diagAccN > 0 ? ((diagAccSum / Double(diagAccN)) * 10).rounded() / 10 : -1,
             lpm: diagLpm,
-            fgSec: Int(diagFg.rounded()), bgSec: Int(diagBg.rounded()))
+            fgSec: Int(diagFg.rounded()), bgSec: Int(diagBg.rounded()),
+            batMode: diagBatMode)
     }
 
     private static func accuracyLabel(_ a: CLLocationAccuracy) -> String {

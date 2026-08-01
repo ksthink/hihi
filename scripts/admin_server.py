@@ -378,6 +378,10 @@ def _records(limit=200):
     return out
 
 
+# 등반 배터리 모드(IOS.md §7-5) — meta.bat_mode 원값 → 표시 라벨. admin.js 와 같은 표기.
+BAT_MODE_LABEL = {"normal": "일반", "saver": "절전", "max": "최대절전"}
+
+
 def _records_xlsx(limit=1000):
     """등반 기록 → xlsx (관리자 표와 같은 분리 열 + 분석용 수치 컬럼)."""
     import io
@@ -398,8 +402,10 @@ def _records_xlsx(limit=1000):
     ws.title = "records"
     # 저전력·전경/배경은 §7-4 계측 보강(meta v3) — 소모율만으로는 원인을 못 가른다.
     # 전경/배경은 분석용이라 분(minute) 수치로 따로 낸다(피벗·산점도에 바로 쓰도록).
+    # 배터리 모드는 §7-5 — 모드별 %/h 비교의 축이라 피벗 첫 열로 쓰기 좋게 앞쪽에 둔다.
     head = ["시작(KST)", "종료(KST)", "산코드", "코스", "거리(km)", "시간(분)",
-            "누적상승(m)", "배터리 시작(%)", "배터리 끝(%)", "충전중", "저전력", "소모율(%/h)",
+            "누적상승(m)", "배터리 모드",
+            "배터리 시작(%)", "배터리 끝(%)", "충전중", "저전력", "소모율(%/h)",
             "전경(분)", "배경(분)",
             "GPS 수준", "GPS 지점", "GPS 유실", "평균정확도(m)",
             "빌드", "기기", "OS", "트랙 점수", "사용자", "기록 id"]
@@ -416,6 +422,7 @@ def _records_xlsx(limit=1000):
             r.get("distance_km"),
             round(r["duration_s"] / 60) if r.get("duration_s") else None,
             r.get("ascent_m"),
+            BAT_MODE_LABEL.get(m.get("bat_mode"), m.get("bat_mode")),   # v4~
             m.get("bat_start") if m.get("bat_start", -1) >= 0 else None,
             m.get("bat_end") if m.get("bat_end", -1) >= 0 else None,
             bool(m.get("charged")) if m else None,

@@ -18,8 +18,11 @@ struct NavView: View {
     @StateObject private var packs = PackStore.shared
 
     @State private var line: [[Double]] = []      // 선택 코스 좌표(진행 순서)
-    @State private var forward = true             // 코스 정방향으로 걷는가(진입 시 1회 판정)
+    // 진행 방향 — 위치가 아니라 **움직임**으로 판정하고 지속·히스테리시스로 뒤집는다.
+    // 예전엔 진입 시 1회 근접 판정이라 코스 중간점 이후 진입하면 하산으로 오판했다(ISSUE #4).
+    @State private var director = NavDirector()
     @State private var fix: NavFix?
+    private var forward: Bool { director.forward }
     @State private var angle: Double = 0          // 화살표 누적 각도 — 최단 경로로만 돌린다
     @State private var loading = true
 
@@ -49,13 +52,21 @@ struct NavView: View {
             let l = await PackLoader.courseLine(code, name: name,
                                                 localURL: packs.localFile(code, "routes.geojson"))
             line = l
-            if let c = climb.currentCoord { forward = CourseNav.isForward(line: l, from: c) }
+            // 진행 중 트랙을 함께 넘긴다 — 중간 진입이어도 걸어온 궤적으로 방향이 즉시 잡힌다.
+            if let c = climb.currentCoord {
+                director = NavDirector(line: l, at: c, track: climb.track)
+            }
             loading = false
             recompute()
             climb.startHeading()
         }
         .onDisappear { climb.stopHeading() }
-        .onChange(of: climb.currentCoord?.latitude) { _, _ in recompute() }
+        .onChange(of: climb.currentCoord?.latitude) { _, _ in
+            if let c = climb.currentCoord, !line.isEmpty {
+                _ = director.update(line: line, at: c)   // 방향 전환은 내부 히스테리시스가 판단
+            }
+            recompute()
+        }
         .onChange(of: fix?.bearing) { _, _ in turnArrow() }
         .onChange(of: climb.heading) { _, _ in turnArrow() }
     }
@@ -81,9 +92,24 @@ struct NavView: View {
     }
 
     // MARK: 조각
+    // 등반/하산 라벨은 **탭하면 뒤집힌다** — 자동 판정이 틀려도 사용자가 즉시 교정할 수 있는
+    // 안전판(ISSUE #4 수정 3안). 한 번 지정하면 자동 전환은 멈춘다(자물쇠 표시).
     private func header(_ t: Theme) -> some View {
         VStack(spacing: 2) {
-            Text(forward ? "등반" : "하산").font(.kakao(size: 11)).foregroundStyle(t.muted)
+            HStack(spacing: 4) {
+                Text(forward ? "등반" : "하산").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                Image(systemName: director.locked ? "lock.fill" : "arrow.triangle.2.circlepath")
+                    .font(.system(size: 9)).foregroundStyle(t.muted).opacity(0.7)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 3)
+            .contentShape(Capsule())
+            .overlay(Capsule().strokeBorder(t.line))
+            .onTapGesture {
+                director.setManual(!forward)
+                recompute()
+            }
+            .accessibilityLabel(forward ? "등반 방향 — 탭하면 하산으로" : "하산 방향 — 탭하면 등반으로")
+
             Text(climb.course?.name ?? "코스 없음")
                 .font(.kakao(size: 17, weight: .bold)).foregroundStyle(t.text)
                 .lineLimit(1)

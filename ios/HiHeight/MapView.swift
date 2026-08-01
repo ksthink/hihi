@@ -82,6 +82,7 @@ struct MapView: UIViewRepresentable {
     var selectedCourse: Course? = nil
     var climbTrack: [[Double]] = []      // 등반 중 지나온 GPS 트랙 [lng,lat,...]
     var tracking: Bool = false           // 등반 중 — 현재위치 점 + 추적 카메라
+    var saver: Bool = false              // 절전 모드(IOS.md §7-5) — 화면 갱신만 스로틀, 기록은 무손실
     var recordTrack: [[Double]]? = nil   // 기록 루트 보기 — 저장된 트랙(점선) + fitBounds
     var showCourses: Bool = true         // 정규 코스 선/배지 표시(루트 보기에선 토글로 끔)
     var routeMode: Bool = false          // 루트 보기 — 코스는 2배 두께 레이어(route-trails)로, 출발/도착 텍스트 숨김
@@ -135,6 +136,7 @@ struct MapView: UIViewRepresentable {
         context.coordinator.setCourseNos(courses, on: mv)                       // 번호 배지 위치(코스당 1개)
         context.coordinator.applyCourse(selectedCourse, on: mv)
         context.coordinator.tracking = tracking                                 // 등반 여부(코스 점선 표시에 필요) 선반영
+        context.coordinator.saver = saver                                       // 절전 스로틀 여부(setTrack 이 참조)
         context.coordinator.applyTrailSelection(selectedCourse?.name, on: mv)   // 선택 코스 강조(검정/회색·배지)
         context.coordinator.fitCourse(fitCourseTick, on: mv)
         context.coordinator.setTrack(climbTrack, on: mv)
@@ -200,6 +202,7 @@ struct MapView: UIViewRepresentable {
         private var locateOn = false        // geolocate 로 현재위치 점을 켠 상태
         private var wasTracking = false     // 등반 시작 전이(자동 추적 켬) 감지
         var tracking = false                // 등반 중 — viewFor 가 참조(내장 dot 숨김)
+        var saver = false                   // 절전 — 지도 갱신 스로틀 + 연속 추적 카메라 끔
         var useLocalPack = false            // 로컬 팩으로 렌더 중(등반 중 또는 오프라인) — applyOverlay 가 참조
         var dark = false                    // 현재 테마 (코스 번호 배지 색)
         var onCenterChanged: ((CLLocationCoordinate2D) -> Void)?
@@ -225,10 +228,14 @@ struct MapView: UIViewRepresentable {
             let changed = tracking != wasTracking
             self.tracking = tracking            // viewFor 가 참조(등반 중 내장 dot 숨김)
             // 등반 시작 시 자동으로 현위치 정북 추적 켬(한 번만).
+            // 절전에서는 **연속 추적을 켜지 않는다** — follow 는 위치 갱신마다 카메라를 움직여
+            // 스로틀 효과를 상쇄한다. 대신 setClimbPos 가 갱신 시점에만 중심을 옮긴다(§7-5).
             if tracking && !wasTracking {
                 locateOn = true
                 mv.showsUserLocation = true
-                mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+                if !saver {
+                    mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
+                }
             }
             wasTracking = tracking
             // 트래킹 전환 시 유저 위치 주석 뷰 새로고침 — 등반 시작=숨김(EmptyUserDot), 종료=기본 dot 복귀.
@@ -259,7 +266,8 @@ struct MapView: UIViewRepresentable {
 
             // 등반 중엔 현위치 추적을 유지하되, 사용자가 고른 나침반 모드는 존중.
             // (사용자가 지도를 옮겨 .none 으로 떨어지면 다음 GPS 갱신에 정북 추적 복귀.)
-            if tracking && mv.userTrackingMode == .none {
+            // 절전은 예외 — .none 을 유지해야 카메라가 매 갱신마다 움직이지 않는다.
+            if tracking && !saver && mv.userTrackingMode == .none {
                 mv.setUserTrackingMode(.follow, animated: true, completionHandler: nil)
             }
 
@@ -595,9 +603,60 @@ struct MapView: UIViewRepresentable {
             desiredTrack = track
             guard mv.style != nil else { return }
             if track.count == trackCount { return }
+            // 절전 — **화면 갱신만** 늦춘다(IOS.md §7-5). track 자체는 이미 ClimbStore 에 1Hz 로
+            // 쌓여 있고 desiredTrack 도 최신이라, 다음 갱신 때 밀린 구간이 한 번에 그려진다.
+            // 기록·거리·누적고도는 무손실이다.
+            if saver, tracking, !saverAllowsRender(track) { return }
             trackCount = track.count
             applyTrack(track, on: mv)
             setClimbPos(track, on: mv)
+        }
+
+        // 절전 스로틀 게이트. 하나라도 만족하면 그린다.
+        //  · 5m 이상 이동 — 통상의 갱신 계기
+        //  · 조금씩 움직이며 5초 경과 — 굽잇길에서 너무 뒤처지지 않게(최장 대기)
+        //  · 진행 방향 30° 이상 급변 — 방향이 꺾이면 위치가 어긋나 보인다
+        // 사실상 정지(1m 미만)면 **아무것도 하지 않는다** — 서 있을 때 갱신 0 이 절전의 핵심.
+        private var lastRenderCoord: CLLocationCoordinate2D?
+        private var lastRenderAt: Date?
+        private var lastRenderBearing: Double?
+
+        private func saverAllowsRender(_ track: [[Double]]) -> Bool {
+            guard let p = track.last, p.count >= 2 else { return true }
+            let c = CLLocationCoordinate2D(latitude: p[1], longitude: p[0])
+            let now = Date()
+            let brg = Self.trackBearing(track)
+            guard let prev = lastRenderCoord, let at = lastRenderAt else {
+                lastRenderCoord = c; lastRenderAt = now; lastRenderBearing = brg
+                return true
+            }
+            let moved = CourseNav.meters(prev, c)
+            var ok = false
+            if moved >= 5 {
+                ok = true
+            } else if moved >= 1 {
+                if now.timeIntervalSince(at) >= 5 {
+                    ok = true
+                } else if let b0 = lastRenderBearing, let b1 = brg {
+                    var d = abs(b1 - b0).truncatingRemainder(dividingBy: 360)
+                    if d > 180 { d = 360 - d }
+                    if d >= 30 { ok = true }
+                }
+            }
+            if ok {
+                lastRenderCoord = c; lastRenderAt = now
+                if let brg { lastRenderBearing = brg }
+            }
+            return ok
+        }
+
+        // 최근 두 점의 진행 방위(0~360°). 점이 부족하면 nil.
+        private static func trackBearing(_ track: [[Double]]) -> Double? {
+            guard track.count >= 2 else { return nil }
+            let a = track[track.count - 2], b = track[track.count - 1]
+            guard a.count >= 2, b.count >= 2 else { return nil }
+            return CourseNav.bearing(from: CLLocationCoordinate2D(latitude: a[1], longitude: a[0]),
+                                     toLon: b[0], toLat: b[1])
         }
 
         // 현재 위치 마커(climb-pos) — 등반 중 트랙 마지막 점. 내장 dot 대신 style 레이어라 줌 시 루트와 동기.
@@ -610,6 +669,11 @@ struct MapView: UIViewRepresentable {
                 src.shape = f
                 beamCoord = c                   // 나침반 빔도 같은 좌표(포인터와 동기)
                 applyBeam()
+                // 절전 — 연속 추적 대신 **갱신 시점에만** 중심을 옮긴다(부드럽게 한 번, 그 뒤 정지).
+                // 사용자가 위치 버튼으로 follow/나침반을 켰다면 그 의도를 존중해 건드리지 않는다.
+                if saver, tracking, mv.userTrackingMode == .none {
+                    mv.setCenter(c, animated: true)
+                }
             } else {
                 src.shape = nil
             }
