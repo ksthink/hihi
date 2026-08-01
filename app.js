@@ -238,6 +238,7 @@ const SPOT_DISPLAY_DEFAULT = {
   헬기장: { zoom: 18, icon: true, size: 8, bold: false },
   음수대: { zoom: 18, icon: true, size: 8, bold: false },
   주차장: { zoom: null, icon: true, size: 8, bold: false },
+  버스정류장: { zoom: 14, icon: true, size: 8, bold: false },
   분기점: { zoom: null, icon: true, size: 8, bold: false },
   시종점: { zoom: null, icon: true, size: 8, bold: false },
 };
@@ -310,6 +311,7 @@ const DOT_CATS = ["분기점", "시종점", "장소"];
 const FACILITY_ICON = {
   조망점: "poi-viewpoint", 화장실: "poi-toilets", 정자: "poi-shelter",
   헬기장: "poi-helipad", 음수대: "poi-drinking_water", 주차장: "poi-parking",
+  버스정류장: "poi-bus_stop",
 };
 // 스팟 표시 우선순위: 스팟별 오버라이드(disp_zoom·disp_icon·disp_size·disp_bold,
 // 관리자 스팟 편집에서 지정·팩 properties 로 발행) > 분류 전역 설정(spotDisplay).

@@ -89,6 +89,11 @@ def publish(code, job=None, step=None):
     pack_dir = os.path.join(pl.ROOT, "data", "packs", code)
     os.makedirs(pack_dir, exist_ok=True)
     routes_fc, spots_fc = draft_store.to_pack(draft)
+    # 들머리 버스정류장 자동 포함 — 기저 타일(z14)에 bus_stop 이 없어 팩 스팟으로 보완.
+    # draft 에는 넣지 않는다(운영자 편집 대상 아님 — 등고선처럼 발행 시 파생).
+    import bus_stops
+    spots_fc["features"].extend(
+        bus_stops.near_course_endpoints(routes_fc, log=lambda m, *a: log(m, 0.1)))
     for name, fc in (("routes.geojson", routes_fc), ("spots.geojson", spots_fc)):
         json.dump(fc, open(os.path.join(pack_dir, name), "w", encoding="utf-8"),
                   ensure_ascii=False, separators=(",", ":"))
