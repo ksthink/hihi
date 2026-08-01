@@ -22,6 +22,10 @@ struct ProfileEditView: View {
     var body: some View {
         let t = Theme(scheme: scheme)
         NavigationStack {
+            // ⚠️ ScrollView 필수 — 배터리 모드 설정(§7-5)이 들어오면서 내용이 한 화면을 넘겼다.
+            //    예전 VStack + maxHeight 구조에서는 위(아바타가 내비바에 겹침)·아래(개발자 모드
+            //    토글)가 잘려 손댈 수 없었다(2026-08-02 실기기 보고).
+            ScrollView {
             VStack(spacing: 18) {
                 // 아바타 미리보기
                 Group {
@@ -72,23 +76,31 @@ struct ProfileEditView: View {
                 }
                 .disabled(saving).padding(.top, 4)
 
-                Button { Task { await auth.signOut(); dismiss() } } label: {
-                    Text("로그아웃").font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
-                }
-                .padding(.top, 2)
-
                 Divider().overlay(t.line).padding(.top, 8)
                 batterySection(t)
 
                 DevGate().padding(.top, 6)   // DEVMODE — 개발자 모드 토글 (제거 시 이 줄 삭제)
 
-                Spacer(minLength: 0)
+                // 로그아웃은 맨 아래 — 파괴적 동작이라 저장·설정을 지나 마지막에 닿게 둔다.
+                Divider().overlay(t.line).padding(.top, 8)
+                Button { Task { await auth.signOut(); dismiss() } } label: {
+                    Text("로그아웃").font(.kakao(size: 14, weight: .semibold)).foregroundStyle(t.text)
+                }
+                .padding(.top, 2)
             }
             .padding(20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity)
+            }
             .background(t.bg)
             .navigationTitle("프로필 수정").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    // 앱 폰트로 통일 — 기본 Button 라벨은 SF 라 "프로필 수정"과 서체가 어긋났다.
+                    Button { dismiss() } label: {
+                        Text("닫기").font(.kakao(size: 15)).foregroundStyle(t.text)
+                    }
+                }
+            }
         }
         .onAppear { nickname = auth.nickname ?? "" }
         // (배터리 섹션은 아래 batterySection — 저장은 UserDefaults 즉시, 적용은 등반 시작 시점)
