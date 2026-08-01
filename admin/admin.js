@@ -1762,12 +1762,68 @@ function itemCard(cu, it, commitItems) {
 
   const meta = document.createElement("div");
   meta.className = "cs-meta";
+  const swapBtn = Object.assign(document.createElement("button"), {
+    className: "cu-swap", textContent: "변경",
+    title: "연결된 산/코스를 바꿉니다 — 문구·사진은 유지(다른 산이면 사진은 그 산 커버로)",
+  });
   meta.append(
     Object.assign(document.createElement("span"), { className: "cu-kind", textContent: it.type === "mountain" ? "산" : "코스" }),
     Object.assign(document.createElement("span"), {
       className: "cu-name",
       textContent: it.type === "course" ? `${it.mountain} · ${it.name}` : it.name,
-    }));
+    }),
+    swapBtn);
+
+  // 대상 변경 — 메타 줄을 검색 입력으로 바꿔 산·코스를 다시 고른다(추가 검색과 동일한 소스).
+  // 문구(sub/title/desc/logo/credit)는 유지, 사진은 산이 달라지면 그 산의 기존 커버로 교체(없으면 제거).
+  swapBtn.onclick = () => {
+    const q = Object.assign(document.createElement("input"), {
+      type: "search", placeholder: "바꿀 산·코스 검색", autocomplete: "off",
+    });
+    const res = Object.assign(document.createElement("ul"), { className: "cu-results" });
+    res.hidden = true;
+    const cancel = Object.assign(document.createElement("button"), { className: "cu-swap", textContent: "취소" });
+    cancel.onclick = () => renderCurations();
+    meta.innerHTML = "";
+    meta.append(q, cancel, res);
+    q.focus();
+    let seq2 = 0;
+    q.oninput = async () => {
+      const kw = q.value.trim();
+      const my = ++seq2;
+      if (!kw) { res.hidden = true; return; }
+      const [mts, courses] = await Promise.all([
+        api("/mountains").then((l) => l.filter((m) => m.name.includes(kw)).slice(0, 5)).catch(() => []),
+        api(`/course-search?q=${encodeURIComponent(kw)}`).catch(() => []),
+      ]);
+      if (my !== seq2) return;
+      res.innerHTML = "";
+      const pick = (label, tgt) => {
+        const li2 = document.createElement("li");
+        li2.textContent = label;
+        li2.onclick = () => {
+          const prevCode = it.code;
+          it.type = tgt.type; it.code = tgt.code; it.name = tgt.name;
+          if (tgt.type === "course") it.mountain = tgt.mountain; else delete it.mountain;
+          if (tgt.code !== prevCode) {
+            const img = curDoc.curations.flatMap((c2) => c2.items)
+              .find((x) => x !== it && x.code === tgt.code && x.img)?.img;
+            if (img) it.img = img; else delete it.img;
+          }
+          renderCurations(); cuDirty();
+        };
+        res.appendChild(li2);
+      };
+      for (const m of mts)
+        pick(`산 · ${m.name} (${m.code})${m.published ? "" : " — 비공개"}`,
+          { type: "mountain", code: m.code, name: m.name });
+      for (const c of courses.slice(0, 10))
+        pick(`코스 · ${c.mountain} — ${c.name}${c.status !== "ready" ? " (비공개 코스)" : ""}`,
+          { type: "course", code: c.code, name: c.name, mountain: c.mountain });
+      if (!res.children.length) res.innerHTML = '<li class="dup">검색 결과 없음</li>';
+      res.hidden = false;
+    };
+  };
 
   li.append(slide, meta);
   attachGrip(li, grip, it.code || "", commitItems);
@@ -1900,6 +1956,27 @@ $("cu-save").onclick = async () => {
   } catch (e) {
     cuState("저장 실패: " + e.message);
   }
+};
+
+// 큐레이션 xlsx 백업 — 내려받기 / 업로드(전체 교체, 서버가 직전 상태를 backups/ 에 스냅샷)
+$("cu-dl").onclick = () => {
+  const tok = adminToken ? `?token=${encodeURIComponent(adminToken)}` : "";
+  location.href = "/api/curations/export" + tok;
+};
+$("cu-ul").onclick = () => $("cu-file").click();
+$("cu-file").onchange = async () => {
+  const f = $("cu-file").files[0];
+  $("cu-file").value = "";
+  if (!f) return;
+  if (!confirm("업로드하면 현재 큐레이션 전체가 파일 내용으로 교체됩니다.\n(직전 상태는 자동 백업됩니다)")) return;
+  cuState("가져오는 중…");
+  const headers = adminToken ? { "X-Admin-Token": adminToken } : {};
+  const r = await fetch("/api/curations/import", { method: "POST", headers, body: f });
+  const res = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+  if (res.error) { cuState("가져오기 실패: " + res.error); return; }
+  curDoc = res;
+  renderCurations();
+  cuState("가져오기 완료 ✓ (앱 새로고침 시 반영)");
 };
 
 // ── 배포 버전 표시 ──

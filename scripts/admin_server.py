@@ -382,6 +382,136 @@ def _records(limit=200):
 BAT_MODE_LABEL = {"normal": "일반", "saver": "절전", "max": "최대절전"}
 
 
+def _curations_path():
+    return os.path.join(draft_store.ADMIN_DATA, "curations.json")
+
+
+def _norm_curations(cus):
+    """큐레이션 문서 검증·정규화 — PUT(편집기 저장)과 xlsx 가져오기 공용."""
+    if not isinstance(cus, list):
+        raise ValueError("curations 배열 필요")
+    for cu in cus:
+        if not isinstance(cu, dict) or not str(cu.get("title", "")).strip():
+            raise ValueError("큐레이션 이름(title)이 비어 있음")
+        if not isinstance(cu.get("items"), list):
+            raise ValueError(f"{cu['title']}: items 배열 필요")
+        for it in cu["items"]:
+            if it.get("type") not in ("mountain", "course"):
+                raise ValueError(f"{cu['title']}: 항목 type 은 mountain|course")
+            if not re.fullmatch(r"\d{9}", str(it.get("code", ""))):
+                raise ValueError(f"{cu['title']}: 항목 code 는 9자리 산코드")
+            if not str(it.get("name", "")).strip():
+                raise ValueError(f"{cu['title']}: 항목 name 필요")
+            if it.get("img") is not None and not str(it["img"]).startswith("https://"):
+                raise ValueError(f"{cu['title']}: img 는 https URL")
+    return {"version": 1, "curations": [
+        {"id": cu.get("id") or f"cu-{uuid.uuid4().hex[:8]}",
+         "title": str(cu["title"]).strip(),
+         # 슬라이드 요소(전부 선택 — 비면 미표시): sub 부가설명(반투명 배지),
+         # title 큰 제목, desc 중앙 하단 설명, logo 좌하단 마크,
+         # credit 우하단 출처(사진 저작자), img 배경 이미지
+         "items": [{k: it[k] for k in
+                    ("type", "code", "name", "mountain",
+                     "sub", "title", "desc", "logo", "credit", "img")
+                    if it.get(k) not in (None, "")} for it in cu["items"]]}
+        for cu in cus]}
+
+
+def _write_curations(cfg):
+    """admin_data 원본 저장 + R2 config 배포 (Cache-Control 은 r2_lib 가 *.json → no-cache)."""
+    body = json.dumps(cfg, ensure_ascii=False, indent=1).encode()
+    os.makedirs(draft_store.ADMIN_DATA, exist_ok=True)
+    with open(_curations_path(), "wb") as f:
+        f.write(body)
+    import r2_lib
+    r2_lib.upload_bytes(body, "config/curations.json", content_type="application/json")
+    return cfg
+
+
+_CU_COLS = ["cu_id", "cu_title", "type", "code", "name", "mountain",
+            "sub", "title", "desc", "logo", "credit", "img"]
+_CU_LABELS = {"cu_id": "큐레이션ID(수정 금지)", "cu_title": "큐레이션 이름",
+              "type": "종류(mountain|course)", "code": "산코드", "name": "이름(산/코스명)",
+              "mountain": "산(코스일 때)", "sub": "부가설명", "title": "제목",
+              "desc": "설명", "logo": "로고", "credit": "출처", "img": "커버 이미지 URL"}
+
+
+def _curations_xlsx():
+    """큐레이션 → xlsx 백업. 행 = 항목 1개(cu_id/cu_title 로 소속 구분), 행 순서 = 캐러셀 순서."""
+    import io
+    import openpyxl
+    doc = {"version": 1, "curations": []}
+    if os.path.exists(_curations_path()):
+        doc = json.load(open(_curations_path(), encoding="utf-8"))
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "curations"
+    ws.append(_CU_COLS)
+    ws.append([_CU_LABELS[k] for k in _CU_COLS])
+    for cu in doc["curations"]:
+        if not cu["items"]:                      # 빈 큐레이션도 제목 행으로 보존
+            ws.append([cu["id"], cu["title"]] + [None] * (len(_CU_COLS) - 2))
+        for it in cu["items"]:
+            ws.append([cu["id"], cu["title"]] + [it.get(k) for k in _CU_COLS[2:]])
+    ws.freeze_panes = "A3"
+    for i, k in enumerate(_CU_COLS, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = \
+            26 if k in ("desc", "img") else 15
+    rd = wb.create_sheet("설명")
+    for line in ("· 1행(영문 키)은 수정 금지 — 가져오기가 이 행으로 컬럼을 찾습니다.",
+                 "· 행 순서 = 캐러셀 순서, 큐레이션 순서 = 첫 등장 순서(맨 위 = 앱 노출).",
+                 "· 같은 큐레이션의 행은 cu_id(또는 cu_id 가 비면 cu_title)로 묶입니다.",
+                 "· 새 큐레이션은 cu_id 를 비우고 cu_title 만 적으세요.",
+                 "· type 이 빈 행은 항목 없는 큐레이션 제목 행입니다.",
+                 "· 업로드하면 전체가 파일 내용으로 교체됩니다(직전 상태는 자동 백업)."):
+        rd.append([line])
+    rd.column_dimensions["A"].width = 80
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _parse_curations_xlsx(data):
+    """xlsx → curations 배열 (검증은 _norm_curations 가 담당)."""
+    import io
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    if "curations" not in wb.sheetnames:
+        raise ValueError("'curations' 시트가 없습니다 — 내보낸 파일 양식을 유지하세요")
+    rows = wb["curations"].iter_rows(values_only=True)
+    head = [str(c).strip() if c is not None else "" for c in next(rows, [])]
+    idx = {}
+    for k in _CU_COLS:
+        if k not in head:
+            raise ValueError(f"'{k}' 컬럼이 없습니다 — 1행(키)을 수정하지 마세요")
+        idx[k] = head.index(k)
+
+    def cell(row, k):
+        v = row[idx[k]] if idx[k] < len(row) else None
+        if v is None:
+            return None
+        if isinstance(v, float) and v.is_integer():
+            v = int(v)                            # 엑셀이 산코드를 숫자로 바꿔도 복원
+        s = str(v).strip()
+        return s or None
+
+    order, groups = [], {}
+    for rn, row in enumerate(rows, start=2):
+        title = cell(row, "cu_title")
+        if not any(cell(row, k) for k in _CU_COLS):
+            continue
+        if rn == 2 and title == "큐레이션 이름":
+            continue                              # 2행 = 한글 설명 행
+        key = cell(row, "cu_id") or f"t:{title}"
+        if key not in groups:
+            groups[key] = {"id": cell(row, "cu_id"), "title": title, "items": []}
+            order.append(key)
+        if cell(row, "type"):
+            groups[key]["items"].append(
+                {k: cell(row, k) for k in _CU_COLS[2:] if cell(row, k)})
+    return [groups[k] for k in order]
+
+
 def _records_xlsx(limit=1000):
     """등반 기록 → xlsx (관리자 표와 같은 분리 열 + 분석용 수치 컬럼)."""
     import io
@@ -675,44 +805,36 @@ class AdminHandler(BaseHandler):
                 return self._json({"version": 1, "curations": []})
             if method == "PUT":
                 data = json.loads(self._body())
-                cus = data.get("curations")
-                if not isinstance(cus, list):
-                    raise ValueError("curations 배열 필요")
-                for cu in cus:
-                    if not isinstance(cu, dict) or not str(cu.get("title", "")).strip():
-                        raise ValueError("큐레이션 이름(title)이 비어 있음")
-                    if not isinstance(cu.get("items"), list):
-                        raise ValueError(f"{cu['title']}: items 배열 필요")
-                    for it in cu["items"]:
-                        if it.get("type") not in ("mountain", "course"):
-                            raise ValueError(f"{cu['title']}: 항목 type 은 mountain|course")
-                        if not re.fullmatch(r"\d{9}", str(it.get("code", ""))):
-                            raise ValueError(f"{cu['title']}: 항목 code 는 9자리 산코드")
-                        if not str(it.get("name", "")).strip():
-                            raise ValueError(f"{cu['title']}: 항목 name 필요")
-                        if it.get("img") is not None and not str(it["img"]).startswith("https://"):
-                            raise ValueError(f"{cu['title']}: img 는 https URL")
-                cfg = {"version": 1, "curations": [
-                    {"id": cu.get("id") or f"cu-{uuid.uuid4().hex[:8]}",
-                     "title": str(cu["title"]).strip(),
-                     # 슬라이드 요소(전부 선택 — 비면 미표시): sub 부가설명(반투명 배지),
-                     # title 큰 제목, desc 중앙 하단 설명, logo 좌하단 마크,
-                     # credit 우하단 출처(사진 저작자), img 배경 이미지
-                     "items": [{k: it[k] for k in
-                                ("type", "code", "name", "mountain",
-                                 "sub", "title", "desc", "logo", "credit", "img")
-                                if it.get(k) not in (None, "")} for it in cu["items"]]}
-                    for cu in cus]}
-                body = json.dumps(cfg, ensure_ascii=False, indent=1).encode()
-                os.makedirs(draft_store.ADMIN_DATA, exist_ok=True)
-                with open(cfg_path, "wb") as f:
-                    f.write(body)
-                import r2_lib
-                # Cache-Control 은 r2_lib.cache_control_for 가 확장자로 결정한다
-                # (*.json → no-cache). 없으면 앱이 옛 큐레이션을 몇 시간 재사용한다.
-                r2_lib.upload_bytes(body, "config/curations.json",
-                                    content_type="application/json")
+                cfg = _write_curations(_norm_curations(data.get("curations")))
                 return self._json({"ok": True, **cfg})
+
+        # GET /api/curations/export — 큐레이션 xlsx 백업 다운로드
+        if method == "GET" and p == ["curations", "export"]:
+            data = _curations_xlsx()
+            self.send_response(200)
+            self.send_header("Content-Type",
+                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            self.send_header("Content-Disposition",
+                             f'attachment; filename="hiheight-curations-{time.strftime("%Y%m%d")}.xlsx"')
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
+        # POST /api/curations/import — xlsx 업로드 → 전체 교체 (직전 상태 자동 백업)
+        if method == "POST" and p == ["curations", "import"]:
+            body = self._body()
+            if not body:
+                raise ValueError("xlsx 본문 없음")
+            cfg = _norm_curations(_parse_curations_xlsx(body))
+            if os.path.exists(_curations_path()):     # 교체 직전 스냅샷 (시트 백업 폴더 공용)
+                ts = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+                bdir = os.path.join(sheet_lib.BACKUP_DIR, ts)
+                os.makedirs(bdir, exist_ok=True)
+                import shutil
+                shutil.copy2(_curations_path(), os.path.join(bdir, "curations.json"))
+            return self._json({"ok": True, **_write_curations(cfg)})
 
         # POST /api/mountain-image?code= — 산 커버 이미지 업로드 (큐레이션 캐러셀 배경)
         # 본문 = 이미지 바이트 그대로 (Content-Type 으로 형식 판별) → R2 images/mountains/

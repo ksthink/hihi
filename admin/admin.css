@@ -494,3 +494,8 @@ tr.sh-new td { background: rgba(0, 128, 0, .05); }
 #sh-diff-body .sh-err { color: #b00020; margin-bottom: 8px; }
 #sh-diff-body .sh-warn { color: #a06000; margin-bottom: 8px; }
 #sh-diff-body ul { margin: 4px 0; padding-left: 18px; }
+
+/* 큐레이션 카드 — 대상(산/코스) 변경 */
+.cu-swap { font-size: 11px; padding: 2px 8px; margin-left: auto; flex: 0 0 auto; }
+.cs-meta input[type="search"] { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 3px 6px; }
+.cs-meta .cu-results { flex-basis: 100%; }
