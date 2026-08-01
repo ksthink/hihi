@@ -70,5 +70,7 @@ xcrun devicectl device process launch --device <UDID> --terminate-existing dev.m
 - 백그라운드 GPS 트래킹·기록 영속화(CoreLocation/SwiftData) 실구현.
 - 등반 진단 계측 보강 — `track.meta` 에 전경/배경 시간(`fg_s`/`bg_s`)·저전력모드(`lpm`) 추가
   (배터리 %/h 에서 화면 기여분 분리 — 상세 ../IOS.md §7-4).
+- 등반 배터리 모드 3단(일반/절전/최대절전) — 기록 탭 → 프로필 → 설정에서 선택.
+  절전=표시 스로틀(5m·5s), 최대절전=지도 대신 숫자만. 기록은 모드 무관 1Hz (../IOS.md §7-5).
 - 출처표기(OSM ODbL·Protomaps·산림청·국립공원공단·Copernicus DEM·기상청) 정보화면.
 - Apple Developer Program·App Privacy·백그라운드 위치 사유서.
