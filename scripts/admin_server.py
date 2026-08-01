@@ -396,8 +396,21 @@ def _norm_curations(cus):
         if not isinstance(cu.get("items"), list):
             raise ValueError(f"{cu['title']}: items 배열 필요")
         for it in cu["items"]:
-            if it.get("type") not in ("mountain", "course", "free"):
-                raise ValueError(f"{cu['title']}: 항목 type 은 mountain|course|free")
+            if it.get("type") not in ("mountain", "course", "spot", "free"):
+                raise ValueError(f"{cu['title']}: 항목 type 은 mountain|course|spot|free")
+            if it.get("type") == "spot":
+                # 스팟 카드 — 앱이 탐험에서 그 위치로 카메라를 보내야 하므로 좌표 스냅샷 필수.
+                # 편집기는 [lng,lat] 배열, xlsx 는 "lng,lat" 문자열로 들어온다.
+                c = it.get("coord")
+                if isinstance(c, str):
+                    c = [p.strip() for p in c.split(",")]
+                try:
+                    lng, lat = float(c[0]), float(c[1])
+                except (TypeError, ValueError, IndexError):
+                    raise ValueError(f"{cu['title']}: 스팟 항목은 coord(lng,lat) 필요")
+                if not (124.0 <= lng <= 132.0 and 32.0 <= lat <= 39.5):
+                    raise ValueError(f"{cu['title']}: 스팟 coord 가 한국 범위 밖 ({lng},{lat})")
+                it["coord"] = [round(lng, 6), round(lat, 6)]
             if it.get("type") == "free":
                 # 빈 카드 — 산/코스 연결 없는 순수 콘텐츠 슬라이드. code 는 합성 키
                 # (이미지 R2 키 겸용 + 구버전 iOS 디코드 호환 — code 가 필수 String).
@@ -419,7 +432,7 @@ def _norm_curations(cus):
          # title 큰 제목, desc 중앙 하단 설명, logo 좌하단 마크,
          # credit 우하단 출처(사진 저작자), img 배경 이미지
          "items": [{k: it[k] for k in
-                    ("type", "code", "name", "mountain",
+                    ("type", "code", "name", "mountain", "coord",
                      "sub", "title", "desc", "logo", "credit", "img")
                     if it.get(k) not in (None, "")} for it in cu["items"]]}
         for cu in cus]}
@@ -436,11 +449,12 @@ def _write_curations(cfg):
     return cfg
 
 
-_CU_COLS = ["cu_id", "cu_title", "type", "code", "name", "mountain",
+_CU_COLS = ["cu_id", "cu_title", "type", "code", "name", "mountain", "coord",
             "sub", "title", "desc", "logo", "credit", "img"]
 _CU_LABELS = {"cu_id": "큐레이션ID(수정 금지)", "cu_title": "큐레이션 이름",
-              "type": "종류(mountain|course|free)", "code": "산코드(free=자동)", "name": "이름(산/코스명)",
-              "mountain": "산(코스일 때)", "sub": "부가설명", "title": "제목",
+              "type": "종류(mountain|course|spot|free)", "code": "산코드(free=자동)",
+              "name": "이름(산/코스/스팟명)", "mountain": "산(코스·스팟일 때)",
+              "coord": "좌표 lng,lat (스팟)", "sub": "부가설명", "title": "제목",
               "desc": "설명", "logo": "로고", "credit": "출처", "img": "커버 이미지 URL"}
 
 
@@ -460,7 +474,10 @@ def _curations_xlsx():
         if not cu["items"]:                      # 빈 큐레이션도 제목 행으로 보존
             ws.append([cu["id"], cu["title"]] + [None] * (len(_CU_COLS) - 2))
         for it in cu["items"]:
-            ws.append([cu["id"], cu["title"]] + [it.get(k) for k in _CU_COLS[2:]])
+            # coord 는 [lng,lat] 배열 → 셀에는 "lng,lat" 문자열로 (가져오기가 역변환)
+            ws.append([cu["id"], cu["title"]]
+                      + [",".join(map(str, it[k])) if k == "coord" and isinstance(it.get(k), list)
+                         else it.get(k) for k in _CU_COLS[2:]])
     ws.freeze_panes = "A3"
     for i, k in enumerate(_CU_COLS, 1):
         ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = \
@@ -867,6 +884,26 @@ class AdminHandler(BaseHandler):
             key = f"images/mountains/{code}.{ext}"
             r2_lib.upload_bytes(body, key, content_type=ctype)
             return self._json({"url": f"{r2_lib.public_base()}/{key}"})
+
+        # GET /api/spot-search?q= — 전체 초안의 이름 있는 스팟 검색 (큐레이션 스팟 카드용)
+        # 산 편집에서 운영자가 이름을 붙인 스팟만 대상(삭제 제외). coord 는 카드의 이동 목적지.
+        if method == "GET" and p == ["spot-search"]:
+            kw = (q.get("q") or [""])[0].strip()
+            out = []
+            if kw:
+                for m in draft_store.list_drafts():
+                    d = draft_store.load(m["code"])
+                    for s in d["spots"]:
+                        name = s.get("name") or ""
+                        if s.get("deleted") or not name:
+                            continue
+                        if kw in name or kw in m["name"]:
+                            out.append({"code": m["code"], "mountain": m["name"],
+                                        "name": name, "category": s.get("category"),
+                                        "coord": s["coord"]})
+                        if len(out) >= 30:
+                            break
+            return self._json(out)
 
         # GET /api/course-search?q= — 전체 초안의 코스를 이름으로 검색 (큐레이션 항목 추가용)
         if method == "GET" and p == ["course-search"]:

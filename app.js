@@ -1176,12 +1176,19 @@ const RECO = [
   { name: "진달래길", park: "113050202", parkLabel: "북한산", diff: "초급", why: "진달래능선을 따라 대동문으로, 봄이면 진달래 명소인 대표 등산로 (OSM)" },
   { name: "천불동계곡 코스", park: "428302602", parkLabel: "설악산", diff: "중급", why: "비선대·양폭을 지나는 설악의 대표 계곡길" }
 ];
-// 큐레이션 항목 클릭 → 산(탐험 탭에서 산 열기) 또는 코스(코스 선택·포커스)
-// free(빈 카드 — 산/코스 연결 없음, 순수 콘텐츠 슬라이드)는 클릭해도 이동하지 않는다.
-function openCurationItem(it) {
+// 큐레이션 항목 클릭 → 산(탐험 탭에서 산 열기) · 코스(코스 선택·포커스) ·
+// 스팟(산 로드 후 그 좌표로 카메라 — 관리자 스팟 카드). free 는 이동 없음.
+async function openCurationItem(it) {
   if (it.type === "free") return;
-  if (it.type === "mountain") { showTab("tam"); loadPark(it.code); }
-  else openTrailByName(it.code, it.name);
+  if (it.type === "mountain") { showTab("tam"); loadPark(it.code); return; }
+  if (it.type === "spot") {
+    showTab("tam");
+    await loadPark(it.code);
+    if (Array.isArray(it.coord) && it.coord.length >= 2)
+      map.flyTo({ center: it.coord, zoom: Math.max(map.getZoom(), 14.6) });
+    return;
+  }
+  openTrailByName(it.code, it.name);
 }
 
 // 첫 큐레이션 = 정사각 캐러셀 (수동 스와이프 스냅 + 점 인디케이터). 항목 순서 = 슬라이드 순서.

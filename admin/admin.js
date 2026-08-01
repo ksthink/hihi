@@ -1770,12 +1770,12 @@ function itemCard(cu, it, commitItems) {
   meta.append(
     Object.assign(document.createElement("span"), {
       className: "cu-kind",
-      textContent: it.type === "free" ? "자유" : it.type === "mountain" ? "산" : "코스",
+      textContent: { free: "자유", mountain: "산", course: "코스", spot: "스팟" }[it.type] || it.type,
     }),
     Object.assign(document.createElement("span"), {
       className: "cu-name",
       textContent: it.type === "free" ? "연결 없음"
-        : it.type === "course" ? `${it.mountain} · ${it.name}` : it.name,
+        : it.type === "course" || it.type === "spot" ? `${it.mountain} · ${it.name}` : it.name,
     }),
     swapBtn);
 
@@ -1797,9 +1797,10 @@ function itemCard(cu, it, commitItems) {
       const kw = q.value.trim();
       const my = ++seq2;
       if (!kw) { res.hidden = true; return; }
-      const [mts, courses] = await Promise.all([
+      const [mts, courses, spots] = await Promise.all([
         api("/mountains").then((l) => l.filter((m) => m.name.includes(kw)).slice(0, 5)).catch(() => []),
         api(`/course-search?q=${encodeURIComponent(kw)}`).catch(() => []),
+        api(`/spot-search?q=${encodeURIComponent(kw)}`).catch(() => []),
       ]);
       if (my !== seq2) return;
       res.innerHTML = "";
@@ -1813,8 +1814,9 @@ function itemCard(cu, it, commitItems) {
           if (tgt.type === "free") { delete it.name; delete it.mountain; }
           else {
             it.name = tgt.name;
-            if (tgt.type === "course") it.mountain = tgt.mountain; else delete it.mountain;
+            if (tgt.mountain) it.mountain = tgt.mountain; else delete it.mountain;
           }
+          if (tgt.coord) it.coord = tgt.coord; else delete it.coord;
           renderCurations(); cuDirty();
         };
         res.appendChild(li2);
@@ -1825,6 +1827,9 @@ function itemCard(cu, it, commitItems) {
       for (const c of courses.slice(0, 10))
         pick(`코스 · ${c.mountain} — ${c.name}${c.status !== "ready" ? " (비공개 코스)" : ""}`,
           { type: "course", code: c.code, name: c.name, mountain: c.mountain });
+      for (const s of spots.slice(0, 8))
+        pick(`스팟 · ${s.mountain} — ${s.name}`,
+          { type: "spot", code: s.code, name: s.name, mountain: s.mountain, coord: s.coord });
       if (it.type !== "free")
         pick("자유 · 연결 없음(빈 카드)으로 전환",
           { type: "free", code: "free-" + Math.random().toString(16).slice(2, 10) });
@@ -1905,10 +1910,11 @@ function curationBlock(cu) {
     const kw = q.value.trim();
     const my = ++seq;
     if (!kw) { res.hidden = true; return; }
-    // 산: 관리 중인 초안 목록에서 이름 매칭 / 코스: 서버 검색
-    const [mts, courses] = await Promise.all([
+    // 산: 관리 중인 초안 목록에서 이름 매칭 / 코스·스팟: 서버 검색
+    const [mts, courses, spots] = await Promise.all([
       api("/mountains").then((l) => l.filter((m) => m.name.includes(kw)).slice(0, 5)).catch(() => []),
       api(`/course-search?q=${encodeURIComponent(kw)}`).catch(() => []),
+      api(`/spot-search?q=${encodeURIComponent(kw)}`).catch(() => []),
     ]);
     if (my !== seq) return; // 최신 입력만 반영
     res.innerHTML = "";
@@ -1935,6 +1941,9 @@ function curationBlock(cu) {
     for (const c of courses.slice(0, 10))
       row(`코스 · ${c.mountain} — ${c.name}${c.status !== "ready" ? " (비공개 코스)" : ""}`,
         { type: "course", code: c.code, name: c.name, mountain: c.mountain });
+    for (const s of spots.slice(0, 8))
+      row(`스팟 · ${s.mountain} — ${s.name}`,
+        { type: "spot", code: s.code, name: s.name, mountain: s.mountain, coord: s.coord });
     if (!res.children.length) res.innerHTML = '<li class="dup">검색 결과 없음</li>';
     res.hidden = false;
   };
