@@ -323,6 +323,7 @@ hihi/
 | [ios/DEVMODE.md](ios/DEVMODE.md) | 개발자 모드 HUD — 사용법·완전 삭제 절차 |
 | [CLOUDFLARE.md](CLOUDFLARE.md) | R2 기저 타일 자체 호스팅 구축 순서 (처음 하는 사람용) |
 | [ICLOUD.md](ICLOUD.md) | GPX 원본의 iCloud 문서 보관 |
+| **[EMERGENCY.md](EMERGENCY.md)** | 비상상황 매뉴얼 — 데이터·보안 사고, 서비스 장애 대응 절차 |
 | [WORKLOG.md](WORKLOG.md) | 작업일지 (날짜별 생성·수정 기록) |
 | [ISSUE.md](ISSUE.md) | 장기 미해결 이슈 추적 — "왜 오래 걸렸나" 서술형 |
 | [QA.md](QA.md) | 설계 질문/답변 기록 · [WORD.md](WORD.md) 용어 사전 |
