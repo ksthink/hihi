@@ -1802,14 +1802,10 @@ function itemCard(cu, it, commitItems) {
         const li2 = document.createElement("li");
         li2.textContent = label;
         li2.onclick = () => {
-          const prevCode = it.code;
+          // 문구·사진 전부 유지 — 사진이 새 대상과 안 맞으면 운영자가 [사진 교체]로 바꾼다
+          // (자동 제거는 애써 올린 썸네일을 날리는 부작용이 더 컸다, 2026-08-01 피드백).
           it.type = tgt.type; it.code = tgt.code; it.name = tgt.name;
           if (tgt.type === "course") it.mountain = tgt.mountain; else delete it.mountain;
-          if (tgt.code !== prevCode) {
-            const img = curDoc.curations.flatMap((c2) => c2.items)
-              .find((x) => x !== it && x.code === tgt.code && x.img)?.img;
-            if (img) it.img = img; else delete it.img;
-          }
           renderCurations(); cuDirty();
         };
         res.appendChild(li2);

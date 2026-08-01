@@ -497,5 +497,12 @@ tr.sh-new td { background: rgba(0, 128, 0, .05); }
 
 /* 큐레이션 카드 — 대상(산/코스) 변경 */
 .cu-swap { font-size: 11px; padding: 2px 8px; margin-left: auto; flex: 0 0 auto; }
+.cs-meta { position: relative; }  /* 결과 목록의 앵커 */
 .cs-meta input[type="search"] { flex: 1 1 auto; min-width: 0; font-size: 12px; padding: 3px 6px; }
-.cs-meta .cu-results { flex-basis: 100%; }
+/* 결과 목록은 카드 폭에 갇히지 않게 띄운다 — 카드가 좁아 목록이 답답하다는 피드백(2026-08-01) */
+.cs-meta .cu-results {
+  position: absolute; top: 100%; left: 0; z-index: 30;
+  min-width: 340px; max-width: min(520px, 90vw); max-height: 260px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+.cs-meta .cu-results li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
