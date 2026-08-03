@@ -400,40 +400,13 @@ struct MapView: UIViewRepresentable {
         //      stations       → poi-station        bus-stops → poi-bus_stop
         //      temple-names   → poi-place_of_worship
         //      spots-facilities → poi-{viewpoint,toilets,shelter,helipad,drinking_water,parking}
-        private static let poiSymbols: [String: String] = [
-            // 기저지도 POI
-            "poi-station": "tram.fill", "poi-bus_stop": "bus.fill",
-            "poi-place_of_worship": "building.columns.fill", "poi-information": "info.circle.fill",
-            // 팩 스팟 편의시설(기저 POI 와 이름 공유: toilets·drinking_water·parking)
-            "poi-viewpoint": "binoculars.fill", "poi-toilets": "toilet.fill",
-            "poi-shelter": "house.fill", "poi-helipad": "h.square.fill",
-            "poi-drinking_water": "drop.fill", "poi-parking": "parkingsign",
-        ]
+        // 그림은 POIIcons(웹 poi-icons.js 이식)가 그린다 — 예전 SF Symbols 대체본은 웹과
+        // 기호가 달라 폐기했다(사찰이 웹 卍 vs 앱 신전 — 2026-08-01). 여기서는 등록만 한다.
         func registerPOIIcons(on style: MLNStyle) {
-            let ink = dark ? UIColor.white : UIColor(white: 0.067, alpha: 1)
-            let halo = dark ? UIColor.black : UIColor.white
-            for (name, symbol) in Self.poiSymbols {
-                if let img = makeFacilityIcon(symbol, ink: ink, halo: halo) {
+            for name in POIIcons.names {
+                if let img = POIIcons.make(name, dark: dark) {
                     style.setImage(img, forName: name)
                 }
-            }
-        }
-        private func makeFacilityIcon(_ symbol: String, ink: UIColor, halo: UIColor) -> UIImage? {
-            let cfg = UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
-            guard let base = UIImage(systemName: symbol, withConfiguration: cfg) else { return nil }
-            let pad: CGFloat = 3                       // 헤일로가 잘리지 않도록 여백
-            let size = CGSize(width: base.size.width + pad * 2, height: base.size.height + pad * 2)
-            let fmt = UIGraphicsImageRendererFormat.default(); fmt.scale = 2
-            return UIGraphicsImageRenderer(size: size, format: fmt).image { _ in
-                let rect = CGRect(x: pad, y: pad, width: base.size.width, height: base.size.height)
-                // 헤일로 — 같은 심볼을 8방향으로 살짝 옮겨 그려 외곽선을 만든다
-                let h = base.withTintColor(halo, renderingMode: .alwaysOriginal)
-                for dx in [-1.2, 0, 1.2] as [CGFloat] {
-                    for dy in [-1.2, 0, 1.2] as [CGFloat] where !(dx == 0 && dy == 0) {
-                        h.draw(in: rect.offsetBy(dx: dx, dy: dy))
-                    }
-                }
-                base.withTintColor(ink, renderingMode: .alwaysOriginal).draw(in: rect)
             }
         }
 
