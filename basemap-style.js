@@ -12,6 +12,8 @@
 export const POI_DISPLAY_DEFAULT = {
   전철역: { zoom: 12, icon: true, size: 10, bold: false },
   버스정류장: { zoom: 14, icon: true, size: 8, bold: false },
+  // 약수터 — 전국 자체 타일(kr-spring). 산 위 지점이라 들머리 POI 보다 조금 늦게(z15) 띄운다.
+  약수터: { zoom: 15, icon: true, size: 8, bold: false },
   사찰: { zoom: 14, icon: true, size: 10, bold: false },
   편의시설: { zoom: 14, icon: true, size: 8, bold: false },
   학교: { zoom: 14, icon: false, size: 10, bold: false },
@@ -67,6 +69,11 @@ const URBAN_KINDS = {
 // 로컬 팩 기저("local-<산코드>" 등)는 해당 없음 → null (소스·레이어 모두 생략).
 const BUS_URL = (base) =>
   /kr-base\.pmtiles$/.test(base) ? base.replace(/kr-base\.pmtiles$/, "kr-bus.pmtiles") : null;
+
+// 전국 약수터 자체 타일 URL — 버스와 같은 방식(기저 경로에서 파일명 치환).
+// 산림청 등산로 스팟의 "음수대" 834개(scripts/build_spring_tiles.py).
+const SPRING_URL = (base) =>
+  /kr-base\.pmtiles$/.test(base) ? base.replace(/kr-base\.pmtiles$/, "kr-spring.pmtiles") : null;
 
 // baseMode: "terrain"(기본) = 지형 전용 — OSM 벡터 채움/도시POI/건물/경계를 걷어내고
 //   배경 + 음영기복 + 최소 오리엔테이션(물길·이름, 얇은 도로, 지명·사찰 라벨, 등산 편의시설)만.
@@ -135,6 +142,10 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
       // 치환해 파생(웹 프록시·R2 직결 모두 성립). 로컬 팩 기저(오프라인)에는 없음 → 소스 생략.
       ...(BUS_URL(pmtilesUrl) ? {
         bus: { type: "vector", url: "pmtiles://" + BUS_URL(pmtilesUrl) }
+      } : {}),
+      // 전국 약수터 자체 타일(kr-spring, 산림청 등산로 스팟) — 버스와 같은 파생 규칙.
+      ...(SPRING_URL(pmtilesUrl) ? {
+        spring: { type: "vector", url: "pmtiles://" + SPRING_URL(pmtilesUrl) }
       } : {}),
       ...(useTerrainRaster ? {
         dem: {
@@ -341,6 +352,29 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
             ? ["step", ["zoom"], 0, (P.버스정류장.zoom ?? 0) + 1, P.버스정류장.size]
             : P.버스정류장.size,
           ...(useIcon(P.버스정류장.icon) ? { "text-offset": [0, 1], "text-anchor": "top" } : {}),
+          "text-max-width": 9,
+          "text-optional": true
+        },
+        paint: { "text-color": C.path, "text-halo-color": C.halo, "text-halo-width": 1.3 }
+      }] : []),
+      ...(SPRING_URL(pmtilesUrl) ? [{
+        // 약수터: 물방울 아이콘 + 이름. 기저(pois)의 drinking_water 는 도심 음수대 위주라
+        // 산속 약수터가 거의 없다 → 산림청 등산로 스팟에서 만든 자체 전국 타일로 얹는다
+        // (scripts/build_spring_tiles.py · 834개). 팩 스팟과 달리 발행하지 않은 산에서도 보인다.
+        id: "spring-water", type: "symbol", source: "spring", "source-layer": "springs",
+        minzoom: P.약수터.zoom ?? 0,
+        layout: {
+          visibility: P.약수터.zoom != null ? "visible" : "none",
+          ...(useIcon(P.약수터.icon) ? {
+            "icon-image": "poi-drinking_water",
+            "icon-size": ["interpolate", ["linear"], ["zoom"], 15, 0.6, 17, 0.95],
+          } : {}),
+          "text-field": nameField(P.약수터.icon),
+          "text-font": FONT(P.약수터.bold),
+          "text-size": useIcon(P.약수터.icon)
+            ? ["step", ["zoom"], 0, (P.약수터.zoom ?? 0) + 1, P.약수터.size]
+            : P.약수터.size,
+          ...(useIcon(P.약수터.icon) ? { "text-offset": [0, 1], "text-anchor": "top" } : {}),
           "text-max-width": 9,
           "text-optional": true
         },

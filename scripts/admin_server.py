@@ -57,6 +57,8 @@ SPOT_DISPLAY_DEFAULT = {"version": 2, "categories": {
 POI_DISPLAY_DEFAULT = {"version": 2, "categories": {
     "전철역": {"zoom": 12, "icon": True, "size": 10, "bold": False},
     "버스정류장": {"zoom": 14, "icon": True, "size": 8, "bold": False},
+    # 약수터 — 전국 자체 타일(kr-spring, scripts/build_spring_tiles.py). 산 위 지점이라 z15.
+    "약수터": {"zoom": 15, "icon": True, "size": 8, "bold": False},
     "사찰": {"zoom": 14, "icon": True, "size": 10, "bold": False},
     "편의시설": {"zoom": 14, "icon": True, "size": 8, "bold": False},
     "학교": {"zoom": 14, "icon": False, "size": 10, "bold": False},
