@@ -267,7 +267,15 @@ struct DeungView: View {
                 ForEach(saved) { m in
                     // 선택 표시 — 배경/글자를 뒤집는다(라이트=검정 배경 흰 글씨, 다크는 자동 반전).
                     let on = carouselMountain?.id == m.id
-                    SwipeToDeleteRow(corner: 12, onDelete: { deletePackTarget = m }) {
+                    // 행 탭은 SwipeToDeleteRow 의 onTap 으로 넘긴다 — 제스처를 UIKit 오버레이가
+                    // 받으므로 카드 안의 .onTapGesture 는 반응하지 않는다.
+                    SwipeToDeleteRow(corner: 12, onDelete: { deletePackTarget = m }, onTap: {
+                        openCarousel(m)
+                        // 카드가 화면 밖일 수 있으므로 상단으로 올린다(선택 = 카드 갱신이라 같이 보여야 한다).
+                        withAnimation(.easeOut(duration: 0.35)) {
+                            proxy.scrollTo(Self.cardAnchor, anchor: .top)
+                        }
+                    }) {
                         HStack(spacing: 12) {
                             Image(systemName: "map").font(.system(size: 15))
                                 .foregroundStyle(on ? t.bg.opacity(0.75) : t.muted)
@@ -300,13 +308,6 @@ struct DeungView: View {
                         .background(on ? t.text : t.elevated, in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? t.text : t.line))
                         .contentShape(Rectangle())
-                        .onTapGesture {
-                            openCarousel(m)
-                            // 카드가 화면 밖일 수 있으므로 상단으로 올린다(선택 = 카드 갱신이라 같이 보여야 한다).
-                            withAnimation(.easeOut(duration: 0.35)) {
-                                proxy.scrollTo(Self.cardAnchor, anchor: .top)
-                            }
-                        }
                     }
                 }
             }

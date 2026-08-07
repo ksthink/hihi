@@ -103,14 +103,14 @@ struct RecordsView: View {
             } else {
                 ForEach(shownRecords) { r in           // 웹 rec-item — elevated 카드(gap 10)
                     // 커스텀 스와이프 — 카드가 삭제 버튼 위로 미끄러진다(모서리·틈·겹침 모두 해결).
-                    SwipeToDeleteRow(onDelete: { pendingDelete = r }) {
+                    SwipeToDeleteRow(onDelete: { pendingDelete = r },
+                                     onTap: { if r.hasTrack { onShowRoute(r) } }) {
                         recordRow(r, t)
                             .padding(.horizontal, 16).padding(.vertical, 14)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(t.elevated, in: RoundedRectangle(cornerRadius: 14))
                             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(t.line))
                             .contentShape(Rectangle())
-                            .onTapGesture { if r.hasTrack { onShowRoute(r) } }
                     }
                     .listRowInsets(EdgeInsets())   // 좌우 여백은 List 자체에 줌
                     .listRowSeparator(.hidden)
