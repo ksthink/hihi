@@ -21,6 +21,14 @@ struct DeungView: View {
     @State private var carouselMountain: Mountain?
     @State private var carouselCourses: [Course] = []
     @State private var pagedCourseID: Int?          // 페이저에 보이는 코스 id — 바뀌면 자동 선택
+    // 등반 카드가 스크롤 뷰포트에서 차지하는 위치 — 목록을 눌렀을 때 "카드가 이미 보이면
+    // 스크롤하지 않기" 판단에 쓴다(보이는데 튀면 부자연스럽다).
+    @State private var cardFrame: CGRect = .zero
+
+    // 저장된 지도 목록 — savedMaps 와 초기 선택 복원이 함께 쓴다.
+    private var savedMountains: [Mountain] {
+        catalog.mountains.filter { packs.downloaded.contains($0.id) || packs.downloadingCode == $0.id }
+    }
 
     var body: some View {
         let t = Theme(scheme: scheme)
@@ -32,11 +40,22 @@ struct DeungView: View {
                 ScrollView {
                     cardArea(t)             // 등반 카드 — 저장된 산을 고르면 카드 자체가 코스 페이저
                         .id(Self.cardAnchor)
+                        .background(GeometryReader { g in       // 카드 가시성 추적(아래 판단용)
+                            Color.clear.preference(key: CardFrameKey.self,
+                                                   value: g.frame(in: .named(Self.scrollSpace)))
+                        })
                     savedMaps(t, proxy)
                 }
+                .coordinateSpace(name: Self.scrollSpace)
+                .onPreferenceChange(CardFrameKey.self) { cardFrame = $0 }
             }
         }
         .background(t.bg)
+        // 탭에 들어오면 마지막으로 고른 산을 펼쳐 둔다 — 매번 목록에서 다시 고르지 않게.
+        // 목록·팩 상태는 비동기로 채워지므로 셋 다 걸어 준비되는 시점에 한 번 복원한다.
+        .onAppear { restoreSelection() }
+        .onChange(of: packs.downloaded) { _, _ in restoreSelection() }
+        .onChange(of: catalog.mountains.count) { _, _ in restoreSelection() }
         // 팩 없이 등반 시작 → 저장 권유(앱 UI 팝업). 무시하면 온라인 모드로 진행한다.
         .overlay {
             if showPackPrompt, let m = catalog.selected {
@@ -256,10 +275,21 @@ struct DeungView: View {
     // 카탈로그 pack_version(배포마다 +1)이 설치본보다 높으면 우측에 [업데이트] 노출.
     // 카드 영역 스크롤 앵커 — 저장된 지도 탭 시 여기로 올린다.
     private static let cardAnchor = "climb-card"
+    private static let scrollSpace = "deung-scroll"
+
+    // 초기 선택 복원 — 마지막에 고른 산(없으면 목록 맨 위). 이미 고른 게 있으면 두고,
+    // 등반 중에는 손대지 않는다(세션 코스가 바뀌면 HUD·저장 기록까지 어긋난다).
+    private func restoreSelection() {
+        guard carouselMountain == nil, !climb.tracking else { return }
+        let saved = savedMountains
+        guard !saved.isEmpty else { return }
+        let target = saved.first { $0.id == CatalogStore.lastMountainID } ?? saved.first
+        if let target { openCarousel(target) }
+    }
 
     @ViewBuilder private func savedMaps(_ t: Theme, _ proxy: ScrollViewProxy) -> some View {
         // 업데이트로 재다운로드 중인 산도 목록 유지(삭제 후 받는 동안 행이 사라지지 않게).
-        let saved = catalog.mountains.filter { packs.downloaded.contains($0.id) || packs.downloadingCode == $0.id }
+        let saved = savedMountains
         if !saved.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("저장된 지도").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
@@ -271,9 +301,13 @@ struct DeungView: View {
                     // 받으므로 카드 안의 .onTapGesture 는 반응하지 않는다.
                     SwipeToDeleteRow(corner: 12, onDelete: { deletePackTarget = m }, onTap: {
                         openCarousel(m)
-                        // 카드가 화면 밖일 수 있으므로 상단으로 올린다(선택 = 카드 갱신이라 같이 보여야 한다).
-                        withAnimation(.easeOut(duration: 0.35)) {
-                            proxy.scrollTo(Self.cardAnchor, anchor: .top)
+                        // 카드가 **가려져 있을 때만** 올린다. 예전엔 누를 때마다 올려서 카드가
+                        // 이미 보이는데도 화면이 튀었다. 카드 하단이 뷰포트 상단 근처까지
+                        // 올라갔으면(사실상 안 보임) 그때만 스크롤한다.
+                        if cardFrame.maxY < 120 {
+                            withAnimation(.easeOut(duration: 0.35)) {
+                                proxy.scrollTo(Self.cardAnchor, anchor: .top)
+                            }
                         }
                     }) {
                         HStack(spacing: 12) {
@@ -370,4 +404,11 @@ struct DeungView: View {
 
     // JS number 표기 재현 — 후행 0 제거("17.65", "4.9", "3").
     private func fmtNum(_ d: Double) -> String { String(format: "%g", d) }
+}
+
+
+// 등반 카드가 스크롤 뷰포트 어디에 있는지 — 목록 탭 시 스크롤 여부 판단용.
+private struct CardFrameKey: PreferenceKey {
+    static let defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
 }
