@@ -12,8 +12,10 @@
 export const POI_DISPLAY_DEFAULT = {
   전철역: { zoom: 12, icon: true, size: 10, bold: false },
   버스정류장: { zoom: 14, icon: true, size: 8, bold: false },
-  // 약수터 — 전국 자체 타일(kr-spring). 산 위 지점이라 들머리 POI 보다 조금 늦게(z15) 띄운다.
-  약수터: { zoom: 15, icon: true, size: 8, bold: false },
+  // 약수터 — 전국 자체 타일(kr-spring). 버스정류장과 같은 z14.
+  // ⚠️ 처음엔 z15 로 뒀는데, 계양산(395m) 같은 산은 전체를 z13~14 로 보므로 **산을 보는
+  //    동안에는 끝내 안 나왔다**(2026-08-07). 표시하지 않는 것과 다름없어 한 단계 내렸다.
+  약수터: { zoom: 14, icon: true, size: 8, bold: false },
   사찰: { zoom: 14, icon: true, size: 10, bold: false },
   편의시설: { zoom: 14, icon: true, size: 8, bold: false },
   학교: { zoom: 14, icon: false, size: 10, bold: false },
