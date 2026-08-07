@@ -118,20 +118,28 @@ struct DeungView: View {
     // 날씨는 표시하지 않는다(2026-07-26 공통 제거 — 날씨는 탐험 시트에서).
     private func card(_ t: Theme, course c: Course?, mountainName: String?) -> some View {
         return VStack(spacing: 14) {
-            // 제목 — 산이름(볼드) | 코스명. 코스 없으면 안내.
-            Group {
-                if let c {
-                    HStack(alignment: .firstTextBaseline, spacing: 7) {
-                        if let mtn = mountainName, !mtn.isEmpty {
-                            Text(mtn).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
-                            Text("|").font(.kakao(size: 15)).foregroundStyle(t.muted)
+            // 제목 + 코스 설명 — 산이름(볼드) | 코스명, 그 아래 봉우리·노면·설명 한 줄.
+            // 설명은 예전에 [등반 시작] 아래에 있었는데, 코스를 설명하는 문구라 제목에 붙는 편이
+            // 읽는 순서에 맞는다(2026-08-07 이동).
+            VStack(spacing: 5) {
+                Group {
+                    if let c {
+                        HStack(alignment: .firstTextBaseline, spacing: 7) {
+                            if let mtn = mountainName, !mtn.isEmpty {
+                                Text(mtn).font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
+                                Text("|").font(.kakao(size: 15)).foregroundStyle(t.muted)
+                            }
+                            Text(c.name).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.text)
                         }
-                        Text(c.name).font(.kakao(size: 15, weight: .semibold)).foregroundStyle(t.text)
+                        .lineLimit(1)
+                    } else {
+                        Text("선택된 코스가 없습니다").font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
                     }
-                    .lineLimit(1)
-                } else {
-                    Text("선택된 코스가 없습니다").font(.kakao(size: 15, weight: .bold)).foregroundStyle(t.text)
                 }
+                // 힌트 줄 — 항상 한 줄 확보. 코스별 유무(효자동처럼 봉우리·노면·설명이 빈 코스)로
+                // 카드 높이가 달라지면 페이저(가운데 정렬)에서 짧은 카드가 떠 보인다(2026-07-26 확인).
+                Text(hintText(c) ?? " ").font(.kakao(size: 11)).foregroundStyle(t.muted)
+                    .lineLimit(1).frame(maxWidth: .infinity)
             }
             .frame(maxWidth: .infinity)
 
@@ -173,10 +181,6 @@ struct DeungView: View {
             }
             .disabled(c == nil)
 
-            // 힌트 줄 — 항상 한 줄 확보. 코스별 유무(효자동처럼 봉우리·노면·설명이 빈 코스)로
-            // 카드 높이가 달라지면 페이저(가운데 정렬)에서 짧은 카드가 떠 보인다(2026-07-26 확인).
-            Text(hintText(c) ?? " ").font(.kakao(size: 11)).foregroundStyle(t.muted)
-                .lineLimit(1).frame(maxWidth: .infinity)
             if loginHint {
                 Text("등반 기록을 저장하려면 기록 탭에서 로그인하세요.")
                     .font(.kakao(size: 11)).foregroundStyle(t.muted).frame(maxWidth: .infinity)
