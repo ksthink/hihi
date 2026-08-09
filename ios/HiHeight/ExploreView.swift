@@ -31,6 +31,7 @@ struct ExploreView: View {
     @State private var courses: [Course] = []
     @State private var info: MountainInfo?
     @State private var weather: [WeatherHour] = []
+    @State private var air: AirQuality?               // 미세먼지 — 실황 수치 + 내일 등급
     // info·weather 가 담고 있는 산. 코스보다 늦게 도착하므로(날씨 2s+), 산이 바뀌었는데
     // 이전 산 값이 새 산 정보처럼 잠깐 보이는 것을 막는 데 쓴다. 같은 산 재진입이면
     // 값을 유지해 깜빡임을 피한다.
@@ -236,7 +237,7 @@ struct ExploreView: View {
         }
         .task(id: catalog.selected?.id) {
             guard let m = catalog.selected else {
-                courses = []; info = nil; weather = []
+                courses = []; info = nil; weather = []; air = nil
                 climb.course = nil; climb.mountainName = nil; climb.mountainCode = nil; return
             }
             // ⚠️ 등반 중에는 네트워크를 쓰지 않는다.
@@ -255,7 +256,7 @@ struct ExploreView: View {
             //    코스를 골라, 등반 카드 터치 → 코스가 화면에 차기까지 2~3초가 걸렸다
             //    (2026-07-29 실측: 코스 0.78s · 산정보 0.09s · 날씨 vfcst 2.24s).
             //    날씨·산정보는 하단 시트에서만 쓰여 지도 프레이밍과 무관하다.
-            if loadedInfoCode != m.id { info = nil; weather = [] }   // 산 전환 — 이전 값 즉시 치움
+            if loadedInfoCode != m.id { info = nil; weather = []; air = nil }   // 산 전환 — 이전 값 즉시 치움
             courses = await cs
             climb.mountainName = m.name
             climb.mountainCode = m.id
@@ -283,6 +284,8 @@ struct ExploreView: View {
             // 프레이밍이 끝난 뒤 나머지를 채운다 — 시트가 열려 있으면 도착하는 대로 갱신된다.
             info = await inf
             weather = await wx
+            // 미세먼지는 날씨보다 뒤에 채운다 — 실패해도 화면이 비지 않게 별도 처리.
+            air = await AirService.fetch(lat: m.center[1], lon: m.center[0], region: m.region)
             loadedInfoCode = m.id
         }
         // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
@@ -720,6 +723,7 @@ struct ExploreView: View {
                         }
                     }
                     if !weather.isEmpty { weatherStrip(m.name, t) }
+                    if let a = air { airRow(a, t) }
                     Divider().overlay(t.line).padding(.vertical, 2)
                     HStack(spacing: 8) {
                         Text("등산로").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
@@ -817,6 +821,40 @@ struct ExploreView: View {
                 .font(.kakao(size: 10)).foregroundStyle(t.muted)
         }
         .padding(.top, 2)
+    }
+
+    // 미세먼지 한 줄 — 실황 수치(+등급)와 내일 등급. 날씨 스트립처럼 시간 칸을 만들지 않는다:
+    // 에어코리아 예보는 **일 단위 등급**이라 시간 칸에 복제하면 없는 정보를 있는 것처럼 보이게 한다.
+    // 측정소명을 함께 적는 이유 — 산이 아니라 도심 측정값이라 사용자가 거리를 감안할 수 있어야 한다.
+    @ViewBuilder private func airRow(_ a: AirQuality, _ t: Theme) -> some View {
+        let pm10 = a.pm10.map { "\($0)" } ?? "–"
+        let pm25 = a.pm25.map { "\($0)" } ?? "–"
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 10) {
+                airChip("미세", pm10, AirQuality.gradeLabel(a.pm10Grade), t)
+                airChip("초미세", pm25, AirQuality.gradeLabel(a.pm25Grade), t)
+                Spacer(minLength: 0)
+                if let tm = a.tomorrow {
+                    Text("내일 \(tm)").font(.kakao(size: 11, weight: .semibold)).foregroundStyle(t.muted)
+                }
+            }
+            Text([a.station.map { st in
+                    a.distanceKm.map { "\(st) 측정소 \(String(format: "%.1f", $0))km" } ?? "\(st) 측정소" },
+                  a.observedAt, "한국환경공단 에어코리아"]
+                    .compactMap { $0 }.joined(separator: " · "))
+                .font(.kakao(size: 10)).foregroundStyle(t.muted).lineLimit(1)
+        }
+        .padding(.top, 2)
+    }
+
+    private func airChip(_ label: String, _ value: String, _ grade: String?, _ t: Theme) -> some View {
+        HStack(spacing: 4) {
+            Text(label).font(.kakao(size: 11)).foregroundStyle(t.muted)
+            Text(value).font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text).monospacedDigit()
+            if let grade {
+                Text(grade).font(.kakao(size: 11, weight: .semibold)).foregroundStyle(t.text)
+            }
+        }
     }
 
     private func wxChip(_ h: WeatherHour, _ t: Theme) -> some View {
