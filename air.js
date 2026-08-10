@@ -18,8 +18,9 @@ export async function fetchAir(lat, lon, region) {
   const r = await fetch(`/api/air?${q}`);
   if (!r.ok) return null;
   const a = await r.json();
-  // station 이 없으면 쓸 값이 없다(너무 멀거나 조회 실패) — 줄 자체를 감춘다.
-  if (!a || !a.station || (a.pm10 == null && a.pm25 == null)) return null;
+  // ⚠️ 실황(수치)과 예보(등급)는 **서로 다른 API 다.** 한쪽이 죽었다고 다른 쪽까지 버리면
+  // 멀쩡한 값이 있는데도 화면이 빈다 — 실제로 실황만 504 인 시간대가 있었다(2026-08-10).
+  if (!a || (a.pm10 == null && a.pm25 == null && !a.today && !a.tomorrow)) return null;
   return a;
 }
 
@@ -38,9 +39,11 @@ export function airGradeFn(a) {
   };
 }
 
-/** 캡션 한 줄 — 수치·측정소·거리. 칩에 숫자까지 넣으면 폭이 늘고 기온과 뒤섞인다. */
+/** 캡션 한 줄 — 수치·측정소·거리. 칩에 숫자까지 넣으면 폭이 늘고 기온과 뒤섞인다.
+ *  수치가 없으면(실황 API 만 죽은 경우) 빈 문자열 — "미세먼지 · ○○ 측정소" 만 남으면
+ *  무엇을 말하는 줄인지 알 수 없다. 칩의 등급은 그대로 나온다. */
 export function airNote(a) {
-  if (!a) return "";
+  if (!a || (a.pm10 == null && a.pm25 == null)) return "";
   let s = "미세먼지";
   if (a.pm10 != null) s += ` 미세 ${a.pm10}`;
   if (a.pm25 != null) s += ` · 초미세 ${a.pm25}`;

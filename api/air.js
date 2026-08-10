@@ -19,7 +19,11 @@
 const BASE = "https://apis.data.go.kr/B552584";
 const MAX_KM = 30;          // 이보다 먼 측정소는 "이 산의 대기질"로 볼 수 없다 → 표시하지 않음
 
-// 측정소 목록(673개·좌표 포함)은 거의 바뀌지 않는다. warm 인스턴스에서 재사용한다.
+// 측정소 목록(673개·좌표 포함)은 거의 바뀌지 않으므로 **파일로 굽는다**(scripts/build_stations.py).
+// 매 cold start 마다 800건을 외부에서 받아오면, 그 한 번의 실패가 곧바로 `{station:null}` 이 되고
+// 그게 캐시되면 그 사이 모두가 빈 화면을 본다(2026-08-10 실제 — 웹은 나오는데 앱만 비었다).
+// API 조회는 이제 **갱신용**이다: 성공하면 최신으로 덮고, 실패하면 구운 목록이 그대로 답한다.
+const BUNDLED = require("./_stations.json");
 let stationCache = { at: 0, list: null };
 // 예보도 캐시한다 — 하루 4회 발표라 자주 부를 이유가 없고, 무엇보다 **간헐 실패를 흡수**한다.
 // 한 번 실패한 응답이 CDN 에 30분 붙잡히면 그동안 모두가 등급 없는 화면을 본다(2026-08-10 실제).
@@ -64,17 +68,22 @@ async function callApi(svc, op, sk, params) {
 
 async function stations(sk) {
   if (stationCache.list && Date.now() - stationCache.at < 86400000) return stationCache.list;
-  const items = await callApi("MsrstnInfoInqireSvc", "getMsrstnList", sk, { numOfRows: "800" });
-  const list = items
-    .map((s) => ({
-      name: s.stationName,
-      addr: s.addr,
-      lat: parseFloat(s.dmX),
-      lon: parseFloat(s.dmY),
-    }))
-    .filter((s) => s.name && Number.isFinite(s.lat) && Number.isFinite(s.lon));
-  if (list.length) stationCache = { at: Date.now(), list };
-  return list;
+  try {
+    const items = await callApi("MsrstnInfoInqireSvc", "getMsrstnList", sk, { numOfRows: "800" });
+    const list = items
+      .map((s) => ({
+        name: s.stationName,
+        addr: s.addr,
+        lat: parseFloat(s.dmX),
+        lon: parseFloat(s.dmY),
+      }))
+      .filter((s) => s.name && Number.isFinite(s.lat) && Number.isFinite(s.lon));
+    if (list.length) {
+      stationCache = { at: Date.now(), list };
+      return list;
+    }
+  } catch (_) { /* 아래 폴백 */ }
+  return stationCache.list || BUNDLED;   // 신설·폐지는 드물다 — 비는 것보다 조금 낡은 게 낫다
 }
 
 async function forecast(sk) {

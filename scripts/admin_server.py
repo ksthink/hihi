@@ -642,8 +642,11 @@ class AdminHandler(BaseHandler):
 
     _KMA_OPS = {"ncst": "getUltraSrtNcst", "ufcst": "getUltraSrtFcst", "vfcst": "getVilageFcst"}
 
-    # 측정소 목록(673곳·좌표)은 거의 바뀌지 않는다 — 프로세스 수명 동안 하루 캐시.
+    # 측정소 목록(673곳·좌표)은 거의 바뀌지 않으므로 **파일로 굽는다**(scripts/build_stations.py).
+    # 조회 한 번의 실패가 곧바로 `{station:null}` 이 되면 그 사이 화면이 통째로 빈다
+    # (2026-08-10 실제). API 는 갱신용이고, 실패하면 구운 목록이 그대로 답한다.
     _MSRSTN = {"at": 0.0, "list": None}
+    _MSRSTN_FILE = os.path.join(ROOT, "api", "_stations.json")
     _AIR_MAX_KM = 30.0          # 이보다 먼 측정소는 "이 산의 대기질"로 볼 수 없다
     _GYEONGGI_NORTH = {"고양", "파주", "의정부", "양주", "동두천", "연천", "포천",
                        "가평", "남양주", "구리"}
@@ -697,15 +700,25 @@ class AdminHandler(BaseHandler):
         try:
             cache = AdminHandler._MSRSTN
             if not cache["list"] or time.time() - cache["at"] > 86400:
-                items = self._air_call("MsrstnInfoInqireSvc", "getMsrstnList", sk,
-                                       {"numOfRows": "800"})
                 lst = []
-                for st in items:
+                try:
+                    items = self._air_call("MsrstnInfoInqireSvc", "getMsrstnList", sk,
+                                           {"numOfRows": "800"})
+                    for st in items:
+                        try:
+                            lst.append((st.get("stationName"), st.get("addr"),
+                                        float(st["dmX"]), float(st["dmY"])))
+                        except (KeyError, TypeError, ValueError):
+                            continue
+                except Exception:
+                    pass                        # 아래 폴백
+                if not lst and not cache["list"]:
                     try:
-                        lst.append((st.get("stationName"), st.get("addr"),
-                                    float(st["dmX"]), float(st["dmY"])))
-                    except (KeyError, TypeError, ValueError):
-                        continue
+                        with open(AdminHandler._MSRSTN_FILE, encoding="utf-8") as f:
+                            lst = [(s["name"], s.get("addr"), s["lat"], s["lon"])
+                                   for s in json.load(f)]
+                    except Exception:
+                        lst = []
                 if lst:
                     cache.update(at=time.time(), list=lst)
 
@@ -720,16 +733,24 @@ class AdminHandler(BaseHandler):
             if not best or bestd > AdminHandler._AIR_MAX_KM:
                 return self._json({"station": None})
 
-            now = self._air_call("ArpltnInforInqireSvc", "getMsrstnAcctoRltmMesureDnsty", sk,
-                                 {"numOfRows": "1", "stationName": best[0],
-                                  "dataTerm": "DAILY", "ver": "1.0"})
+            # 실황과 예보는 **서로 독립이다.** 한쪽이 죽었다고 다른 쪽까지 버리면
+            # 화면이 통째로 빈다 — 에어코리아는 504 를 곧잘 낸다(2026-08-10 실측).
+            def call_or_empty(op, params):
+                try:
+                    return self._air_call("ArpltnInforInqireSvc", op, sk, params)
+                except Exception:
+                    return []
+
+            now = call_or_empty("getMsrstnAcctoRltmMesureDnsty",
+                                {"numOfRows": "1", "stationName": best[0],
+                                 "dataTerm": "DAILY", "ver": "1.0"})
             n = now[0] if now else {}
 
             today = (datetime.datetime.utcnow() + datetime.timedelta(hours=9))
-            fcst = self._air_call("ArpltnInforInqireSvc", "getMinuDustFrcstDspth", sk,
-                                  {"numOfRows": "20",
-                                   "searchDate": today.strftime("%Y-%m-%d"),
-                                   "InformCode": "PM10"})
+            fcst = call_or_empty("getMinuDustFrcstDspth",
+                                 {"numOfRows": "20",
+                                  "searchDate": today.strftime("%Y-%m-%d"),
+                                  "InformCode": "PM10"})
             reg = self._air_forecast_region(region)
 
             def grade_on(d):

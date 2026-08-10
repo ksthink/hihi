@@ -828,7 +828,9 @@ struct ExploreView: View {
     // 칩에 숫자까지 넣으면 폭이 늘고 기온과 뒤섞여 읽기 어렵다.
     private var stripCaption: String {
         var parts = ["\(WeatherService.baseLabel) · 가장 가까운 관측지 기준"]
-        if let a = air {
+        // 수치가 없으면(실황 API 만 죽은 경우) 이 줄은 통째로 뺀다 — "미세먼지 · ○○ 측정소"
+        // 만 남으면 무엇을 말하는 줄인지 알 수 없다. 칩의 등급은 그대로 나온다.
+        if let a = air, a.pm10 != nil || a.pm25 != nil {
             var air1 = "미세먼지"
             if let v = a.pm10 { air1 += " 미세 \(v)" }
             if let v = a.pm25 { air1 += " · 초미세 \(v)" }

@@ -35,8 +35,11 @@ struct AirQuality: Decodable {
         }
     }
 
-    /// 보여줄 값이 하나라도 있는가 — 측정소가 잡혔고 수치가 최소 하나는 와야 한다.
-    var hasValue: Bool { station != nil && (pm10 != nil || pm25 != nil) }
+    /// 보여줄 값이 하나라도 있는가.
+    ///
+    /// ⚠️ 실황(수치)과 예보(등급)는 **서로 다른 API 다.** 한쪽이 죽었다고 다른 쪽까지 버리면
+    /// 멀쩡한 값이 있는데도 화면이 빈다 — 실제로 실황만 504 인 시간대가 있었다(2026-08-10).
+    var hasValue: Bool { pm10 != nil || pm25 != nil || today != nil || tomorrow != nil }
 }
 
 enum AirService {
