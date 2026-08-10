@@ -28,6 +28,9 @@ let stationCache = { at: 0, list: null };
 // 예보도 캐시한다 — 하루 4회 발표라 자주 부를 이유가 없고, 무엇보다 **간헐 실패를 흡수**한다.
 // 한 번 실패한 응답이 CDN 에 30분 붙잡히면 그동안 모두가 등급 없는 화면을 본다(2026-08-10 실제).
 let fcstCache = { at: 0, day: null, items: null };
+// 주간예보는 **초미세먼지(PM2.5)** 기준이고 하루 1회만 발표된다. 일별과 항목도 척도도 다르다
+// (일별 좋음·보통·나쁨·매우나쁨 / 주간 낮음·높음) — 섞어 쓰지 않고 각각 그대로 표기한다.
+let weekCache = { at: 0, items: null };
 
 const num = (v) => {
   const n = parseInt(String(v ?? "").trim(), 10);
@@ -45,6 +48,21 @@ function forecastRegion(region) {
   if (sido === "경기") return GYEONGGI_NORTH.has(city) ? "경기북부" : "경기남부";
   if (sido === "강원") return GANGWON_EAST.has(city) ? "영동" : "영서";
   return sido;
+}
+
+// ⚠️ 두 예보의 권역명이 다르다 — 일별은 `영동`·`영서`, 주간은 `강원영동`·`강원영서`.
+//    나머지 권역은 같다. 이름 하나 차이로 강원 사용자만 주간이 통째로 비게 된다.
+const weekRegion = (reg) => (reg === "영동" || reg === "영서" ? `강원${reg}` : reg);
+
+// "서울 : 좋음,인천 : 보통" 또는 "서울 : 낮음, 인천 : 낮음" — 두 예보가 같은 형식이다.
+function pickRegion(text, reg) {
+  if (!reg) return null;
+  for (const part of String(text || "").split(",")) {
+    const i = part.indexOf(":");
+    if (i < 0) continue;
+    if (part.slice(0, i).trim() === reg) return part.slice(i + 1).trim();
+  }
+  return null;
 }
 
 const kstDate = (offsetDays = 0) =>
@@ -103,6 +121,27 @@ async function forecast(sk) {
   return fcstCache.day === day ? (fcstCache.items || []) : [];
 }
 
+// 주간(초미세먼지) 예보 — 최근 **2회 발표**를 받는다.
+// 오늘자 발표가 아직 안 뜬 시간대가 있고(오전), 새 발표는 하루씩 뒤로 밀려 앞날이 빠진다.
+// 두 회차를 겹쳐 놓으면 그 구멍이 메워진다.
+//
+// ⚠️ `searchDate` 없이 부르면 **발표일 목록만** 온다(`presnatnDt` 한 필드뿐, 내용 없음).
+//    그래서 목록을 먼저 받아 최신 두 날짜를 얻고, 그 날짜로 다시 부른다. 6시간 캐시라
+//    호출이 늘어나는 부담은 없다.
+async function weekForecast(sk) {
+  if (weekCache.items && Date.now() - weekCache.at < 21600000) return weekCache.items;
+  try {
+    const dates = (await callApi("ArpltnInforInqireSvc", "getMinuDustWeekFrcstDspth", sk,
+                                 { numOfRows: "5" }))
+      .map((x) => x.presnatnDt).filter(Boolean).slice(0, 2);
+    const items = (await Promise.all(dates.map((d) =>
+      callApi("ArpltnInforInqireSvc", "getMinuDustWeekFrcstDspth", sk,
+              { numOfRows: "1", searchDate: d }).catch(() => [])))).flat();
+    if (items.length) { weekCache = { at: Date.now(), items }; return items; }
+  } catch (_) { /* 아래 폴백 */ }
+  return weekCache.items || [];
+}
+
 module.exports = async function handler(req, res) {
   const lat = parseFloat(req.query.lat);
   const lon = parseFloat(req.query.lon);
@@ -130,11 +169,12 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ station: null });
     }
 
-    const [now, fcst] = await Promise.all([
+    const [now, fcst, week] = await Promise.all([
       callApi("ArpltnInforInqireSvc", "getMsrstnAcctoRltmMesureDnsty", sk, {
         numOfRows: "1", stationName: best.s.name, dataTerm: "DAILY", ver: "1.0",
       }).catch(() => []),
       forecast(sk),
+      weekForecast(sk),
     ]);
 
     const n = now[0] || {};
@@ -145,15 +185,29 @@ module.exports = async function handler(req, res) {
       if (!reg) return null;
       const cand = fcst.filter((x) => x.informData === dateStr && x.informCode === "PM10");
       const latest = cand[cand.length - 1] || cand[0];
-      if (!latest) return null;
-      for (const part of String(latest.informGrade || "").split(",")) {
-        const [k, v] = part.split(":").map((t) => t.trim());
-        if (k === reg) return v;
-      }
-      return null;
+      return latest ? pickRegion(latest.informGrade, reg) : null;
     };
     const today = gradeOn(kstDate(0));
     const tomorrow = gradeOn(kstDate(1));
+
+    // 예보 한 줄 — 일별(오늘·내일) 뒤에 주간(모레 이후)을 이어붙인다.
+    // ⚠️ **같은 값이 아니다.** 앞은 미세먼지 등급, 뒤는 초미세먼지 주간전망(낮음·높음)이라
+    //    소비 측이 `scale` 로 구분해 표기한다. 임의로 한 척도에 맞추지 않는다 — 원본이 다르다.
+    const daily = [kstDate(0), kstDate(1)]
+      .map((d) => ({ date: d, grade: gradeOn(d), scale: "daily" }))
+      .filter((x) => x.grade);
+    const wreg = weekRegion(reg);
+    const wmap = new Map();
+    for (const it of [...week].reverse())      // 오래된 발표부터 넣어 최신이 덮게
+      for (const n of ["One", "Two", "Three", "Four"]) {
+        const d = it[`frcst${n}Dt`], g = pickRegion(it[`frcst${n}Cn`], wreg);
+        if (d && g) wmap.set(d, g);
+      }
+    const lastDaily = daily.length ? daily[daily.length - 1].date : kstDate(0);
+    const weekly = [...wmap.entries()]
+      .filter(([d]) => d > lastDaily)          // 일별이 이미 말한 날은 겹치지 않게
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, grade]) => ({ date, grade, scale: "weekly" }));
 
     // ⚠️ 캐시 수명은 **응답이 온전한지 보고** 정한다. 등급이 비어 있는데도 30분을 캐시하면
     //    그 사이 모든 요청이 같은 반쪽 응답을 받는다(2026-08-10: 칩 등급이 통째로 비었다).
@@ -176,6 +230,7 @@ module.exports = async function handler(req, res) {
       observedAt: n.dataTime || null,
       today,
       tomorrow,
+      forecast: [...daily, ...weekly],
     });
   } catch (e) {
     return res.status(502).json({ error: String(e) });

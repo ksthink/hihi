@@ -64,7 +64,24 @@ export function hasStationPos(a) {
   return !!a && Number.isFinite(a.stationLat) && Number.isFinite(a.stationLon);
 }
 
-/** 측정소 팝업 내용 — 수치는 등급과 함께 보여야 뜻이 통한다(16 이 좋은 건지 알 수 없다). */
+/** "2026-08-12" → 오늘·내일이면 그 말로, 아니면 "8.12(수)".
+ *  ⚠️ 날짜를 **순수 날짜로** 다룬다(`Date.UTC`). `T00:00:00+09:00` 로 파싱하고 `getUTC*` 를
+ *     읽으면 하루가 밀린다 — 그 순간은 UTC 로 전날 15시이기 때문이다. */
+function dayLabel(date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!m) return date;
+  const at = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  const t = kstDay(0);   // "YYYYMMDD" — 한국 기준 오늘
+  const today = Date.UTC(+t.slice(0, 4), +t.slice(4, 6) - 1, +t.slice(6, 8));
+  const diff = Math.round((at - today) / 86400000);
+  if (diff === 0) return "오늘";
+  if (diff === 1) return "내일";
+  const wd = ["일", "월", "화", "수", "목", "금", "토"][new Date(at).getUTCDay()];
+  return `${+m[2]}.${+m[3]}(${wd})`;
+}
+
+/** 측정소 팝업 내용 — 수치는 등급과 함께 보여야 뜻이 통한다(16 이 좋은 건지 알 수 없다).
+ *  예보는 **가로로 넘겨 본다** — 6일을 세로로 쌓으면 팝업이 지도를 덮는다. */
 export function stationPopupHTML(a) {
   const row = (label, v, g) =>
     v == null ? "" : `<br>${label} ${v} ㎍/㎥${GRADE[g] ? ` · ${GRADE[g]}` : ""}`;
@@ -72,9 +89,23 @@ export function stationPopupHTML(a) {
     a.addr || "",
     a.distanceKm != null ? `산에서 ${a.distanceKm}km` : "",
   ].filter(Boolean).join("<br>");
+
+  const fc = Array.isArray(a.forecast) ? a.forecast : [];
+  const hasWeekly = fc.some((f) => f.scale === "weekly");
+  // 앞뒤가 다른 자료다 — 앞은 미세먼지 등급, 뒤는 초미세먼지 주간전망(낮음·높음).
+  // 같은 줄에 있으면 같은 척도로 읽히므로 점선 테두리와 주석으로 구분한다.
+  const days = fc.map((f) =>
+    `<div class="air-day${f.scale === "weekly" ? " is-week" : ""}">
+       <span>${dayLabel(f.date)}</span><b>${f.grade}</b></div>`).join("");
+  const forecast = fc.length
+    ? `<div class="air-fc-title">예보</div><div class="air-fc">${days}</div>
+       <div class="air-fc-note">${hasWeekly
+         ? "오늘·내일은 미세먼지 등급, 모레부터는 초미세먼지 주간전망(낮음·높음)입니다."
+         : "권역 단위 하루 한 값입니다(에어코리아)."}</div>`
+    : "";
+
   return `<div class="popup-title">${a.station} 측정소</div>
     <div class="popup-meta">${meta}${row("미세", a.pm10, a.pm10Grade)}${
       row("초미세", a.pm25, a.pm25Grade)}${
-      a.observedAt ? `<br>${a.observedAt} 관측` : ""}${
-      a.today ? `<br>오늘 예보 ${a.today}${a.tomorrow ? ` · 내일 ${a.tomorrow}` : ""}` : ""}</div>`;
+      a.observedAt ? `<br>${a.observedAt} 관측` : ""}</div>${forecast}`;
 }

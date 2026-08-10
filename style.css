@@ -579,3 +579,21 @@ footer .warn { margin-top: 6px; }
   font-size: 10px; font-weight: 700; color: var(--text); line-height: 1;
 }
 .air-stn-pin::after { content: "㎍"; }   /* 네이티브 핀과 같은 기호(gen-style.mjs air-station-mark) */
+
+/* 측정소 팝업의 예보 — 6일을 세로로 쌓으면 팝업이 지도를 덮는다. 가로로 넘겨 본다. */
+.air-fc-title { font-size: 12px; font-weight: 700; margin: 10px 0 6px; }
+.air-fc {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 -16px; padding: 0 16px;        /* 팝업 가장자리까지 흐르게(패딩 상쇄) */
+}
+.air-fc::-webkit-scrollbar { display: none; }
+.air-day {
+  flex: 0 0 auto; min-width: 54px; text-align: center;
+  padding: 6px 4px; border-radius: 9px;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.air-day span { display: block; font-size: 10px; color: var(--muted); }
+.air-day b { display: block; font-size: 13px; margin-top: 2px; }
+/* 주간전망은 다른 자료(초미세먼지·낮음/높음) — 점선으로 눈에도 구분되게. */
+.air-day.is-week { border-style: dashed; }
+.air-fc-note { font-size: 10.5px; color: var(--muted); line-height: 1.45; margin-top: 6px; }

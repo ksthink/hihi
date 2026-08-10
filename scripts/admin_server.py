@@ -664,6 +664,23 @@ class AdminHandler(BaseHandler):
             return "영동" if city in AdminHandler._GANGWON_EAST else "영서"
         return sido
 
+    # ⚠️ 두 예보의 권역명이 다르다 — 일별은 `영동`·`영서`, 주간은 `강원영동`·`강원영서`.
+    #    이름 하나 차이로 강원 사용자만 주간이 통째로 빈다.
+    @staticmethod
+    def _air_week_region(reg):
+        return f"강원{reg}" if reg in ("영동", "영서") else reg
+
+    # "서울 : 좋음,인천 : 보통" 또는 "서울 : 낮음, 인천 : 낮음" — 두 예보가 같은 형식이다.
+    @staticmethod
+    def _air_pick_region(text, reg):
+        if not reg:
+            return None
+        for part in str(text or "").split(","):
+            k, sep, v = part.partition(":")
+            if sep and k.strip() == reg:
+                return v.strip()
+        return None
+
     @staticmethod
     def _air_call(svc, op, sk, params):
         qs = urllib.parse.urlencode({"returnType": "json", "pageNo": "1", **params})
@@ -751,20 +768,42 @@ class AdminHandler(BaseHandler):
                                  {"numOfRows": "20",
                                   "searchDate": today.strftime("%Y-%m-%d"),
                                   "InformCode": "PM10"})
+            # 주간예보는 **초미세먼지(PM2.5)** 기준이고 하루 1회 발표다. 최근 2회를 받아
+            # 겹쳐 놓으면 새 발표가 하루씩 밀리며 생기는 앞날 구멍이 메워진다.
+            # ⚠️ `searchDate` 없이 부르면 **발표일 목록만** 온다(내용 없음) — 날짜를 먼저 얻어
+            #    그 날짜로 다시 부른다.
+            week = []
+            for pdt in [x.get("presnatnDt") for x in
+                        call_or_empty("getMinuDustWeekFrcstDspth", {"numOfRows": "5"})][:2]:
+                if pdt:
+                    week += call_or_empty("getMinuDustWeekFrcstDspth",
+                                          {"numOfRows": "1", "searchDate": pdt})
             reg = self._air_forecast_region(region)
 
             def grade_on(d):
-                if not reg:
-                    return None
                 cand = [x for x in fcst
                         if x.get("informData") == d and x.get("informCode") == "PM10"]
-                if not cand:
-                    return None
-                for part in str(cand[-1].get("informGrade") or "").split(","):
-                    kv = [t.strip() for t in part.split(":")]
-                    if len(kv) == 2 and kv[0] == reg:
-                        return kv[1]
-                return None
+                return self._air_pick_region(cand[-1].get("informGrade"), reg) if cand else None
+
+            d0 = today.strftime("%Y-%m-%d")
+            d1 = (today + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+            # 예보 한 줄 — 일별(오늘·내일) 뒤에 주간(모레 이후)을 이어붙인다.
+            # ⚠️ **같은 값이 아니다.** 앞은 미세먼지 등급, 뒤는 초미세먼지 주간전망(낮음·높음)
+            #    이라 소비 측이 `scale` 로 구분해 표기한다. 원본이 다른 척도라 통일하지 않는다.
+            daily = [{"date": d, "grade": g, "scale": "daily"}
+                     for d in (d0, d1) if (g := grade_on(d))]
+            wreg = self._air_week_region(reg)
+            wmap = {}
+            for it in reversed(week):           # 오래된 발표부터 넣어 최신이 덮게
+                for nth in ("One", "Two", "Three", "Four"):
+                    d = it.get(f"frcst{nth}Dt")
+                    g = self._air_pick_region(it.get(f"frcst{nth}Cn"), wreg)
+                    if d and g:
+                        wmap[d] = g
+            last_daily = daily[-1]["date"] if daily else d0
+            weekly = [{"date": d, "grade": wmap[d], "scale": "weekly"}
+                      for d in sorted(wmap) if d > last_daily]
 
             return self._json({
                 "pm10": num(n.get("pm10Value")), "pm25": num(n.get("pm25Value")),
@@ -774,8 +813,9 @@ class AdminHandler(BaseHandler):
                 # 지도에 찍기 위한 좌표 — "이 값이 어디서 왔나"를 보여준다.
                 "stationLat": best[2], "stationLon": best[3],
                 "observedAt": n.get("dataTime"),
-                "today": grade_on(today.strftime("%Y-%m-%d")),
-                "tomorrow": grade_on((today + datetime.timedelta(days=1)).strftime("%Y-%m-%d")),
+                "today": grade_on(d0),
+                "tomorrow": grade_on(d1),
+                "forecast": daily + weekly,
             })
         except Exception as e:
             return self._err(f"upstream: {e}", 502)

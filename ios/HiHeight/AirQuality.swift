@@ -13,6 +13,18 @@ import Foundation
 // 최근접 측정소 선택·권역 판정은 **서버(api/air.js)가 한다.** 측정소 이름 규칙이 지역마다
 // 달라(서울은 "강북구", 인천·경기는 "계산"·"소사본동" 같은 동 단위) 이름으로는 못 고른다.
 // 좌표로 고르면 규칙이 필요 없고 웹·iOS 가 같은 답을 본다.
+// 예보 한 칸. **앞뒤가 같은 값이 아니다** — `scale` 이 다르면 다른 자료다.
+//   daily  : 미세먼지(PM10) 등급 — 좋음·보통·나쁨·매우나쁨. 오늘·내일 2일.
+//   weekly : 초미세먼지(PM2.5) 주간전망 — 낮음·높음. 모레 이후 4일.
+// 원본이 다른 척도라 한쪽에 맞춰 변환하지 않는다. 화면에서 구분해 밝힌다.
+struct AirForecast: Decodable, Identifiable {
+    let date: String        // "2026-08-12"
+    let grade: String
+    let scale: String
+    var id: String { date }
+    var isWeekly: Bool { scale == "weekly" }
+}
+
 struct AirQuality: Decodable {
     let pm10: Int?          // ㎍/㎥ (측정소 점검 등으로 없을 수 있다)
     let pm25: Int?
@@ -26,6 +38,7 @@ struct AirQuality: Decodable {
     let observedAt: String? // "2026-08-09 20:00"
     let today: String?      // 오늘 PM10 등급(권역) — 날씨 칩의 '오늘' 칸에 붙인다
     let tomorrow: String?   // 내일 PM10 등급 — 자정을 넘어가는 칩에 붙인다
+    let forecast: [AirForecast]?   // 일별 2일 + 주간 4일 — 측정소 시트에서 가로로 넘겨 본다
 
     static func gradeLabel(_ g: Int?) -> String? {
         switch g {
