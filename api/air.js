@@ -21,6 +21,9 @@ const MAX_KM = 30;          // 이보다 먼 측정소는 "이 산의 대기질"
 
 // 측정소 목록(673개·좌표 포함)은 거의 바뀌지 않는다. warm 인스턴스에서 재사용한다.
 let stationCache = { at: 0, list: null };
+// 예보도 캐시한다 — 하루 4회 발표라 자주 부를 이유가 없고, 무엇보다 **간헐 실패를 흡수**한다.
+// 한 번 실패한 응답이 CDN 에 30분 붙잡히면 그동안 모두가 등급 없는 화면을 본다(2026-08-10 실제).
+let fcstCache = { at: 0, day: null, items: null };
 
 const num = (v) => {
   const n = parseInt(String(v ?? "").trim(), 10);
@@ -74,6 +77,23 @@ async function stations(sk) {
   return list;
 }
 
+async function forecast(sk) {
+  const day = kstDate(0);
+  if (fcstCache.items && fcstCache.day === day && Date.now() - fcstCache.at < 1800000)
+    return fcstCache.items;
+  try {
+    const items = await callApi("ArpltnInforInqireSvc", "getMinuDustFrcstDspth", sk, {
+      numOfRows: "20", searchDate: day, InformCode: "PM10",
+    });
+    if (items.length) {
+      fcstCache = { at: Date.now(), day, items };
+      return items;
+    }
+  } catch (_) { /* 아래 폴백 */ }
+  // 실패하면 오늘자 직전 성공분을 쓴다(없으면 빈 배열 — 등급만 비고 수치는 나온다).
+  return fcstCache.day === day ? (fcstCache.items || []) : [];
+}
+
 module.exports = async function handler(req, res) {
   const lat = parseFloat(req.query.lat);
   const lon = parseFloat(req.query.lon);
@@ -86,11 +106,7 @@ module.exports = async function handler(req, res) {
   // 인코딩된 키(%2F 포함)면 그대로, 디코딩 키면 인코딩해서 붙임 (weather.js 와 동일 규칙)
   const sk = /%[0-9A-Fa-f]{2}/.test(key) ? key : encodeURIComponent(key);
 
-  // 실황·예보는 1시간·하루 단위로만 바뀐다. stale-while-revalidate 로 만료 후에도 즉시
-  // 응답하고 갱신은 뒤에서 — 대기 시간을 사용자에게 노출하지 않는다.
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Cache-Control",
-    "public, max-age=900, s-maxage=1800, stale-while-revalidate=7200");
 
   try {
     const list = await stations(sk);
@@ -100,15 +116,16 @@ module.exports = async function handler(req, res) {
       if (!best || d < best.d) best = { s, d };
     }
     // 너무 멀면 값을 주지 않는다 — 없는 것보다 틀린 게 나쁘다.
-    if (!best || best.d > MAX_KM) return res.status(200).json({ station: null });
+    if (!best || best.d > MAX_KM) {
+      res.setHeader("Cache-Control", "public, max-age=600, s-maxage=600");
+      return res.status(200).json({ station: null });
+    }
 
     const [now, fcst] = await Promise.all([
       callApi("ArpltnInforInqireSvc", "getMsrstnAcctoRltmMesureDnsty", sk, {
         numOfRows: "1", stationName: best.s.name, dataTerm: "DAILY", ver: "1.0",
       }).catch(() => []),
-      callApi("ArpltnInforInqireSvc", "getMinuDustFrcstDspth", sk, {
-        numOfRows: "20", searchDate: kstDate(0), InformCode: "PM10",
-      }).catch(() => []),
+      forecast(sk),
     ]);
 
     const n = now[0] || {};
@@ -128,6 +145,14 @@ module.exports = async function handler(req, res) {
     };
     const today = gradeOn(kstDate(0));
     const tomorrow = gradeOn(kstDate(1));
+
+    // ⚠️ 캐시 수명은 **응답이 온전한지 보고** 정한다. 등급이 비어 있는데도 30분을 캐시하면
+    //    그 사이 모든 요청이 같은 반쪽 응답을 받는다(2026-08-10: 칩 등급이 통째로 비었다).
+    //    실황·예보는 1시간·하루 단위로만 바뀌므로 온전할 때만 길게 잡는다.
+    const complete = (today != null || tomorrow != null) && num(n.pm10Value) != null;
+    res.setHeader("Cache-Control", complete
+      ? "public, max-age=900, s-maxage=1800, stale-while-revalidate=7200"
+      : "public, max-age=60, s-maxage=60");
 
     return res.status(200).json({
       pm10: num(n.pm10Value),

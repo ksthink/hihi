@@ -12,7 +12,9 @@ localhost(127.0.0.1) 요청은 토큰 없이 허용. Supabase secret 키는 .env
 사용: .venv/bin/python scripts/admin_server.py [port]   (기본 8890)
 접속: http://<호스트>:8890/admin/?token=<ADMIN_TOKEN>   (토큰은 시작 로그에 출력)
 """
+import datetime
 import json
+import math
 import os
 import queue
 import re
@@ -640,6 +642,121 @@ class AdminHandler(BaseHandler):
 
     _KMA_OPS = {"ncst": "getUltraSrtNcst", "ufcst": "getUltraSrtFcst", "vfcst": "getVilageFcst"}
 
+    # 측정소 목록(673곳·좌표)은 거의 바뀌지 않는다 — 프로세스 수명 동안 하루 캐시.
+    _MSRSTN = {"at": 0.0, "list": None}
+    _AIR_MAX_KM = 30.0          # 이보다 먼 측정소는 "이 산의 대기질"로 볼 수 없다
+    _GYEONGGI_NORTH = {"고양", "파주", "의정부", "양주", "동두천", "연천", "포천",
+                       "가평", "남양주", "구리"}
+    _GANGWON_EAST = {"강릉", "동해", "속초", "삼척", "태백", "양양", "고성"}
+
+    @staticmethod
+    def _air_forecast_region(region):
+        parts = (region or "").strip().split()
+        if not parts:
+            return None
+        sido, city = parts[0], (parts[1] if len(parts) > 1 else "")
+        if sido == "경기":
+            return "경기북부" if city in AdminHandler._GYEONGGI_NORTH else "경기남부"
+        if sido == "강원":
+            return "영동" if city in AdminHandler._GANGWON_EAST else "영서"
+        return sido
+
+    @staticmethod
+    def _air_call(svc, op, sk, params):
+        qs = urllib.parse.urlencode({"returnType": "json", "pageNo": "1", **params})
+        url = f"https://apis.data.go.kr/B552584/{svc}/{op}?serviceKey={sk}&{qs}"
+        req = urllib.request.Request(url, headers={"User-Agent": "hiheight/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return (json.load(r).get("response", {}).get("body", {}) or {}).get("items") or []
+
+    def _air(self, q):
+        """에어코리아 대기질 프록시 — 최근접 측정소 실황 + 오늘·내일 등급.
+
+        api/air.js(Vercel) 와 같은 응답 계약을 유지한다. 로직이 두 곳에 있는 것은
+        로컬 개발 서버가 Vercel 함수를 실행하지 못하기 때문이다 — 한쪽을 고치면 다른
+        쪽도 함께 고칠 것.
+        """
+        try:
+            lat = float((q.get("lat") or [""])[0])
+            lon = float((q.get("lon") or [""])[0])
+        except ValueError:
+            return self._err("lat/lon required", 400)
+        region = (q.get("region") or [""])[0]
+
+        key = os.environ.get("KMA_KEY") or os.environ.get("KNPS_KEY")
+        if not key:
+            return self._err("no KMA_KEY", 500)
+        sk = key if re.search(r"%[0-9A-Fa-f]{2}", key) else urllib.parse.quote(key, safe="")
+
+        def num(v):
+            try:
+                return int(str(v).strip())
+            except (TypeError, ValueError):
+                return None
+
+        try:
+            cache = AdminHandler._MSRSTN
+            if not cache["list"] or time.time() - cache["at"] > 86400:
+                items = self._air_call("MsrstnInfoInqireSvc", "getMsrstnList", sk,
+                                       {"numOfRows": "800"})
+                lst = []
+                for st in items:
+                    try:
+                        lst.append((st.get("stationName"), st.get("addr"),
+                                    float(st["dmX"]), float(st["dmY"])))
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                if lst:
+                    cache.update(at=time.time(), list=lst)
+
+            best, bestd = None, None
+            for name, addr, slat, slon in (cache["list"] or []):
+                dx = (slon - lon) * 111.32 * math.cos(math.radians(lat))
+                dy = (slat - lat) * 111.32
+                d = math.hypot(dx, dy)
+                if bestd is None or d < bestd:
+                    best, bestd = (name, addr), d
+            # 너무 멀면 값을 주지 않는다 — 없는 것보다 틀린 게 나쁘다.
+            if not best or bestd > AdminHandler._AIR_MAX_KM:
+                return self._json({"station": None})
+
+            now = self._air_call("ArpltnInforInqireSvc", "getMsrstnAcctoRltmMesureDnsty", sk,
+                                 {"numOfRows": "1", "stationName": best[0],
+                                  "dataTerm": "DAILY", "ver": "1.0"})
+            n = now[0] if now else {}
+
+            today = (datetime.datetime.utcnow() + datetime.timedelta(hours=9))
+            fcst = self._air_call("ArpltnInforInqireSvc", "getMinuDustFrcstDspth", sk,
+                                  {"numOfRows": "20",
+                                   "searchDate": today.strftime("%Y-%m-%d"),
+                                   "InformCode": "PM10"})
+            reg = self._air_forecast_region(region)
+
+            def grade_on(d):
+                if not reg:
+                    return None
+                cand = [x for x in fcst
+                        if x.get("informData") == d and x.get("informCode") == "PM10"]
+                if not cand:
+                    return None
+                for part in str(cand[-1].get("informGrade") or "").split(","):
+                    kv = [t.strip() for t in part.split(":")]
+                    if len(kv) == 2 and kv[0] == reg:
+                        return kv[1]
+                return None
+
+            return self._json({
+                "pm10": num(n.get("pm10Value")), "pm25": num(n.get("pm25Value")),
+                "pm10Grade": num(n.get("pm10Grade")), "pm25Grade": num(n.get("pm25Grade")),
+                "station": best[0], "addr": best[1],
+                "distanceKm": round(bestd, 1),
+                "observedAt": n.get("dataTime"),
+                "today": grade_on(today.strftime("%Y-%m-%d")),
+                "tomorrow": grade_on((today + datetime.timedelta(days=1)).strftime("%Y-%m-%d")),
+            })
+        except Exception as e:
+            return self._err(f"upstream: {e}", 502)
+
     def _weather(self, q):
         """기상청 단기예보 프록시 (CORS 회피 + 키 은닉). api/weather.js 와 동일 계약."""
         op = (q.get("op") or [""])[0]
@@ -721,6 +838,13 @@ class AdminHandler(BaseHandler):
         # GET /api/weather?op=&nx=&ny=&base_date=&base_time=  (기상청 프록시)
         if method == "GET" and p == ["weather"]:
             return self._weather(q)
+
+        # GET /api/air?lat=&lon=&region=  (에어코리아 프록시 — Vercel api/air.js 와 동일 계약)
+        # ⚠️ 이 라우트가 없으면 **로컬 서버로 웹을 볼 때 미세먼지만 404** 가 난다.
+        #    날씨는 위 프록시가 받으므로 "날씨는 나오는데 미세먼지만 안 나오는" 증상이 된다
+        #    (2026-08-10 실제로 겪음 — Vercel 에만 추가하고 여기를 빠뜨렸다).
+        if method == "GET" and p == ["air"]:
+            return self._air(q)
 
         # GET /api/records?limit= — 등반 기록 + 진단 요약(배터리·GPS). service_role 조회.
         if method == "GET" and p == ["records"]:
