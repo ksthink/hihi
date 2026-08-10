@@ -66,7 +66,8 @@ struct AirStationSheet: View {
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(t.bg)
-        .presentationDetents([.height(air.today != nil || air.tomorrow != nil ? 400 : 290)])
+        // 내용만큼만 — 예보 블록이 없으면 그만큼 낮춘다(빈 공간이 남으면 무언가 빠진 것처럼 보인다).
+        .presentationDetents([.height(air.today != nil || air.tomorrow != nil ? 350 : 250)])
     }
 
     @ViewBuilder
