@@ -130,15 +130,19 @@ async function forecast(sk) {
 //    호출이 늘어나는 부담은 없다.
 async function weekForecast(sk) {
   if (weekCache.items && Date.now() - weekCache.at < 21600000) return weekCache.items;
+  // 목록 조회가 죽어도 포기하지 않는다 — 발표는 매일이므로 최근 날짜를 직접 짚으면 된다.
+  let dates = [];
   try {
-    const dates = (await callApi("ArpltnInforInqireSvc", "getMinuDustWeekFrcstDspth", sk,
-                                 { numOfRows: "5" }))
+    dates = (await callApi("ArpltnInforInqireSvc", "getMinuDustWeekFrcstDspth", sk,
+                           { numOfRows: "5" }))
       .map((x) => x.presnatnDt).filter(Boolean).slice(0, 2);
-    const items = (await Promise.all(dates.map((d) =>
-      callApi("ArpltnInforInqireSvc", "getMinuDustWeekFrcstDspth", sk,
-              { numOfRows: "1", searchDate: d }).catch(() => [])))).flat();
-    if (items.length) { weekCache = { at: Date.now(), items }; return items; }
-  } catch (_) { /* 아래 폴백 */ }
+  } catch (_) { /* 아래에서 날짜를 직접 만든다 */ }
+  if (!dates.length) dates = [kstDate(0), kstDate(-1), kstDate(-2)];
+
+  const items = (await Promise.all(dates.map((d) =>
+    callApi("ArpltnInforInqireSvc", "getMinuDustWeekFrcstDspth", sk,
+            { numOfRows: "1", searchDate: d }).catch(() => [])))).flat();
+  if (items.length) { weekCache = { at: Date.now(), items }; return items; }
   return weekCache.items || [];
 }
 
@@ -212,7 +216,11 @@ module.exports = async function handler(req, res) {
     // ⚠️ 캐시 수명은 **응답이 온전한지 보고** 정한다. 등급이 비어 있는데도 30분을 캐시하면
     //    그 사이 모든 요청이 같은 반쪽 응답을 받는다(2026-08-10: 칩 등급이 통째로 비었다).
     //    실황·예보는 1시간·하루 단위로만 바뀌므로 온전할 때만 길게 잡는다.
-    const complete = (today != null || tomorrow != null) && num(n.pm10Value) != null;
+    // ⚠️ 주간도 완전성에 넣는다. 주간예보는 매일 발표되므로 **비어 있다면 조회 실패**다.
+    //    이걸 빼놓았더니 주간 없는 응답이 30분간 캐시돼, 그 사이 앱은 예보가 2칸뿐이었다
+    //    (2026-08-10 — ISSUE #5 와 같은 함정이 항목을 늘리면서 그대로 재발했다).
+    const complete = (today != null || tomorrow != null) && num(n.pm10Value) != null
+                     && weekly.length > 0;
     res.setHeader("Cache-Control", complete
       ? "public, max-age=900, s-maxage=1800, stale-while-revalidate=7200"
       : "public, max-age=60, s-maxage=60");

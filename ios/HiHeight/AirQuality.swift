@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // 대기질(미세먼지) — /api/air 프록시 소비. 웹 air.js 와 같은 계약.
 //
@@ -13,6 +14,30 @@ import Foundation
 // 최근접 측정소 선택·권역 판정은 **서버(api/air.js)가 한다.** 측정소 이름 규칙이 지역마다
 // 달라(서울은 "강북구", 인천·경기는 "계산"·"소사본동" 같은 동 단위) 이름으로는 못 고른다.
 // 좌표로 고르면 규칙이 필요 없고 웹·iOS 가 같은 답을 본다.
+// 등급의 네 단계. 어휘가 무엇이든(좋음·보통·… / 낮음·높음) 결국 이 넷 중 하나로 읽힌다.
+// 흑백 팔레트라 색상 대신 **명도**로 구분하고, 진한 두 단계는 글씨를 반전한다.
+enum AirTone: Int {
+    case good = 1, moderate, bad, veryBad
+
+    func background(dark: Bool) -> Color {
+        switch self {
+        case .good:     return Color(hex: dark ? 0x1f1f1f : 0xf2f2f2)
+        case .moderate: return Color(hex: dark ? 0x333333 : 0xdcdcdc)
+        case .bad:      return Color(hex: dark ? 0x7a7a7a : 0x9a9a9a)
+        case .veryBad:  return Color(hex: dark ? 0xd0d0d0 : 0x333333)
+        }
+    }
+    /// 진한 두 단계는 바탕이 어두우므로(라이트) 글씨를 뒤집는다.
+    func foreground(dark: Bool) -> Color {
+        switch self {
+        case .good, .moderate: return Color(hex: dark ? 0xf2f2f2 : 0x111111)
+        case .bad, .veryBad:   return dark ? Color(hex: 0x111111) : Color(hex: 0xffffff)
+        }
+    }
+    static let legend: [(AirTone, String)] =
+        [(.good, "좋음"), (.moderate, "보통"), (.bad, "나쁨"), (.veryBad, "매우나쁨")]
+}
+
 // 예보 한 칸. **앞뒤가 같은 값이 아니다** — `scale` 이 다르면 다른 자료다.
 //   daily  : 미세먼지(PM10) 등급 — 좋음·보통·나쁨·매우나쁨. 오늘·내일 2일.
 //   weekly : 초미세먼지(PM2.5) 주간전망 — 낮음·높음. 모레 이후 4일.
@@ -23,6 +48,31 @@ struct AirForecast: Codable, Identifiable {
     let scale: String
     var id: String { date }
     var isWeekly: Bool { scale == "weekly" }
+
+    /// 화면에 쓸 등급어. 주간전망의 `낮음`·`높음` 은 **같은 구간을 익숙한 4단계 말로** 바꾼다.
+    ///
+    /// 근사가 아니다 — 에어코리아 기준으로 낮음 = PM2.5 0~35㎍/㎥, 높음 = 36 이상이고,
+    /// 초미세먼지 4단계 경계가 좋음 0~15 · 보통 16~35 · 나쁨 36~75 라 구간이 정확히 맞물린다.
+    /// 어휘를 둘로 두면 범례도 둘이 되고, 사용자가 "낮음이 좋음인가 보통인가"를 헤맨다.
+    var label: String {
+        switch grade {
+        case "낮음": return "좋음~보통"
+        case "높음": return "나쁨 이상"
+        default:    return grade
+        }
+    }
+
+    var tone: AirTone {
+        switch grade {
+        case "좋음":          return .good
+        // `낮음` 은 두 등급에 걸쳐 있다. 넓은 쪽(보통)으로 칠한다 — 옅게 칠하면 실제보다
+        // 안전해 보인다. 등급 표시는 과장보다 과소가 위험하다.
+        case "보통", "낮음":   return .moderate
+        case "나쁨", "높음":   return .bad
+        case "매우나쁨":       return .veryBad
+        default:              return .moderate
+        }
+    }
 }
 
 struct AirQuality: Codable {

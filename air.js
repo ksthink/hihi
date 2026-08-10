@@ -11,6 +11,18 @@
 
 const GRADE = { 1: "좋음", 2: "보통", 3: "나쁨", 4: "매우나쁨" };
 
+/** 주간전망의 `낮음`·`높음` 을 **같은 구간을 가리키는 4단계 말로** 바꾼다.
+ *
+ *  근사가 아니다 — 에어코리아 기준으로 낮음 = PM2.5 0~35㎍/㎥, 높음 = 36 이상이고,
+ *  초미세먼지 4단계 경계가 좋음 0~15 · 보통 16~35 · 나쁨 36~75 라 구간이 정확히 맞물린다.
+ *  어휘를 둘로 두면 사용자가 "낮음이 좋음인가 보통인가"를 헤맨다(2026-08-10 지적).
+ *  iOS AirForecast.label 과 같은 규칙. */
+export function gradeLabel(grade) {
+  if (grade === "낮음") return "좋음~보통";
+  if (grade === "높음") return "나쁨 이상";
+  return grade;
+}
+
 /** 산 좌표에서 가장 가까운 측정소의 실황 + 내일 등급. 없거나 실패하면 null. */
 export async function fetchAir(lat, lon, region) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
@@ -106,11 +118,12 @@ export function stationPopupHTML(a) {
   // 같은 줄에 있으면 같은 척도로 읽히므로 점선 테두리와 주석으로 구분한다.
   const days = fc.map((f) =>
     `<div class="air-day${f.scale === "weekly" ? " is-week" : ""}">
-       <span>${dayLabel(f.date)}</span><b>${f.grade}</b></div>`).join("");
+       <span>${dayLabel(f.date)}</span><b>${gradeLabel(f.grade)}</b>
+       <i>${f.scale === "weekly" ? "PM2.5" : ""}</i></div>`).join("");
   const forecast = fc.length
     ? `<div class="air-fc-title">예보</div><div class="air-fc">${days}</div>
        <div class="air-fc-note">${hasWeekly
-         ? "오늘·내일은 미세먼지 등급, 모레부터는 초미세먼지 주간전망(낮음·높음)입니다."
+         ? "점선은 초미세먼지 주간전망입니다(권역 단위 하루 한 값)."
          : "권역 단위 하루 한 값입니다(에어코리아)."}</div>`
     : "";
 

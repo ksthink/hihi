@@ -772,12 +772,18 @@ class AdminHandler(BaseHandler):
             # 겹쳐 놓으면 새 발표가 하루씩 밀리며 생기는 앞날 구멍이 메워진다.
             # ⚠️ `searchDate` 없이 부르면 **발표일 목록만** 온다(내용 없음) — 날짜를 먼저 얻어
             #    그 날짜로 다시 부른다.
+            # 목록 조회가 죽어도 포기하지 않는다 — 발표는 매일이므로 최근 날짜를 직접 짚으면 된다.
+            wdates = [x.get("presnatnDt") for x in
+                      call_or_empty("getMinuDustWeekFrcstDspth", {"numOfRows": "5"})][:2]
+            wdates = [d for d in wdates if d]
+            if not wdates:
+                base = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
+                wdates = [(base - datetime.timedelta(days=i)).strftime("%Y-%m-%d")
+                          for i in range(3)]
             week = []
-            for pdt in [x.get("presnatnDt") for x in
-                        call_or_empty("getMinuDustWeekFrcstDspth", {"numOfRows": "5"})][:2]:
-                if pdt:
-                    week += call_or_empty("getMinuDustWeekFrcstDspth",
-                                          {"numOfRows": "1", "searchDate": pdt})
+            for pdt in wdates:
+                week += call_or_empty("getMinuDustWeekFrcstDspth",
+                                      {"numOfRows": "1", "searchDate": pdt})
             reg = self._air_forecast_region(region)
 
             def grade_on(d):

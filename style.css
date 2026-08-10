@@ -593,7 +593,8 @@ footer .warn { margin-top: 6px; }
   background: var(--surface); border: 1px solid var(--line);
 }
 .air-day span { display: block; font-size: 10px; color: var(--muted); }
-.air-day b { display: block; font-size: 13px; margin-top: 2px; }
+.air-day b { display: block; font-size: 12px; margin-top: 6px; }   /* 일자 아래 숨 쉴 자리 */
+.air-day i { display: block; font-size: 9px; font-style: normal; color: var(--muted); min-height: 11px; }
 /* 주간전망은 다른 자료(초미세먼지·낮음/높음) — 점선으로 눈에도 구분되게. */
 .air-day.is-week { border-style: dashed; }
 .air-fc-note { font-size: 10.5px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
