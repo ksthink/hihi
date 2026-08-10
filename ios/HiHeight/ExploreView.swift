@@ -256,11 +256,17 @@ struct ExploreView: View {
             async let cs = PackLoader.courses(m.id, localURL: packs.localFile(m.id, "routes.geojson"))
             async let inf = InfoLoader.load(m.id)
             async let wx = WeatherService.fetch(lat: m.center[1], lon: m.center[0])
+            // ⚠️ 대기질도 **여기서 함께 출발**한다. 예전엔 `weather = await wx` 뒤에 놓여
+            //    날씨가 도착해야 비로소 요청이 나갔다 — 날씨(vfcst)만 2.24s 라 미세먼지와
+            //    측정소 핀이 그만큼 늦게 떴다(2026-08-10 지적: "10초쯤 걸린다").
+            async let ar = AirService.fetch(lat: m.center[1], lon: m.center[0], region: m.region)
             // ⚠️ 코스가 도착하면 **즉시** 선택·프레이밍한다. 예전엔 날씨까지 await 한 뒤에야
             //    코스를 골라, 등반 카드 터치 → 코스가 화면에 차기까지 2~3초가 걸렸다
             //    (2026-07-29 실측: 코스 0.78s · 산정보 0.09s · 날씨 vfcst 2.24s).
             //    날씨·산정보는 하단 시트에서만 쓰여 지도 프레이밍과 무관하다.
-            if loadedInfoCode != m.id { info = nil; weather = []; air = nil }   // 산 전환 — 이전 값 즉시 치움
+            // 산 전환 — 이전 산의 값은 즉시 치우되, 대기질은 **이 산의 저장분을 바로 얹는다.**
+            // 네트워크를 기다리는 동안 비어 있으면 "안 나온다"로 읽힌다. 새 값이 오면 갈아끼운다.
+            if loadedInfoCode != m.id { info = nil; weather = []; air = AirStore.load(m.id) }
             courses = await cs
             climb.mountainName = m.name
             climb.mountainCode = m.id
@@ -288,8 +294,8 @@ struct ExploreView: View {
             // 프레이밍이 끝난 뒤 나머지를 채운다 — 시트가 열려 있으면 도착하는 대로 갱신된다.
             info = await inf
             weather = await wx
-            // 미세먼지는 날씨보다 뒤에 채운다 — 실패해도 화면이 비지 않게 별도 처리.
-            air = await AirService.fetch(lat: m.center[1], lon: m.center[0], region: m.region)
+            // 새 값이 왔을 때만 갈아끼운다 — 실패하면 저장분이 그대로 남는다(빈 화면보다 낫다).
+            if let fresh = await ar { air = fresh; AirStore.save(m.id, fresh) }
             loadedInfoCode = m.id
         }
         // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
@@ -851,6 +857,9 @@ struct ExploreView: View {
                 if let d = a.distanceKm { air1 += " \(String(format: "%.1f", d))km" }
                 if a.hasPosition { air1 += " ›" }   // 누를 수 있다는 표시 — 지도의 그 자리로 간다
             }
+            // 저장분을 먼저 띄우므로 낡은 값이 남아 있을 수 있다. 그때만 언제 값인지 밝힌다
+            // — 신선할 때까지 시각을 붙이면 캡션만 길어진다.
+            if a.isStale, let at = a.observedAt { air1 += " · \(at) 관측" }
             air1 += " (등급은 하루 기준)"
             parts.append(air1)
         }

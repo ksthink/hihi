@@ -957,35 +957,50 @@ async function loadWeather(park) {
   const title = document.getElementById("wx-explore-title");
   if (!cfg || !cfg.center) { if (sec) sec.hidden = true; return; }
   if (title && cfg.label) title.textContent = `${cfg.label} 부근 오늘 날씨`;
+  // ⚠️ 대기질 요청을 **날씨와 동시에** 띄운다. 예전엔 날씨가 도착한 뒤에야 시작해서,
+  //    날씨 왕복만큼 미세먼지와 측정소 핀이 늦게 떴다(2026-08-10 지적).
+  const airP = cfg.center
+    ? fetchAir(cfg.center[1], cfg.center[0], cfg.region).catch(() => null)
+    : Promise.resolve(null);
+  const cached = loadAirSnapshot(park);     // 저장분 — 새 값이 오기 전까지 이걸 보여준다
+  if (cached) showAirStation(cached);
+  const airOpts = (a) => (a ? { airGrade: airGradeFn(a), airNote: airNote(a) } : {});
   try {
     const data = await fetchWeather(cfg.center[1], cfg.center[0]); // 산 위치 격자 기준
     wxCache[park] = data;
     try { localStorage.setItem(wxKey(park), JSON.stringify(data)); } catch (_) {} // 오프라인 스냅샷
     if (park === currentPark) {
-      renderStrip(document.getElementById("wx-explore"), data);
+      // 저장분이 있으면 **첫 그리기부터** 등급이 붙어 있다 — 빈 칸을 보여주지 않는다.
+      renderStrip(document.getElementById("wx-explore"), data, airOpts(cached));
       if (sec) sec.hidden = false;
       renderClimbWeather();
-      // 미세먼지는 뒤이어 받아 **같은 칩을 다시 그린다**(실패해도 날씨는 그대로 남는다).
-      loadAir(park, data);
+      const a = await airP;
+      // 새 값이 왔을 때만 갈아끼운다 — 실패하면 저장분이 그대로 남는다(빈 화면보다 낫다).
+      if (a && park === currentPark) {
+        saveAirSnapshot(park, a);
+        renderStrip(document.getElementById("wx-explore"), data, airOpts(a));
+        showAirStation(a);
+      }
     }
   } catch (_) {
     if (park === currentPark && sec) sec.hidden = true; // 조회 실패 시 탐험엔 숨김
+    // 날씨가 죽어도 측정소 핀은 띄운다 — 지도의 정보는 스트립과 별개다.
+    const a = await airP;
+    if (a && park === currentPark) { saveAirSnapshot(park, a); showAirStation(a); }
   }
 }
-// 미세먼지 — 산의 region(예: "인천 계양")으로 시도/권역을 정해 조회한다.
-// 실패하면 줄을 감춘다(날씨와 독립 — 대기질이 없다고 날씨까지 사라지면 안 된다).
-// 미세먼지 — 산 좌표로 최근접 측정소를 서버가 고른다. 값이 오면 날씨 스트립을 다시 그려
-// 칩에 등급을 얹는다(별도 줄은 시선이 분산돼 읽기 불편했다 — 2026-08-10).
-async function loadAir(park, wx) {
-  const p = PARKS[park];
-  if (!p?.center) return;
+
+// 산별 마지막 대기질 — 켜자마자 보여주기 위한 저장분(iOS AirStore 와 같은 취지).
+// 날짜 키를 쓰지 않는다 — 대기질은 시각 단위라 `observedAt` 이 신선도를 말해 준다.
+const airKey = (park) => `hiheight-air:${park}`;
+function loadAirSnapshot(park) {
   try {
-    const a = await fetchAir(p.center[1], p.center[0], p.region);
-    if (park !== currentPark || !a) return;
-    renderStrip(document.getElementById("wx-explore"), wx,
-                { airGrade: airGradeFn(a), airNote: airNote(a) });
-    showAirStation(a);
-  } catch (_) { /* 날씨만 남긴다 */ }
+    const raw = localStorage.getItem(airKey(park));
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+function saveAirSnapshot(park, a) {
+  try { localStorage.setItem(airKey(park), JSON.stringify(a)); } catch (_) {}
 }
 
 // 대기질 측정소 핀 — 지금 쓰고 있는 **한 곳만** 찍는다.

@@ -56,12 +56,22 @@ export function airNote(a) {
       ? `<button type="button" class="wx-stn" data-air-station>${label}</button>`
       : label);
   }
+  // 저장분을 먼저 띄우므로 낡은 값이 남아 있을 수 있다. 그때만 언제 값인지 밝힌다
+  // — 신선할 때까지 시각을 붙이면 캡션만 길어진다.
+  if (airIsStale(a) && a.observedAt) s += ` · ${a.observedAt} 관측`;
   return s + " (등급은 하루 기준)";
 }
 
 /** 지도에 찍을 수 있는가 — 옛 응답에는 좌표가 없다. */
 export function hasStationPos(a) {
   return !!a && Number.isFinite(a.stationLat) && Number.isFinite(a.stationLon);
+}
+
+/** 실황은 1시간 주기다. 두 시간이 넘었으면 화면에 **언제 값인지** 밝힌다 —
+ *  저장분을 먼저 띄우므로, 낡은 값이 지금 값으로 읽히면 안 된다. */
+export function airIsStale(a) {
+  const t = Date.parse(String(a?.observedAt || "").replace(" ", "T") + "+09:00");
+  return Number.isFinite(t) && Date.now() - t > 7200000;
 }
 
 /** "2026-08-12" → 오늘·내일이면 그 말로, 아니면 "8.12(수)".

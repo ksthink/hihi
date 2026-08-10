@@ -17,7 +17,7 @@ import Foundation
 //   daily  : 미세먼지(PM10) 등급 — 좋음·보통·나쁨·매우나쁨. 오늘·내일 2일.
 //   weekly : 초미세먼지(PM2.5) 주간전망 — 낮음·높음. 모레 이후 4일.
 // 원본이 다른 척도라 한쪽에 맞춰 변환하지 않는다. 화면에서 구분해 밝힌다.
-struct AirForecast: Decodable, Identifiable {
+struct AirForecast: Codable, Identifiable {
     let date: String        // "2026-08-12"
     let grade: String
     let scale: String
@@ -25,7 +25,7 @@ struct AirForecast: Decodable, Identifiable {
     var isWeekly: Bool { scale == "weekly" }
 }
 
-struct AirQuality: Decodable {
+struct AirQuality: Codable {
     let pm10: Int?          // ㎍/㎥ (측정소 점검 등으로 없을 수 있다)
     let pm25: Int?
     let pm10Grade: Int?     // 1 좋음 · 2 보통 · 3 나쁨 · 4 매우나쁨
@@ -58,6 +58,40 @@ struct AirQuality: Decodable {
 
     /// 지도에 찍을 수 있는가 — 옛 응답에는 좌표가 없다.
     var hasPosition: Bool { stationLat != nil && stationLon != nil }
+
+    /// 실황을 잰 지 얼마나 지났나. 저장분을 먼저 띄우므로 "지금 값"이 아닐 수 있다.
+    var observedAge: TimeInterval? {
+        guard let s = observedAt else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "Asia/Seoul")
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        guard let d = f.date(from: s) else { return nil }
+        return Date().timeIntervalSince(d)
+    }
+
+    /// 실황은 1시간 주기다. 두 시간이 넘었으면 화면에 **언제 값인지** 밝힌다 —
+    /// 저장분이 그대로 남아 있는데 지금 값으로 읽히면 안 된다.
+    var isStale: Bool { (observedAge ?? 0) > 7200 }
+}
+
+// 산별 마지막 대기질 — 켜자마자 보여주기 위한 저장분.
+//
+// 네트워크를 기다리는 동안 화면이 비어 있으면 "안 나온다"로 읽힌다(2026-08-10 지적).
+// 저장분을 즉시 띄우고 새 값이 오면 조용히 갈아끼운다. 값이 낡았을 때만 관측 시각을
+// 함께 보이므로(`isStale`) 옛 값을 지금 값으로 오해할 일은 없다.
+enum AirStore {
+    private static func key(_ code: String) -> String { "air.last.\(code)" }
+
+    static func load(_ code: String) -> AirQuality? {
+        guard let d = UserDefaults.standard.data(forKey: key(code)) else { return nil }
+        return try? JSONDecoder().decode(AirQuality.self, from: d)
+    }
+
+    static func save(_ code: String, _ air: AirQuality) {
+        guard let d = try? JSONEncoder().encode(air) else { return }
+        UserDefaults.standard.set(d, forKey: key(code))
+    }
 }
 
 enum AirService {
