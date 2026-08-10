@@ -32,6 +32,7 @@ struct ExploreView: View {
     @State private var info: MountainInfo?
     @State private var weather: [WeatherHour] = []
     @State private var air: AirQuality?               // 미세먼지 — 실황 수치 + 내일 등급
+    @State private var airGradeByDay: [String: String] = [:]   // 날짜→등급 — 칩이 사전 조회만 하게(setAir 가 갱신)
     @State private var showAirStation = false         // 측정소 상세 시트(핀·캡션 탭)
     // info·weather 가 담고 있는 산. 코스보다 늦게 도착하므로(날씨 2s+), 산이 바뀌었는데
     // 이전 산 값이 새 산 정보처럼 잠깐 보이는 것을 막는 데 쓴다. 같은 산 재진입이면
@@ -241,7 +242,7 @@ struct ExploreView: View {
         }
         .task(id: catalog.selected?.id) {
             guard let m = catalog.selected else {
-                courses = []; info = nil; weather = []; air = nil
+                courses = []; info = nil; weather = []; setAir(nil)
                 climb.course = nil; climb.mountainName = nil; climb.mountainCode = nil; return
             }
             // ⚠️ 등반 중에는 네트워크를 쓰지 않는다.
@@ -266,7 +267,7 @@ struct ExploreView: View {
             //    날씨·산정보는 하단 시트에서만 쓰여 지도 프레이밍과 무관하다.
             // 산 전환 — 이전 산의 값은 즉시 치우되, 대기질은 **이 산의 저장분을 바로 얹는다.**
             // 네트워크를 기다리는 동안 비어 있으면 "안 나온다"로 읽힌다. 새 값이 오면 갈아끼운다.
-            if loadedInfoCode != m.id { info = nil; weather = []; air = AirStore.load(m.id) }
+            if loadedInfoCode != m.id { info = nil; weather = []; setAir(AirStore.load(m.id)) }
             courses = await cs
             climb.mountainName = m.name
             climb.mountainCode = m.id
@@ -295,7 +296,7 @@ struct ExploreView: View {
             info = await inf
             weather = await wx
             // 새 값이 왔을 때만 갈아끼운다 — 실패하면 저장분이 그대로 남는다(빈 화면보다 낫다).
-            if let fresh = await ar { air = fresh; AirStore.save(m.id, fresh) }
+            if let fresh = await ar { setAir(fresh); AirStore.save(m.id, fresh) }
             loadedInfoCode = m.id
         }
         // 이미 그 산을 보고 있을 때의 큐레이션 진입 — 위 task 는 산 id 가 그대로라 실행되지
@@ -801,14 +802,20 @@ struct ExploreView: View {
         .shadow(color: .black.opacity(0.10), radius: 12, y: -3)
         // simultaneousGesture — ScrollView 와 무관하게 시트 드래그가 항상 인식된다(본문 어디서든).
         // large(펼침)에선 상단 손잡이(~44pt)에서 시작한 드래그만 시트 이동, 그 외는 목록 스크롤에 양보.
+        //
+        // ⚠️ **가로 스와이프에는 양보한다**(isSideways). simultaneous 라 가로 캐러셀을 넘길 때도
+        //    이 제스처가 함께 인식되어, 손가락의 세로 성분이 그대로 시트를 흔들었다 — 날씨
+        //    캐러셀을 스와이프하면 화면이 떨렸다(2026-08-10 지적).
         .simultaneousGesture(
             DragGesture(minimumDistance: 6)
                 .onChanged { v in
                     if detent == .large && v.startLocation.y > 44 { return }
+                    if isSideways(v) { return }
                     sheetDrag = v.translation.height                              // 실시간 추종
                 }
                 .onEnded { v in
                     if detent == .large && v.startLocation.y > 44 { return }
+                    if isSideways(v) { return }
                     // 예상 종점(속도 반영) 높이 → 가장 가까운 단계로 스냅.
                     let projected = base - v.predictedEndTranslation.height
                     let target = nearest(projected)
@@ -872,21 +879,53 @@ struct ExploreView: View {
     //    타입체크가 몇 분씩 걸린다(2026-08-10 실측).
     private var airPin: AirQuality? { climb.tracking ? nil : air }
 
+    /// 가로가 뚜렷한 드래그인가 — 그렇다면 시트는 손대지 않고 스크롤에 맡긴다.
+    ///
+    /// 세로에 관대한 비율(1.5배)을 쓴다. 시트 드래그가 주 동작이라, 세로로 끌던 손가락이
+    /// 잠깐 기울었다고 시트가 끊기면 그게 더 거슬린다. 상태를 두지 않고 매번 판정한다 —
+    /// 축을 상태로 잠그면 제스처가 취소될 때 그 값이 다음 드래그로 새어 나간다.
+    private func isSideways(_ v: DragGesture.Value) -> Bool {
+        abs(v.translation.width) > abs(v.translation.height) * 1.5
+    }
+
     // 칩에 붙일 미세먼지 등급 — 그 칸의 **날짜**에 해당하는 값.
     // 같은 날 칩은 모두 같은 값이다(에어코리아 예보가 일 단위라 시간별 값이 없다).
+    /// key 는 "YYYYMMDDHHMM" — 앞 8자리가 날짜다. 표에서 꺼내기만 한다.
     private func airGrade(for h: WeatherHour) -> String? {
-        guard let a = air else { return nil }
-        // key 는 "YYYYMMDDHHMM" — 앞 8자리가 날짜다. 오늘/내일을 KST 로 비교한다.
-        let day = String(h.key.prefix(8))
+        airGradeByDay[String(h.key.prefix(8))]
+    }
+
+    /// 대기질을 갈아끼우면서 칩용 등급 표도 함께 만든다. 항상 짝으로 움직여야 한다.
+    private func setAir(_ a: AirQuality?) {
+        air = a
+        airGradeByDay = Self.gradeMap(a)
+    }
+
+    /// 날짜("YYYYMMDD") → 등급 표.
+    ///
+    /// ⚠️ 이 계산을 칩 안에서 하지 않는다. 예전엔 칩마다 `DateFormatter` 를 새로 만들어
+    ///    오늘/내일을 비교했는데, 스크롤 중 body 가 재평가될 때마다 그게 칩 수만큼 반복돼
+    ///    캐러셀이 떨렸다(2026-08-10 지적). DateFormatter 생성은 iOS 에서 손꼽히게 비싸다.
+    ///    값이 바뀔 때 한 번만 만들어 두면 칩은 사전 조회만 한다.
+    private static func gradeMap(_ a: AirQuality?) -> [String: String] {
+        guard let a else { return [:] }
+        var m: [String: String] = [:]
+        // 일별만 쓴다 — 주간은 초미세먼지 척도라(낮음·높음) 미세먼지 칩에 얹으면 뜻이 달라진다.
+        for f in a.forecast ?? [] where !f.isWeekly {
+            m[f.date.replacingOccurrences(of: "-", with: "")] = f.grade
+        }
+        guard m.isEmpty else { return m }
+        // forecast 가 없던 시절의 저장분 호환 — today/tomorrow 로 채운다.
         let fmt = DateFormatter()
         fmt.locale = Locale(identifier: "en_US_POSIX")
         fmt.timeZone = TimeZone(identifier: "Asia/Seoul")
         fmt.dateFormat = "yyyyMMdd"
         let now = Date()
-        if day == fmt.string(from: now) { return a.today }
-        if let t1 = Calendar.current.date(byAdding: .day, value: 1, to: now),
-           day == fmt.string(from: t1) { return a.tomorrow }
-        return nil
+        if let t = a.today { m[fmt.string(from: now)] = t }
+        if let t = a.tomorrow, let d1 = Calendar.current.date(byAdding: .day, value: 1, to: now) {
+            m[fmt.string(from: d1)] = t
+        }
+        return m
     }
 
     private func wxChip(_ h: WeatherHour, _ t: Theme) -> some View {
