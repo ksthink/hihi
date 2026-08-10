@@ -112,18 +112,22 @@ module.exports = async function handler(req, res) {
     ]);
 
     const n = now[0] || {};
-    // 내일자 PM10 중 가장 최근 발표에서 우리 권역만 뽑는다.
-    const want = kstDate(1);
+    // 권역별 등급을 날짜별로 뽑는다 — 오늘은 날씨 칩(오늘 시간대), 내일은 자정 넘어가는 칩에 붙인다.
+    // ⚠️ **일 단위 값이다.** 칩마다 다른 값이 아니라 하루 한 값을 그 날 칸에 채우는 것뿐이다.
     const reg = forecastRegion(region);
-    const cand = fcst.filter((x) => x.informData === want && x.informCode === "PM10");
-    const latest = cand[cand.length - 1] || cand[0];
-    let tomorrow = null;
-    if (latest && reg) {
+    const gradeOn = (dateStr) => {
+      if (!reg) return null;
+      const cand = fcst.filter((x) => x.informData === dateStr && x.informCode === "PM10");
+      const latest = cand[cand.length - 1] || cand[0];
+      if (!latest) return null;
       for (const part of String(latest.informGrade || "").split(",")) {
         const [k, v] = part.split(":").map((t) => t.trim());
-        if (k === reg) { tomorrow = v; break; }
+        if (k === reg) return v;
       }
-    }
+      return null;
+    };
+    const today = gradeOn(kstDate(0));
+    const tomorrow = gradeOn(kstDate(1));
 
     return res.status(200).json({
       pm10: num(n.pm10Value),
@@ -134,6 +138,7 @@ module.exports = async function handler(req, res) {
       addr: best.s.addr || null,
       distanceKm: Math.round(best.d * 10) / 10,
       observedAt: n.dataTime || null,
+      today,
       tomorrow,
     });
   } catch (e) {

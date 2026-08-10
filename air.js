@@ -23,19 +23,27 @@ export async function fetchAir(lat, lon, region) {
   return a;
 }
 
-/** 한 줄 렌더 — 실황 수치(+등급) · 내일 등급 · 측정소/출처. */
-export function renderAir(el, a) {
-  if (!el) return;
-  if (!a) { el.hidden = true; el.innerHTML = ""; return; }
-  const chip = (label, value, grade) =>
-    `<span class="air-chip"><i>${label}</i><b>${value ?? "–"}</b>${
-      GRADE[grade] ? `<em>${GRADE[grade]}</em>` : ""}</span>`;
-  // 측정소명·거리를 함께 적는 이유 — 산이 아니라 **도심 측정값**이라 사용자가 감안할 수 있어야 한다.
-  const where = a.distanceKm != null ? `${a.station} 측정소 ${a.distanceKm}km` : `${a.station} 측정소`;
-  const meta = [where, a.observedAt, "한국환경공단 에어코리아"].filter(Boolean).join(" · ");
-  el.innerHTML =
-    `<div class="air-row">${chip("미세", a.pm10, a.pm10Grade)}${chip("초미세", a.pm25, a.pm25Grade)}` +
-    `${a.tomorrow ? `<span class="air-tomorrow">내일 ${a.tomorrow}</span>` : ""}</div>` +
-    `<div class="air-meta">${meta}</div>`;
-  el.hidden = false;
+const kstDay = (offsetDays = 0) =>
+  new Date(Date.now() + 9 * 3600000 + offsetDays * 86400000).toISOString().slice(0, 10).replace(/-/g, "");
+
+/** 날씨 칩에 얹을 등급 함수 — 그 칸의 **날짜**에 해당하는 값(같은 날은 같은 값). */
+export function airGradeFn(a) {
+  if (!a) return () => null;
+  const today = kstDay(0), tomorrow = kstDay(1);
+  return (h) => {
+    const day = String(h?.key || "").slice(0, 8);   // key = "YYYYMMDDHHMM"
+    if (day === today) return a.today || null;
+    if (day === tomorrow) return a.tomorrow || null;
+    return null;
+  };
+}
+
+/** 캡션 한 줄 — 수치·측정소·거리. 칩에 숫자까지 넣으면 폭이 늘고 기온과 뒤섞인다. */
+export function airNote(a) {
+  if (!a) return "";
+  let s = "미세먼지";
+  if (a.pm10 != null) s += ` 미세 ${a.pm10}`;
+  if (a.pm25 != null) s += ` · 초미세 ${a.pm25}`;
+  if (a.station) s += ` · ${a.station} 측정소${a.distanceKm != null ? ` ${a.distanceKm}km` : ""}`;
+  return s + " (등급은 하루 기준)";
 }

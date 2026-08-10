@@ -135,19 +135,26 @@ export function renderStrip(el, data, opts = {}) {
   }
   const now = new Date(Date.now() + 9 * 3600000);
   const nowHH = new Date(now.getTime() + now.getTimezoneOffset() * 60000).getHours();
+  // 미세먼지 등급을 칩에 함께 얹는다(opts.airGrade: (h) => "좋음"|null).
+  // ⚠️ **일 단위 값이다** — 같은 날 칩은 모두 같은 값이다. 시간별 변화가 아니라는 점은
+  //    아래 캡션(“등급은 하루 기준”)이 밝힌다.
+  const airOf = typeof opts.airGrade === "function" ? opts.airGrade : () => null;
   const chips = data.hours.map((h, i) => {
     const s = weatherState(h);
     const timeLabel = i === 0 ? "지금" : `${h.hh}시`;
     const precip = h.pty ? `<div class="wx-pop">${h.pop != null ? h.pop + "%" : ""}${h.pcp ? " · " + h.pcp : (h.sno ? " · " + h.sno : "")}</div>` : "";
+    const air = airOf(h);
     return `<div class="wx-chip${i === 0 ? " now" : ""}">
       <div class="wx-time">${timeLabel}</div>
       <div class="wx-ic" title="${s.label}">${weatherIcon(s.icon)}</div>
       <div class="wx-tmp">${h.tmp != null ? Math.round(h.tmp) + "°" : "–"}</div>
       ${precip}
+      <div class="wx-air">${air || ""}</div>
     </div>`;
   }).join("");
   const note = opts.offline
     ? `<span class="wx-note">오프라인 · ${data.savedAt ? new Date(data.savedAt).getHours() + "시 저장" : "저장된 예보"}</span>`
-    : `<span class="wx-note">${data.baseLabel || ""} · 가장 가까운 관측지 기준</span>`;
+    : `<span class="wx-note">${data.baseLabel || ""} · 가장 가까운 관측지 기준${
+        opts.airNote ? `<br>${opts.airNote}` : ""}</span>`;
   el.innerHTML = `<div class="wx-strip">${chips}</div><div class="wx-foot">${note}</div>`;
 }

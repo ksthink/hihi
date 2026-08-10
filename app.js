@@ -4,7 +4,7 @@ import { buildStyle, POI_DISPLAY_DEFAULT, normPoiDisplay, symChar } from "./base
 import { supabase, signUp, signIn, signOut } from "./supabase-client.js";
 import { attachPoiIcons } from "./poi-icons.js";
 import { fetchWeather, renderStrip } from "./weather.js";
-import { fetchAir, renderAir } from "./air.js";
+import { fetchAir, airGradeFn, airNote } from "./air.js";
 import { nationalPointNumber } from "./npn.js";
 
 // ── 설정 ──────────────────────────────────────────────
@@ -964,7 +964,8 @@ async function loadWeather(park) {
       renderStrip(document.getElementById("wx-explore"), data);
       if (sec) sec.hidden = false;
       renderClimbWeather();
-      loadAir(park);            // 미세먼지는 날씨와 별개로 채운다(실패해도 날씨는 남는다)
+      // 미세먼지는 뒤이어 받아 **같은 칩을 다시 그린다**(실패해도 날씨는 그대로 남는다).
+      loadAir(park, data);
     }
   } catch (_) {
     if (park === currentPark && sec) sec.hidden = true; // 조회 실패 시 탐험엔 숨김
@@ -972,16 +973,17 @@ async function loadWeather(park) {
 }
 // 미세먼지 — 산의 region(예: "인천 계양")으로 시도/권역을 정해 조회한다.
 // 실패하면 줄을 감춘다(날씨와 독립 — 대기질이 없다고 날씨까지 사라지면 안 된다).
-async function loadAir(park) {
-  const el = document.getElementById("air-explore");
+// 미세먼지 — 산 좌표로 최근접 측정소를 서버가 고른다. 값이 오면 날씨 스트립을 다시 그려
+// 칩에 등급을 얹는다(별도 줄은 시선이 분산돼 읽기 불편했다 — 2026-08-10).
+async function loadAir(park, wx) {
   const p = PARKS[park];
-  if (!el || !p?.center) { if (el) el.hidden = true; return; }
+  if (!p?.center) return;
   try {
-    const a = await fetchAir(p.center[1], p.center[0], p.region);   // 산 좌표 → 최근접 측정소(서버 계산)
-    if (park === currentPark) renderAir(el, a);
-  } catch (_) {
-    if (park === currentPark) renderAir(el, null);
-  }
+    const a = await fetchAir(p.center[1], p.center[0], p.region);
+    if (park !== currentPark || !a) return;
+    renderStrip(document.getElementById("wx-explore"), wx,
+                { airGrade: airGradeFn(a), airNote: airNote(a) });
+  } catch (_) { /* 날씨만 남긴다 */ }
 }
 
 // 등반 카드/HUD 용: 온라인 캐시 우선, 없으면 오늘 스냅샷(오프라인)

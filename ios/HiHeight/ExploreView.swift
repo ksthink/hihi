@@ -723,7 +723,6 @@ struct ExploreView: View {
                         }
                     }
                     if !weather.isEmpty { weatherStrip(m.name, t) }
-                    if let a = air { airRow(a, t) }
                     Divider().overlay(t.line).padding(.vertical, 2)
                     HStack(spacing: 8) {
                         Text("등산로").font(.kakao(size: 17, weight: .semibold)).foregroundStyle(t.text)
@@ -817,44 +816,47 @@ struct ExploreView: View {
                     ForEach(weather) { h in wxChip(h, t) }
                 }
             }
-            Text("\(WeatherService.baseLabel) · 가장 가까운 관측지 기준")
+            Text(stripCaption)
                 .font(.kakao(size: 10)).foregroundStyle(t.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 2)
     }
 
-    // 미세먼지 한 줄 — 실황 수치(+등급)와 내일 등급. 날씨 스트립처럼 시간 칸을 만들지 않는다:
-    // 에어코리아 예보는 **일 단위 등급**이라 시간 칸에 복제하면 없는 정보를 있는 것처럼 보이게 한다.
-    // 측정소명을 함께 적는 이유 — 산이 아니라 도심 측정값이라 사용자가 거리를 감안할 수 있어야 한다.
-    @ViewBuilder private func airRow(_ a: AirQuality, _ t: Theme) -> some View {
-        let pm10 = a.pm10.map { "\($0)" } ?? "–"
-        let pm25 = a.pm25.map { "\($0)" } ?? "–"
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 10) {
-                airChip("미세", pm10, AirQuality.gradeLabel(a.pm10Grade), t)
-                airChip("초미세", pm25, AirQuality.gradeLabel(a.pm25Grade), t)
-                Spacer(minLength: 0)
-                if let tm = a.tomorrow {
-                    Text("내일 \(tm)").font(.kakao(size: 11, weight: .semibold)).foregroundStyle(t.muted)
-                }
+    // 날씨 스트립 캡션 — 날씨 기준 + 미세먼지 수치·측정소를 한 줄에 모은다.
+    // 미세먼지를 칩에 얹으면서 별도 줄을 없앴다(2026-08-10). 수치는 여기에 남긴다 —
+    // 칩에 숫자까지 넣으면 폭이 늘고 기온과 뒤섞여 읽기 어렵다.
+    private var stripCaption: String {
+        var parts = ["\(WeatherService.baseLabel) · 가장 가까운 관측지 기준"]
+        if let a = air {
+            var air1 = "미세먼지"
+            if let v = a.pm10 { air1 += " 미세 \(v)" }
+            if let v = a.pm25 { air1 += " · 초미세 \(v)" }
+            if let st = a.station {
+                air1 += " · \(st) 측정소"
+                if let d = a.distanceKm { air1 += " \(String(format: "%.1f", d))km" }
             }
-            Text([a.station.map { st in
-                    a.distanceKm.map { "\(st) 측정소 \(String(format: "%.1f", $0))km" } ?? "\(st) 측정소" },
-                  a.observedAt, "한국환경공단 에어코리아"]
-                    .compactMap { $0 }.joined(separator: " · "))
-                .font(.kakao(size: 10)).foregroundStyle(t.muted).lineLimit(1)
+            air1 += " (등급은 하루 기준)"
+            parts.append(air1)
         }
-        .padding(.top, 2)
+        return parts.joined(separator: "\n")
     }
 
-    private func airChip(_ label: String, _ value: String, _ grade: String?, _ t: Theme) -> some View {
-        HStack(spacing: 4) {
-            Text(label).font(.kakao(size: 11)).foregroundStyle(t.muted)
-            Text(value).font(.kakao(size: 13, weight: .bold)).foregroundStyle(t.text).monospacedDigit()
-            if let grade {
-                Text(grade).font(.kakao(size: 11, weight: .semibold)).foregroundStyle(t.text)
-            }
-        }
+    // 칩에 붙일 미세먼지 등급 — 그 칸의 **날짜**에 해당하는 값.
+    // 같은 날 칩은 모두 같은 값이다(에어코리아 예보가 일 단위라 시간별 값이 없다).
+    private func airGrade(for h: WeatherHour) -> String? {
+        guard let a = air else { return nil }
+        // key 는 "YYYYMMDDHHMM" — 앞 8자리가 날짜다. 오늘/내일을 KST 로 비교한다.
+        let day = String(h.key.prefix(8))
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.timeZone = TimeZone(identifier: "Asia/Seoul")
+        fmt.dateFormat = "yyyyMMdd"
+        let now = Date()
+        if day == fmt.string(from: now) { return a.today }
+        if let t1 = Calendar.current.date(byAdding: .day, value: 1, to: now),
+           day == fmt.string(from: t1) { return a.tomorrow }
+        return nil
     }
 
     private func wxChip(_ h: WeatherHour, _ t: Theme) -> some View {
@@ -867,8 +869,12 @@ struct ExploreView: View {
                 .font(.kakao(size: 12, weight: .bold)).foregroundStyle(t.text)
             Text(h.pty > 0 ? (h.pop.map { "\($0)%" } ?? " ") : " ")
                 .font(.kakao(size: 9)).foregroundStyle(t.muted)
+            // 미세먼지 등급 — 그 칸의 날짜 값(일 단위). 항상 한 줄을 확보해 칩 높이를 맞춘다.
+            Text(airGrade(for: h) ?? " ")
+                .font(.kakao(size: 9, weight: .semibold)).foregroundStyle(t.muted)
+                .lineLimit(1)
         }
-        .frame(minWidth: 42)
+        .frame(minWidth: 46)
         .padding(.vertical, 5).padding(.horizontal, 6)
         .background(t.bg, in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(h.isNow ? t.text : t.line))
