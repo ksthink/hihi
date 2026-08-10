@@ -342,6 +342,27 @@ function make(theme, baseMode) {
                "circle-stroke-color": tc.line, "circle-stroke-width": 3 } },
   );
 
+  // ── 대기질 측정소 — 지금 값을 준 **한 곳만**. (웹 app.js showAirStation) ──
+  // 전국 673곳을 다 깔면 등산 지도가 아니게 된다. 하나면 "이 값이 어디서 왔나"라는
+  // 실제 궁금증만 해결한다 — 산에서 20km 떨어진 측정소일 수도 있어 거리 숫자만으론 부족하다.
+  // 비어 있고, ExploreView 가 받은 좌표를 MapView 가 채운다.
+  style.sources["air-station"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
+  style.layers.push(
+    { id: "air-station", type: "circle", source: "air-station",
+      paint: { "circle-radius": 9, "circle-color": tc.casing,
+               "circle-stroke-color": tc.line, "circle-stroke-width": 1.8 } },
+    { id: "air-station-mark", type: "symbol", source: "air-station",
+      // ⚠️ 기호는 **번들 글리프에 있는 문자만** 쓸 수 있다. ㎛(U+339B)는 MonaS12 에 없어
+      //    두부가 된다 — ㎍(U+338D)는 있고, ㎍/㎥ 라는 단위와도 맞는다.
+      layout: { "text-field": "㎍", "text-font": ["MonaS12 Bold"], "text-size": 9,
+                "text-allow-overlap": true, "text-ignore-placement": true },
+      paint: { "text-color": tc.line } },
+    { id: "air-station-label", type: "symbol", source: "air-station",
+      layout: { "text-field": ["get", "label"], "text-font": ["MonaS12 Regular"],
+                "text-size": 11, "text-offset": [0, 1.3], "text-anchor": "top" },
+      paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
+  );
+
   // ── 등반 중 라이브 트랙(지나온 곳) — app.js:566-578. ──
   // 빈 FC 로 두고, 등반 세션의 GPS 갱신마다 MapView 가 source.shape 로 채운다(본선색).
   style.sources["climb-track"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };

@@ -728,7 +728,7 @@ class AdminHandler(BaseHandler):
                 dy = (slat - lat) * 111.32
                 d = math.hypot(dx, dy)
                 if bestd is None or d < bestd:
-                    best, bestd = (name, addr), d
+                    best, bestd = (name, addr, slat, slon), d
             # 너무 멀면 값을 주지 않는다 — 없는 것보다 틀린 게 나쁘다.
             if not best or bestd > AdminHandler._AIR_MAX_KM:
                 return self._json({"station": None})
@@ -771,6 +771,8 @@ class AdminHandler(BaseHandler):
                 "pm10Grade": num(n.get("pm10Grade")), "pm25Grade": num(n.get("pm25Grade")),
                 "station": best[0], "addr": best[1],
                 "distanceKm": round(bestd, 1),
+                # 지도에 찍기 위한 좌표 — "이 값이 어디서 왔나"를 보여준다.
+                "stationLat": best[2], "stationLon": best[3],
                 "observedAt": n.get("dataTime"),
                 "today": grade_on(today.strftime("%Y-%m-%d")),
                 "tomorrow": grade_on((today + datetime.timedelta(days=1)).strftime("%Y-%m-%d")),

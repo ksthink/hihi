@@ -99,6 +99,8 @@ struct MapView: UIViewRepresentable {
     var onScaleChanged: ((Double) -> Void)? = nil    // 지도 이동 시 축척(m/point) 통지 → 커스텀 스케일바
     var onCourseTapped: ((String) -> Void)? = nil    // 지도에서 등산로/배지 탭 → 코스명 통지(웹 selectByName)
     var onHeadingChanged: ((Bool) -> Void)? = nil    // 나침반(헤딩) 추적 on/off 통지 → 위치 버튼 아이콘 상태
+    var airStation: AirQuality? = nil                // 지금 값을 준 측정소 — 핀 하나(웹 showAirStation)
+    var onAirStationTapped: (() -> Void)? = nil      // 측정소 핀 탭 → 상세 시트
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -148,6 +150,8 @@ struct MapView: UIViewRepresentable {
         context.coordinator.setCoursesVisible(showCourses, route: routeMode, on: mv)   // 정규 코스 토글(루트 보기=2배 레이어)
         context.coordinator.setRecordOverlap(recordOverlap, on: mv)             // 코스와 겹치는 구간 반전 표시
         context.coordinator.setRouteCursor(routeCursor, on: mv)                 // 고도 프로필 커서 마커
+        context.coordinator.onAirStationTapped = onAirStationTapped
+        context.coordinator.setAirStation(airStation, on: mv)                   // 대기질 측정소 핀
         context.coordinator.applyUserState(tracking: tracking, locateTick: locateTick, on: mv)
     }
 
@@ -191,6 +195,7 @@ struct MapView: UIViewRepresentable {
         private var trackCount = -1         // 마지막 반영한 트랙 점 개수 (중복 갱신 방지)
         private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
         private var recCursorKey = ""       // 마지막 반영한 고도 프로필 커서 지점 (중복 갱신 방지)
+        private var airStationKey = ""      // 마지막 반영한 측정소 좌표 (중복 갱신 방지)
         private var overlapKey = ""         // 마지막 반영한 겹침 구간 식별 (중복 갱신 방지)
         // 스타일 재로드(테마·지도유형 전환) 직후 즉시 재주입할 원본 — 다음 updateUIView 를
         // 기다리면 트리거가 우연한 상태 변화뿐이라 루트가 수 초간 사라진다(2026-07-26 실기).
@@ -469,9 +474,15 @@ struct MapView: UIViewRepresentable {
 
         // 지도에서 등산로/배지 탭 → 해당 코스 선택 통지(웹 trail-hit/course-no-badges 클릭 → selectByName).
         var onCourseTapped: ((String) -> Void)?
+        var onAirStationTapped: (() -> Void)?
         @objc func handleTap(_ g: UITapGestureRecognizer) {
             guard let mv = g.view as? MLNMapView else { return }
-            let feats = mv.visibleFeatures(at: g.location(in: mv),
+            let pt = g.location(in: mv)
+            // 측정소를 먼저 본다 — 코스 위에 겹쳐 있으면 작은 쪽이 잡히지 않는다.
+            if !mv.visibleFeatures(at: pt, styleLayerIdentifiers: ["air-station", "air-station-mark"]).isEmpty {
+                onAirStationTapped?(); return
+            }
+            let feats = mv.visibleFeatures(at: pt,
                                            styleLayerIdentifiers: ["trail-hit", "course-no-badges"])
             if let name = feats.first?.attribute(forKey: "name") as? String { onCourseTapped?(name) }
         }
@@ -759,6 +770,26 @@ struct MapView: UIViewRepresentable {
             guard let c = coord, c.count >= 2 else { src.shape = nil; return }
             let f = MLNPointFeature()
             f.coordinate = CLLocationCoordinate2D(latitude: c[1], longitude: c[0])
+            src.shape = f
+        }
+
+        // 대기질 측정소 핀 — 지금 값을 준 한 곳만(웹 app.js showAirStation 과 같다).
+        // 이름을 함께 얹는다: 핀만 있으면 지도 위 정체불명의 점이 된다.
+        func setAirStation(_ air: AirQuality?, on mv: MLNMapView) {
+            guard let style = mv.style,
+                  let src = style.source(withIdentifier: "air-station") as? MLNShapeSource else { return }
+            let key = air.flatMap { a -> String? in
+                guard let lat = a.stationLat, let lon = a.stationLon else { return nil }
+                return "\(lat),\(lon)"
+            } ?? ""
+            if key == airStationKey { return }
+            airStationKey = key
+            guard let a = air, let lat = a.stationLat, let lon = a.stationLon else {
+                src.shape = nil; return
+            }
+            let f = MLNPointFeature()
+            f.coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+            f.attributes = ["label": "\(a.station ?? "") 측정소"]
             src.shape = f
         }
 

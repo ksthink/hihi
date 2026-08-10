@@ -41,12 +41,40 @@ export function airGradeFn(a) {
 
 /** 캡션 한 줄 — 수치·측정소·거리. 칩에 숫자까지 넣으면 폭이 늘고 기온과 뒤섞인다.
  *  수치가 없으면(실황 API 만 죽은 경우) 빈 문자열 — "미세먼지 · ○○ 측정소" 만 남으면
- *  무엇을 말하는 줄인지 알 수 없다. 칩의 등급은 그대로 나온다. */
+ *  무엇을 말하는 줄인지 알 수 없다. 칩의 등급은 그대로 나온다.
+ *
+ *  측정소 이름은 **누를 수 있다**(좌표가 온 경우) — 지도의 그 자리로 데려간다.
+ *  값이 어디서 왔는지는 산에서 20km 떨어진 측정소일 수도 있어 거리만으론 부족하다. */
 export function airNote(a) {
   if (!a || (a.pm10 == null && a.pm25 == null)) return "";
   let s = "미세먼지";
   if (a.pm10 != null) s += ` 미세 ${a.pm10}`;
   if (a.pm25 != null) s += ` · 초미세 ${a.pm25}`;
-  if (a.station) s += ` · ${a.station} 측정소${a.distanceKm != null ? ` ${a.distanceKm}km` : ""}`;
+  if (a.station) {
+    const label = `${a.station} 측정소${a.distanceKm != null ? ` ${a.distanceKm}km` : ""}`;
+    s += " · " + (hasStationPos(a)
+      ? `<button type="button" class="wx-stn" data-air-station>${label}</button>`
+      : label);
+  }
   return s + " (등급은 하루 기준)";
+}
+
+/** 지도에 찍을 수 있는가 — 옛 응답에는 좌표가 없다. */
+export function hasStationPos(a) {
+  return !!a && Number.isFinite(a.stationLat) && Number.isFinite(a.stationLon);
+}
+
+/** 측정소 팝업 내용 — 수치는 등급과 함께 보여야 뜻이 통한다(16 이 좋은 건지 알 수 없다). */
+export function stationPopupHTML(a) {
+  const row = (label, v, g) =>
+    v == null ? "" : `<br>${label} ${v} ㎍/㎥${GRADE[g] ? ` · ${GRADE[g]}` : ""}`;
+  const meta = [
+    a.addr || "",
+    a.distanceKm != null ? `산에서 ${a.distanceKm}km` : "",
+  ].filter(Boolean).join("<br>");
+  return `<div class="popup-title">${a.station} 측정소</div>
+    <div class="popup-meta">${meta}${row("미세", a.pm10, a.pm10Grade)}${
+      row("초미세", a.pm25, a.pm25Grade)}${
+      a.observedAt ? `<br>${a.observedAt} 관측` : ""}${
+      a.today ? `<br>오늘 예보 ${a.today}${a.tomorrow ? ` · 내일 ${a.tomorrow}` : ""}` : ""}</div>`;
 }

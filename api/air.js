@@ -171,6 +171,8 @@ module.exports = async function handler(req, res) {
       station: best.s.name,
       addr: best.s.addr || null,
       distanceKm: Math.round(best.d * 10) / 10,
+      stationLat: best.s.lat,     // 지도에 찍기 위한 좌표 — "이 값이 어디서 왔나"를 보여준다
+      stationLon: best.s.lon,
       observedAt: n.dataTime || null,
       today,
       tomorrow,

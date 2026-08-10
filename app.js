@@ -4,7 +4,7 @@ import { buildStyle, POI_DISPLAY_DEFAULT, normPoiDisplay, symChar } from "./base
 import { supabase, signUp, signIn, signOut } from "./supabase-client.js";
 import { attachPoiIcons } from "./poi-icons.js";
 import { fetchWeather, renderStrip } from "./weather.js";
-import { fetchAir, airGradeFn, airNote } from "./air.js";
+import { fetchAir, airGradeFn, airNote, hasStationPos, stationPopupHTML } from "./air.js";
 import { nationalPointNumber } from "./npn.js";
 
 // ── 설정 ──────────────────────────────────────────────
@@ -834,6 +834,7 @@ async function ensureParkOverlays(park) {
 async function loadPark(park) {
   currentPark = park;
   selectedName = null; // 산 전환 시 전체 표시로 초기화
+  clearAirStation();   // 이전 산의 측정소 핀 — 새 값이 오면 다시 찍힌다
   const cfg = PARKS[park];
   const cur = document.getElementById("cur-mtn");
   if (cur) cur.textContent = cfg.label;
@@ -983,8 +984,49 @@ async function loadAir(park, wx) {
     if (park !== currentPark || !a) return;
     renderStrip(document.getElementById("wx-explore"), wx,
                 { airGrade: airGradeFn(a), airNote: airNote(a) });
+    showAirStation(a);
   } catch (_) { /* 날씨만 남긴다 */ }
 }
+
+// 대기질 측정소 핀 — 지금 쓰고 있는 **한 곳만** 찍는다.
+// 전국 673곳을 다 깔면 등산 지도가 아니게 된다. 하나면 "이 값이 어디서 왔나"라는
+// 실제 궁금증만 해결한다 — 산에서 20km 떨어진 측정소일 수도 있으니 거리 숫자만으론 부족하다.
+let airMarker = null, airPopup = null, airCurrent = null;
+
+function showAirStation(a) {
+  clearAirStation();
+  if (!hasStationPos(a)) return;
+  airCurrent = a;
+  const el = document.createElement("div");
+  el.className = "air-stn-pin";
+  el.title = `${a.station} 측정소`;
+  el.addEventListener("click", (e) => { e.stopPropagation(); openAirPopup(); });
+  airMarker = new maplibregl.Marker({ element: el })
+    .setLngLat([a.stationLon, a.stationLat]).addTo(map);
+}
+
+function clearAirStation() {
+  if (airPopup) { airPopup.remove(); airPopup = null; }
+  if (airMarker) { airMarker.remove(); airMarker = null; }
+  airCurrent = null;
+}
+
+function openAirPopup() {
+  if (!airCurrent) return;
+  if (airPopup) airPopup.remove();
+  airPopup = new maplibregl.Popup({ maxWidth: "240px" })
+    .setLngLat([airCurrent.stationLon, airCurrent.stationLat])
+    .setHTML(stationPopupHTML(airCurrent))
+    .addTo(map);
+}
+
+// 캡션의 측정소 이름 → 지도의 그 자리로. 스트립은 매번 다시 그려지므로 위임으로 받는다.
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-air-station]") || !airCurrent) return;
+  map.flyTo({ center: [airCurrent.stationLon, airCurrent.stationLat],
+              zoom: Math.max(map.getZoom(), 13) });
+  openAirPopup();
+});
 
 // 등반 카드/HUD 용: 온라인 캐시 우선, 없으면 오늘 스냅샷(오프라인)
 function currentWeather(park) {

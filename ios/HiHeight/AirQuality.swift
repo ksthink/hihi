@@ -21,6 +21,8 @@ struct AirQuality: Decodable {
     let station: String?    // 최근접 측정소명. nil 이면 쓸 값이 없다(너무 멀거나 조회 실패)
     let addr: String?
     let distanceKm: Double?
+    let stationLat: Double? // 지도에 찍기 위한 좌표 — "이 값이 어디서 왔나"를 보여준다
+    let stationLon: Double?
     let observedAt: String? // "2026-08-09 20:00"
     let today: String?      // 오늘 PM10 등급(권역) — 날씨 칩의 '오늘' 칸에 붙인다
     let tomorrow: String?   // 내일 PM10 등급 — 자정을 넘어가는 칩에 붙인다
@@ -40,6 +42,9 @@ struct AirQuality: Decodable {
     /// ⚠️ 실황(수치)과 예보(등급)는 **서로 다른 API 다.** 한쪽이 죽었다고 다른 쪽까지 버리면
     /// 멀쩡한 값이 있는데도 화면이 빈다 — 실제로 실황만 504 인 시간대가 있었다(2026-08-10).
     var hasValue: Bool { pm10 != nil || pm25 != nil || today != nil || tomorrow != nil }
+
+    /// 지도에 찍을 수 있는가 — 옛 응답에는 좌표가 없다.
+    var hasPosition: Bool { stationLat != nil && stationLon != nil }
 }
 
 enum AirService {

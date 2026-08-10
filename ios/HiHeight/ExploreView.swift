@@ -32,6 +32,7 @@ struct ExploreView: View {
     @State private var info: MountainInfo?
     @State private var weather: [WeatherHour] = []
     @State private var air: AirQuality?               // 미세먼지 — 실황 수치 + 내일 등급
+    @State private var showAirStation = false         // 측정소 상세 시트(핀·캡션 탭)
     // info·weather 가 담고 있는 산. 코스보다 늦게 도착하므로(날씨 2s+), 산이 바뀌었는데
     // 이전 산 값이 새 산 정보처럼 잠깐 보이는 것을 막는 데 쓴다. 같은 산 재진입이면
     // 값을 유지해 깜빡임을 피한다.
@@ -117,7 +118,10 @@ struct ExploreView: View {
                             guard !inRoute else { return }              // 루트 보기 중엔 코스 탭 무시(모드 이탈 방지)
                             if let c = courses.first(where: { $0.name == name }) { selectCourse(c) }
                         },
-                        onHeadingChanged: { headingOn = $0 })           // 나침반 추적 on/off → 위치 버튼 강조
+                        onHeadingChanged: { headingOn = $0 },          // 나침반 추적 on/off → 위치 버튼 강조
+                        // 대기질 — 지금 값을 준 측정소 한 곳만 찍고, 누르면 상세.
+                        airStation: airPin,
+                        onAirStationTapped: { showAirStation = true })
                     .ignoresSafeArea()
 
                 // 스케일바 (좌하단, 시트 위) — 웹 ScaleControl 식 단일 눈금 바. 검색 중엔 숨김.
@@ -315,6 +319,10 @@ struct ExploreView: View {
         }
         // GPX 내보내기 — iOS 공유 시트(파일 저장·에어드롭·메신저). item 기반이라 파일이 준비된 뒤에만 뜬다.
         .sheet(item: $gpxFile) { f in ShareSheet(items: [f.url]) }
+        // 대기질 측정소 상세 — 지도 핀 또는 날씨 캡션의 측정소 이름을 누르면.
+        .sheet(isPresented: $showAirStation) {
+            if let a = air { AirStationSheet(air: a) }
+        }
         // 100m 이하 짧은 등반 — 저장 여부 확인(저장=기존대로, 취소=저장 않고 종료).
         .overlay {
             if showShortConfirm {
@@ -819,6 +827,10 @@ struct ExploreView: View {
             Text(stripCaption)
                 .font(.kakao(size: 10)).foregroundStyle(t.muted)
                 .fixedSize(horizontal: false, vertical: true)
+                // 미세먼지 줄의 측정소 이름은 눌러서 상세로 — 지도 핀과 같은 곳으로 간다.
+                // 줄 전체를 탭 영역으로 둔다(10pt 글자 안의 단어만 노리게 하면 못 누른다).
+                .contentShape(Rectangle())
+                .onTapGesture { if air?.hasPosition == true { showAirStation = true } }
         }
         .padding(.top, 2)
     }
@@ -837,12 +849,19 @@ struct ExploreView: View {
             if let st = a.station {
                 air1 += " · \(st) 측정소"
                 if let d = a.distanceKm { air1 += " \(String(format: "%.1f", d))km" }
+                if a.hasPosition { air1 += " ›" }   // 누를 수 있다는 표시 — 지도의 그 자리로 간다
             }
             air1 += " (등급은 하루 기준)"
             parts.append(air1)
         }
         return parts.joined(separator: "\n")
     }
+
+    // 지도에 찍을 측정소. 등반 중엔 감춘다 — 지도가 트랙에 집중해야 하고, 값도 출발 시점
+    // 스냅샷이다(등반 중엔 날씨·대기질을 다시 받지 않는다).
+    // ⚠️ body 안에 두지 않는다 — MapView 호출부는 인자가 20개 넘어 삼항 하나가 더해지는 것만으로
+    //    타입체크가 몇 분씩 걸린다(2026-08-10 실측).
+    private var airPin: AirQuality? { climb.tracking ? nil : air }
 
     // 칩에 붙일 미세먼지 등급 — 그 칸의 **날짜**에 해당하는 값.
     // 같은 날 칩은 모두 같은 값이다(에어코리아 예보가 일 단위라 시간별 값이 없다).
