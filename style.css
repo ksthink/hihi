@@ -446,10 +446,10 @@ footer .warn { margin-top: 6px; }
 
 /* 현재위치 — 픽셀 인물(here-icon.js HERE_GRID, 앱 HereIcon.swift 와 같은 격자).
    --here 는 app.js 가 실루엣 마스크로 넣고, 색은 여기서 잉크로 칠한다 → 테마 전환은 CSS 만으로 끝난다.
-   크기는 셀당 2px(5×8 → 10×16px)로 딱 떨어뜨린다 — 어중간하면 픽셀 경계가 뭉개진다.
+   크기는 셀당 1px(8×22 → 8×22px)로 딱 떨어뜨린다 — 어중간하면 픽셀 경계가 뭉개진다.
    등고선·등산로와 겹쳐도 읽히게 배경색 헤일로를 두른다(앱 HereIcon.halo 와 같은 역할). */
 .maplibregl-user-location-dot {
-  width: 10px; height: 16px; border-radius: 0; background-color: var(--text);
+  width: 8px; height: 22px; border-radius: 0; background-color: var(--text);
   -webkit-mask: var(--here) center / contain no-repeat;
   mask: var(--here) center / contain no-repeat;
   filter: drop-shadow(0 0 1px var(--bg)) drop-shadow(0 0 1px var(--bg));
