@@ -12,9 +12,14 @@ final class EmptyUserDot: MLNUserLocationAnnotationView {
 // (커스텀 주석 뷰를 쓰면 내장 빔이 안 그려져 직접 그린다. 헤딩 화살표는 나침반 빔과
 //  기능이 겹치고 자기 간섭 시 오정보라 제거 — 사용자 결정 2026-07-28.)
 final class ExploreUserDot: MLNUserLocationAnnotationView {
-    private let dot = CALayer()
+    private let casing = CAShapeLayer()   // 반대색 헤일로 — 예전 점의 흰 테두리 3pt 역할
+    private let figure = CAShapeLayer()   // 픽셀 인물(HereIcon) — 웹과 같은 격자
     private let beam = CAGradientLayer()  // 나침반 모드 빔 — 커스텀 뷰는 내장 빔이 안 그려져 직접 그린다
     private var built = false
+
+    /// 헤일로 색을 정하는 유일한 근거 — 지도 스타일(basemap-dark/light)을 따라야 하므로
+    /// `traitCollection` 이 아니라 Coordinator 가 넣어 준다(지도 테마와 앱 테마가 어긋날 수 있다).
+    var dark = false { didSet { if dark != oldValue { applyTint() } } }
 
     override func update() {
         if !built { built = true; build() }
@@ -46,23 +51,29 @@ final class ExploreUserDot: MLNUserLocationAnnotationView {
         mask.path = mp.cgPath
         beam.mask = mask
         beam.isHidden = true
-        // 점 — 내장 dot 모사(tint 채움 + 흰 테두리 + 옅은 그림자)
-        dot.bounds = CGRect(x: 0, y: 0, width: 22, height: 22)
-        dot.position = center
-        dot.cornerRadius = 11
-        dot.borderColor = UIColor.white.cgColor
-        dot.borderWidth = 3
-        dot.shadowColor = UIColor.black.cgColor
-        dot.shadowOpacity = 0.25
-        dot.shadowOffset = .zero
-        dot.shadowRadius = 3
+        // 인물 — HereIcon 격자를 그대로. 헤일로를 먼저 굵게 긋고 그 위에 채운다(두 레이어).
+        let p = HereIcon.path()
+        p.apply(CGAffineTransform(translationX: center.x - HereIcon.size.width / 2,
+                                  y: center.y - HereIcon.size.height / 2))
+        casing.path = p.cgPath
+        casing.fillColor = nil
+        casing.lineWidth = HereIcon.halo * 2      // 안쪽 절반은 figure 가 덮는다
+        casing.lineJoin = .miter                  // 픽셀 그림이라 모서리를 둥글리지 않는다
+        figure.path = p.cgPath
+        figure.strokeColor = nil
+        figure.shadowColor = UIColor.black.cgColor
+        figure.shadowOpacity = 0.25
+        figure.shadowOffset = .zero
+        figure.shadowRadius = 3
         layer.addSublayer(beam)
-        layer.addSublayer(dot)
+        layer.addSublayer(casing)
+        layer.addSublayer(figure)
     }
 
     private func applyTint() {
         let ink = tintColor ?? .label
-        dot.backgroundColor = ink.cgColor
+        figure.fillColor = ink.cgColor
+        casing.strokeColor = (dark ? UIColor.black : .white).cgColor
         beam.colors = [ink.withAlphaComponent(0.45).cgColor, ink.withAlphaComponent(0).cgColor]
     }
 
@@ -297,17 +308,18 @@ struct MapView: UIViewRepresentable {
                 blinkTimer?.invalidate()
                 blinkTimer = nil
                 blinkOn = true
-                if let l = mapView?.style?.layer(withIdentifier: "climb-pos-dot") as? MLNCircleStyleLayer {
-                    l.circleOpacity = NSExpression(forConstantValue: 1)   // 원복
+                if let l = mapView?.style?.layer(withIdentifier: "climb-pos") as? MLNSymbolStyleLayer {
+                    l.iconOpacity = NSExpression(forConstantValue: 1)     // 원복
                 }
             }
         }
 
         private func blinkTick() {
-            guard let l = mapView?.style?.layer(withIdentifier: "climb-pos-dot") as? MLNCircleStyleLayer else { return }
-            l.circleOpacityTransition = MLNTransition(duration: 0.7, delay: 0)
+            guard let l = mapView?.style?.layer(withIdentifier: "climb-pos") as? MLNSymbolStyleLayer else { return }
+            l.iconOpacityTransition = MLNTransition(duration: 0.7, delay: 0)
             blinkOn.toggle()
-            l.circleOpacity = NSExpression(forConstantValue: blinkOn ? 1.0 : 0.15)
+            // 0.15 까지 떨어뜨리면 인물이 사라져 보인다 — 점이던 시절보다 얕게 흔든다.
+            l.iconOpacity = NSExpression(forConstantValue: blinkOn ? 1.0 : 0.45)
         }
 
         deinit { blinkTimer?.invalidate() }
@@ -319,6 +331,7 @@ struct MapView: UIViewRepresentable {
             if tracking { return EmptyUserDot() }
             let v = userDot ?? ExploreUserDot()
             userDot = v
+            v.dark = dark                  // 헤일로 색 — 지도 스타일을 따른다
             v.set(compass: headingMode)
             return v
         }
@@ -337,6 +350,7 @@ struct MapView: UIViewRepresentable {
 
         // 나침반 빔 갱신 라우팅 — 탐험=주석 뷰(점과 같은 컨테이너), 등반=스타일 레이어(climb-pos 동기).
         private func refreshBeam() {
+            userDot?.dark = dark           // 테마 전환 시 헤일로 색도 같이 따라온다
             userDot?.set(compass: headingMode)
             applyBeam()
         }
@@ -413,6 +427,13 @@ struct MapView: UIViewRepresentable {
                     style.setImage(img, forName: name)
                 }
             }
+        }
+
+        // 등반 중 내 위치 픽토그램 등록 — climb-pos 심볼 레이어가 참조하는 이름("here").
+        // ⚠️ 등록을 빠뜨리면 아이콘만이 아니라 **레이어가 통째로** 안 그려진다(POI 아이콘과 같은 함정).
+        func registerHereIcon(on style: MLNStyle) {
+            let ink = dark ? UIColor(white: 0.949, alpha: 1) : UIColor(white: 0.067, alpha: 1)
+            style.setImage(HereIcon.image(ink: ink, casing: dark ? .black : .white), forName: "here")
         }
 
         // 코스 번호 배지 이미지 등록 — 웹 makeBadge 대응. 미선택=badge-N, 선택=badge-N-sel(반전).
@@ -841,6 +862,7 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             registerBadges(on: style)            // 코스 번호 배지 이미지(테마색) 등록
             registerPOIIcons(on: style)          // POI 아이콘(전철역·주차장·사찰 등) 등록
+            registerHereIcon(on: style)          // 등반 중 내 위치 픽토그램(테마색) 등록
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
             courseNosKey = ""                    // 스타일 재로드 시 배지 위치 재주입 강제

@@ -379,11 +379,11 @@ function make(theme, baseMode) {
   // MapView 가 트랙 마지막 점을 climb-pos 소스에 주입한다(내장 dot 은 등반 중 숨김).
   style.sources["climb-pos"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
   style.layers.push(
-    { id: "climb-pos-ring", type: "circle", source: "climb-pos",
-      paint: { "circle-radius": 8.5, "circle-color": tc.casing,
-               "circle-stroke-color": tc.line, "circle-stroke-width": 2.5 } },
-    { id: "climb-pos-dot", type: "circle", source: "climb-pos",
-      paint: { "circle-radius": 4.5, "circle-color": tc.line } },
+    // 그림은 런타임에 등록한다(HereIcon.image → style.setImage "here") — 웹 here-icon.js 와 같은 격자.
+    // ⚠️ viewport 정렬 — 나침반 모드에선 지도가 회전하므로, 없으면 인물이 물구나무를 선다.
+    { id: "climb-pos", type: "symbol", source: "climb-pos",
+      layout: { "icon-image": "here", "icon-allow-overlap": true, "icon-ignore-placement": true,
+                "icon-rotation-alignment": "viewport", "icon-pitch-alignment": "viewport" } },
   );
 
   // text-font 의 폰트 스택 이름을 공백 없는 이름으로(위 글리프 폴더명과 일치). 네이티브 전용.

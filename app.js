@@ -6,6 +6,7 @@ import { attachPoiIcons } from "./poi-icons.js";
 import { fetchWeather, renderStrip } from "./weather.js";
 import { fetchAir, airGradeFn, airNote, hasStationPos, stationPopupHTML } from "./air.js";
 import { nationalPointNumber } from "./npn.js";
+import { hereMaskUrl } from "./here-icon.js";
 
 // ── 설정 ──────────────────────────────────────────────
 const PMTILES_URL = `${location.origin}/pmtiles/kr-base.pmtiles`; // same-origin 프록시 → 자체 호스팅 R2 base (CORS 회피)
@@ -83,6 +84,9 @@ let theme =
   localStorage.getItem(THEME_KEY) ||
   (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 document.documentElement.dataset.theme = theme;
+// 현재위치 인물 실루엣 — style.css 가 var(--here) 를 마스크로 쓰고 색은 var(--text) 로 칠한다.
+// 한 번만 넣으면 되는 이유: 마스크에 색이 없어 테마 전환에 자바스크립트가 끼어들 필요가 없다.
+document.documentElement.style.setProperty("--here", hereMaskUrl());
 
 function trailColors() {
   return theme === "dark"
