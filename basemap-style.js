@@ -67,6 +67,14 @@ const URBAN_KINDS = {
   "문화·체육": ["museum", "library", "stadium", "arts_centre", "theatre", "sports_centre"],
 };
 
+// `paths` 레이어에서 **등산로가 아닌 것**. Protomaps 는 인도·횡단보도·자전거도로를
+// 등산로와 같은 kind("path")로 묶어 보내므로, kind_detail 로 갈라야 구분된다.
+// 실측(2026-08-19): 한성대입구역 z14 타일의 path 48개 중 등산로(path/path)는 3개뿐이고
+// 나머지는 인도 19·계단 10·footway 6·보행자도로 5·자전거 3·횡단보도 2 였다. 반대로
+// 북한산 z14 타일은 path 12개가 전부 등산로·계단이고 아래 목록은 **하나도 없다** —
+// 그래서 이 분리는 산 화면을 픽셀 하나 바꾸지 않는다.
+const CITY_PATH = ["sidewalk", "crossing", "cycleway", "pedestrian"];
+
 // 전국 버스정류장 자체 타일 URL — 기저(kr-base) 경로에서 파일명만 치환해 파생.
 // 로컬 팩 기저("local-<산코드>" 등)는 해당 없음 → null (소스·레이어 모두 생략).
 const BUS_URL = (base) =>
@@ -103,6 +111,8 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         bg: "#000000", earth: "#0d0d0d", grass: "#131313",
         park: "#232323", water: "#303030", roadCasing: "#000000", road: "#424242",
         hw: "#585858", path: "#a3a3a3", building: "#171717", boundary: "#4a4a4a",
+        // 케이싱 없는 이면도로 · 도심 인도류 — 아래 CITY_PATH 주석 참조
+        roadMinor: "#424242", pathCity: "#4d4d4d",
         label: "#d9d9d9", halo: "#000000",
         // 지형 전용 도로선(케이싱 없이 단선) — 검정 배경 위 은은한 회색 오리엔테이션
         troad: "#3a3a3a", troadHw: "#4f4f4f"
@@ -111,6 +121,8 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         bg: "#ffffff", earth: "#f4f4f4", grass: "#ececec",
         park: "#e3e3e3", water: "#c9c9c9", roadCasing: "#c2c2c2", road: "#ffffff",
         hw: "#e0e0e0", path: "#3f3f3f", building: "#e4e4e4", boundary: "#b5b5b5",
+        // 케이싱 없는 이면도로 · 도심 인도류 — 아래 CITY_PATH 주석 참조
+        roadMinor: "#dadada", pathCity: "#cfcfcf",
         label: "#2b2b2b", halo: "#ffffff",
         // 지형 전용 도로선(케이싱 없이 단선) — 흰 배경 위 은은한 회색 오리엔테이션
         troad: "#d0d0d0", troadHw: "#bcbcbc"
@@ -232,15 +244,33 @@ export function buildStyle(pmtilesUrl, theme = "light", terrainUrl = null, poiDi
         paint: {
           "line-color": terrain
             ? ["match", ["get", "kind"], "highway", C.troadHw, C.troad]
-            : ["match", ["get", "kind"], "highway", C.hw, C.road],
+            : ["match", ["get", "kind"], "highway", C.hw, "minor_road", C.roadMinor, C.road],
           "line-width": terrain
             ? ["interpolate", ["linear"], ["zoom"], 10, 0.5, 16, 2.4]
             : ["interpolate", ["linear"], ["zoom"], 10, 0.8, 16, 5]
         }
       },
       {
+        // 도심 인도류 — 등산로와 같은 굵기·명도로 그리면 도심에서 위계가 뒤집힌다.
+        // 차도(minor_road)는 케이싱이 없어 옅은데 그 옆 인도가 제일 진해져, 인도가
+        // 길처럼 읽히고 차도는 사라졌다(2026-08-19 사용자 보고: 버스정류장이 길에서 떨어져 보임).
+        // OSM 은 인도를 차도와 별개 선으로 5~10m 옆에 그리므로 어긋남이 그대로 눈에 띈다.
+        id: "paths-urban", type: "line", source: "protomaps", "source-layer": "roads",
+        filter: ["all",
+          ["match", ["get", "kind"], ["path", "footway", "track"], true, false],
+          ["match", ["get", "kind_detail"], CITY_PATH, true, false]],
+        paint: {
+          "line-color": C.pathCity,
+          "line-width": ["interpolate", ["linear"], ["zoom"], 12, 0.5, 17, 1.3],
+          "line-dasharray": [2, 2]
+        }
+      },
+      {
         id: "paths", type: "line", source: "protomaps", "source-layer": "roads",
-        filter: ["in", "kind", "path", "footway", "track"],
+        // kind_detail 이 비어 있으면 등산로 쪽에 남긴다 — 산에서 길이 사라지는 쪽이 더 위험하다.
+        filter: ["all",
+          ["match", ["get", "kind"], ["path", "footway", "track"], true, false],
+          ["match", ["get", "kind_detail"], CITY_PATH, false, true]],
         // 등산로(OSM 소로)는 이 앱의 주인공 — 더 진하고 약간 굵게 (팩 코스 선 아래 배경 맥락)
         paint: {
           "line-color": C.path,
