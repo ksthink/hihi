@@ -14,8 +14,16 @@ struct RecordsView: View {
     @State private var selectedDay: String?        // 캘린더에서 고른 날짜 "y-m-d" (nil=전체)
     @State private var sort: RecSort = .date       // 목록 정렬 기준
     @State private var sortAsc = false             // false=내림차순(최신·큰 값 먼저)
-    @State private var shownCount = Self.page      // 지금까지 그린 개수 — 마지막 카드가 보이면 늘어난다
+    @State private var shownCount = Self.page      // 지금까지 그린 개수
+    // -more- 를 지나쳐 스크롤했을 때만 다음 장을 연다.
+    // ⚠️ **false 로 시작해야 한다.** true 로 두면 목록이 화면을 못 채울 때 꼬리표가 처음부터
+    //    기준선 위에 있어 스스로 열린다 — 3개가 순식간에 6개가 됐다(2026-08-27 실측).
+    //    꼬리표가 기준선 **아래(=바닥 근처)** 에 온 적이 있어야 장전되고, 거기서 위로
+    //    끌어올려질 때 열린다. 그래서 스크롤할 게 없으면 영영 열리지 않는다.
+    @State private var armed = false
+    @State private var listH: CGFloat = 0          // List 뷰포트 높이 — 지나쳤는지 판단하는 기준
     private static let page = 10
+    private static let passBy: CGFloat = 56        // 이만큼 위로 끌어올려야 "지나쳤다"
 
     // 목록 정렬 — 날짜/거리/등반시간(모두 큰 값 우선).
     enum RecSort: CaseIterable {
@@ -120,23 +128,59 @@ struct RecordsView: View {
                     .listRowInsets(EdgeInsets())   // 좌우 여백은 List 자체에 줌
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
-                    // 마지막 카드가 화면에 들어오면 10개 더 — 기록이 수백 개여도 처음엔 10개만 만든다.
-                    .onAppear {
-                        if r.id == page.last?.id, shownCount < all.count { shownCount += Self.page }
-                    }
                 }
+                tail(all.count, t)
             }
         }
+        // 뷰포트 높이 — 꼬리표가 바닥에서 얼마나 올라왔는지 재는 기준선.
+        .background(GeometryReader { g in
+            Color.clear.preference(key: ListHeightKey.self, value: g.size.height)
+        })
+        .onPreferenceChange(ListHeightKey.self) { listH = $0 }
+        .coordinateSpace(name: "recList")
         // 필터·정렬이 바뀌면 처음 10개부터 다시 — 안 그러면 새 목록이 통째로 그려진다.
-        .onChange(of: selectedDay) { _, _ in shownCount = Self.page }
-        .onChange(of: sort) { _, _ in shownCount = Self.page }
-        .onChange(of: sortAsc) { _, _ in shownCount = Self.page }
+        .onChange(of: selectedDay) { _, _ in resetPaging() }
+        .onChange(of: sort) { _, _ in resetPaging() }
+        .onChange(of: sortAsc) { _, _ in resetPaging() }
         .listStyle(.plain)
         .listRowSpacing(10)          // 카드 간 여백 — 행 밖이라 삭제 버튼 높이가 카드와 정확히 일치
         .padding(.horizontal, 20)    // 좌우 여백을 List 에 줘서 행 폭 = 카드 폭
         .scrollIndicators(.hidden)   // List 에 가로 패딩을 줘 인디케이터가 카드 위로 겹침 → 숨김
         .scrollContentBackground(.hidden)
         .background(t.bg)
+    }
+
+    // 목록 꼬리표 — 더 있으면 `-more-`, 다 봤으면 `-end-`.
+    //
+    // ⚠️ **화면에 들어왔다고 더 불러오지 않는다.** 예전엔 마지막 카드의 onAppear 로 늘렸는데,
+    //    첫 10개가 화면을 다 못 채우면 연쇄로 터져 한 번에 전부 로드됐다(사용자 지적 2026-08-27).
+    //    지금은 `-more-` 가 바닥에서 passBy 만큼 **끌어올려졌을 때** = 사용자가 지나쳐 스크롤했을
+    //    때만 다음 장을 연다. 한 번 열면 다시 아래로 내려가야 재장전된다(armed).
+    @ViewBuilder
+    private func tail(_ total: Int, _ t: Theme) -> some View {
+        let more = shownCount < total
+        Text(more ? "-more-" : "-end-")
+            .font(.system(size: 12, design: .monospaced))
+            .foregroundStyle(t.muted)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(GeometryReader { g in
+                Color.clear.preference(key: TailOffsetKey.self,
+                                       value: g.frame(in: .named("recList")).minY)
+            })
+            .onPreferenceChange(TailOffsetKey.self) { y in
+                guard more, listH > 0 else { return }
+                if y >= listH - Self.passBy { armed = true }          // 아직 바닥 근처 — 장전
+                else if armed { armed = false; shownCount = min(shownCount + Self.page, total) }
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+    }
+
+    private func resetPaging() {
+        shownCount = Self.page
+        armed = false
     }
 
     // MARK: 비로그인 — 이메일 인증
@@ -424,4 +468,15 @@ struct RecCalendar: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+
+// 목록 꼬리표 위치·뷰포트 높이를 위로 올리는 통로.
+private struct TailOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = .greatestFiniteMagnitude
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+private struct ListHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
