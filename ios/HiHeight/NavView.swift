@@ -24,6 +24,7 @@ struct NavView: View {
     @State private var fix: NavFix?
     private var forward: Bool { director.forward }
     @State private var angle: Double = 0          // 화살표 누적 각도 — 최단 경로로만 돌린다
+    @State private var north: Double = 0          // 방위 고리 누적 각도 — 같은 이유로 누적
     @State private var loading = true
 
     // 나침반이 못 미더운 상태(무효거나 오차 30° 초과). 화살표를 흐리게 하고 안내를 띄운다.
@@ -68,7 +69,7 @@ struct NavView: View {
             recompute()
         }
         .onChange(of: fix?.bearing) { _, _ in turnArrow() }
-        .onChange(of: climb.heading) { _, _ in turnArrow() }
+        .onChange(of: climb.heading) { _, _ in turnArrow(); turnRing() }
     }
 
     // MARK: 계산
@@ -82,6 +83,19 @@ struct NavView: View {
         guard let f = fix else { return 0 }
         let h = climb.heading >= 0 ? climb.heading : 0
         return (f.bearing - h + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    /// 화면 위 = 기기가 보는 쪽이므로, 진북은 화면에서 헤딩만큼 **반대로** 돈 자리에 있다.
+    /// 헤딩이 없으면 0 을 쓴다 — relative 와 같은 가정이라 화살표와 고리가 어긋나지 않는다.
+    private var northTarget: Double {
+        let h = climb.heading >= 0 ? climb.heading : 0
+        return (-h).truncatingRemainder(dividingBy: 360)
+    }
+
+    private func turnRing() {
+        var d = (northTarget - north).truncatingRemainder(dividingBy: 360)
+        if d > 180 { d -= 360 } else if d < -180 { d += 360 }
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) { north += d }
     }
 
     // 350° → 10° 를 340° 역회전으로 돌지 않게 누적 각도에 최단 델타만 더한다.
@@ -120,12 +134,22 @@ struct NavView: View {
 
     @ViewBuilder private func arrow(_ t: Theme) -> some View {
         VStack(spacing: 18) {
-            Image(systemName: "arrow.up")
-                .font(.system(size: 132, weight: .heavy))
-                .foregroundStyle(t.text)
-                .opacity(headingBad ? 0.28 : 1)
-                .rotationEffect(.degrees(angle))
-                .accessibilityLabel("진행 방향")
+            ZStack {
+                // 방위 고리 — 화살표는 "목표 방위 − 기기 방향"이라 **화면 위가 내가 보는 쪽**이다.
+                // 그래서 북쪽이 어디인지 알 수 없어진다. 고리가 그걸 되돌려 준다(늘 진북).
+                CompassRose(text: t.text, line: t.line, muted: t.muted, spin: north)
+                    .frame(width: 268, height: 268)
+                    .rotationEffect(.degrees(north))
+                    .opacity(headingBad ? 0.28 : 1)
+                    .accessibilityHidden(true)
+
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 132, weight: .heavy))
+                    .foregroundStyle(t.text)
+                    .opacity(headingBad ? 0.28 : 1)
+                    .rotationEffect(.degrees(angle))
+                    .accessibilityLabel("진행 방향")
+            }
 
             // 신뢰도·이탈은 화살표 바로 아래에서 말한다 — 화면 구석에 두면 못 본다.
             if loading {
@@ -215,5 +239,70 @@ struct NavView: View {
         guard let c = climb.currentCoord,
               let code = NPN.code(lat: c.latitude, lon: c.longitude) else { return "국가지점번호 –" }
         return code
+    }
+}
+
+// 내비 화면 방위 고리 — 화살표를 감싸는 원과 눈금·방위 글자.
+//
+// 고리는 통째로 `-헤딩` 만큼 돌아(NavView.north) 「북」이 늘 진북에 놓인다.
+// ⚠️ 다만 **글자는 같이 돌리지 않는다.** 한글은 눕히면 읽히지 않는다 —
+//    처음엔 눈금판째 돌렸더니 아래쪽 「남」이 뒤집혀 알아볼 수 없었다(2026-08-27 실기).
+//    그래서 각 글자를 `spin` 만큼 되돌려 화면에서 똑바로 세운다. 자리만 돌고 글자는 서 있다.
+private struct CompassRose: View {
+    let text: Color
+    let line: Color
+    let muted: Color
+    let spin: Double                       // 고리 전체 회전각 — 글자를 되돌리는 데 쓴다
+
+    private static let cardinals = [(0.0, "북"), (90.0, "동"), (180.0, "남"), (270.0, "서")]
+
+    var body: some View {
+        GeometryReader { g in
+            let r = min(g.size.width, g.size.height) / 2
+            ZStack {
+                Circle().strokeBorder(line, lineWidth: 1.2)
+
+                // 눈금 30° 간격 — 네 방위는 길고 굵게, 나머지는 짧게.
+                ForEach(0..<12, id: \.self) { i in
+                    let major = i % 3 == 0
+                    Capsule()
+                        .fill(major ? text.opacity(0.5) : line)
+                        .frame(width: major ? 2 : 1, height: major ? 11 : 6)
+                        .offset(y: -(r - (major ? 7.5 : 5)))
+                        .rotationEffect(.degrees(Double(i) * 30))
+                }
+
+                // 북 표식 — 글자만으로는 한눈에 안 잡혀 고리에 뾰족한 표를 하나 더 둔다.
+                NorthPip()
+                    .fill(text)
+                    .frame(width: 11, height: 8)
+                    .offset(y: -(r + 5))
+
+                // 방위 글자 — 「북」만 진하게. 안쪽 회전이 바깥 회전을 상쇄해 늘 똑바로 선다.
+                ForEach(Self.cardinals, id: \.1) { deg, name in
+                    let isNorth = deg == 0
+                    Text(name)
+                        .font(.kakao(size: isNorth ? 15 : 12, weight: isNorth ? .bold : .regular))
+                        .foregroundStyle(isNorth ? text : muted)
+                        .rotationEffect(.degrees(-(deg + spin)))
+                        .frame(width: 26, height: 26)
+                        .offset(y: -(r - 31))
+                        .rotationEffect(.degrees(deg))
+                }
+            }
+            .position(x: g.size.width / 2, y: g.size.height / 2)
+        }
+    }
+
+    // 고리 밖으로 나온 북쪽 삼각 표식.
+    private struct NorthPip: Shape {
+        func path(in r: CGRect) -> Path {
+            var p = Path()
+            p.move(to: CGPoint(x: r.midX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.closeSubpath()
+            return p
+        }
     }
 }
