@@ -15,7 +15,7 @@ struct RecordsView: View {
     @State private var sort: RecSort = .date       // 목록 정렬 기준
     @State private var sortAsc = false             // false=내림차순(최신·큰 값 먼저)
     @State private var shownCount = Self.page      // 지금까지 그린 개수
-    // -more- 를 지나쳐 스크롤했을 때만 다음 장을 연다.
+    // 꼬리표(...)를 지나쳐 스크롤했을 때만 다음 장을 연다.
     // ⚠️ **false 로 시작해야 한다.** true 로 두면 목록이 화면을 못 채울 때 꼬리표가 처음부터
     //    기준선 위에 있어 스스로 열린다 — 3개가 순식간에 6개가 됐다(2026-08-27 실측).
     //    꼬리표가 기준선 **아래(=바닥 근처)** 에 온 적이 있어야 장전되고, 거기서 위로
@@ -150,16 +150,16 @@ struct RecordsView: View {
         .background(t.bg)
     }
 
-    // 목록 꼬리표 — 더 있으면 `-more-`, 다 봤으면 `-end-`.
+    // 목록 꼬리표 — 더 있으면 `...`, 다 봤으면 `-`.
     //
     // ⚠️ **화면에 들어왔다고 더 불러오지 않는다.** 예전엔 마지막 카드의 onAppear 로 늘렸는데,
     //    첫 10개가 화면을 다 못 채우면 연쇄로 터져 한 번에 전부 로드됐다(사용자 지적 2026-08-27).
-    //    지금은 `-more-` 가 바닥에서 passBy 만큼 **끌어올려졌을 때** = 사용자가 지나쳐 스크롤했을
+    //    지금은 꼬리표가 바닥에서 passBy 만큼 **끌어올려졌을 때** = 사용자가 지나쳐 스크롤했을
     //    때만 다음 장을 연다. 한 번 열면 다시 아래로 내려가야 재장전된다(armed).
     @ViewBuilder
     private func tail(_ total: Int, _ t: Theme) -> some View {
         let more = shownCount < total
-        Text(more ? "-more-" : "-end-")
+        Text(more ? "..." : "-")
             .font(.system(size: 12, design: .monospaced))
             .foregroundStyle(t.muted)
             .frame(maxWidth: .infinity)
