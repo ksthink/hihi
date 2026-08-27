@@ -14,6 +14,8 @@ struct RecordsView: View {
     @State private var selectedDay: String?        // 캘린더에서 고른 날짜 "y-m-d" (nil=전체)
     @State private var sort: RecSort = .date       // 목록 정렬 기준
     @State private var sortAsc = false             // false=내림차순(최신·큰 값 먼저)
+    @State private var shownCount = Self.page      // 지금까지 그린 개수 — 마지막 카드가 보이면 늘어난다
+    private static let page = 10
 
     // 목록 정렬 — 날짜/거리/등반시간(모두 큰 값 우선).
     enum RecSort: CaseIterable {
@@ -79,7 +81,10 @@ struct RecordsView: View {
     // 스와이프 삭제는 네이티브 List.swipeActions (ScrollView + 커스텀 드래그는 세로 스크롤과 충돌해
     // 실기기에서 스와이프가 잘 안 열림). 달력은 비지연 Grid 로 바꿔 List self-sizing 루프를 피함.
     private func authedList(_ t: Theme) -> some View {
-        List {
+        // 정렬은 비싸므로 body 당 한 번만 — ForEach·onAppear 에서 매번 다시 부르지 않는다.
+        let all = shownRecords
+        let page = Array(all.prefix(shownCount))
+        return List {
             Group {
                 authBar(t)                            // 웹 .auth-in — elevated 카드(이메일 + 로그아웃 알약)
                 if let msg = auth.message {           // 삭제 실패 등 안내
@@ -95,13 +100,13 @@ struct RecordsView: View {
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
 
-            if shownRecords.isEmpty {
+            if all.isEmpty {
                 Text(auth.records.isEmpty ? "아직 등반 기록이 없습니다." : "선택한 날짜에 기록이 없습니다.")
                     .font(.kakao(size: 13)).foregroundStyle(t.muted)
                     .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                     .listRowSeparator(.hidden).listRowBackground(Color.clear)
             } else {
-                ForEach(shownRecords) { r in           // 웹 rec-item — elevated 카드(gap 10)
+                ForEach(page) { r in                   // 웹 rec-item — elevated 카드(gap 10)
                     // 커스텀 스와이프 — 카드가 삭제 버튼 위로 미끄러진다(모서리·틈·겹침 모두 해결).
                     SwipeToDeleteRow(onDelete: { pendingDelete = r },
                                      onTap: { if r.hasTrack { onShowRoute(r) } }) {
@@ -115,9 +120,17 @@ struct RecordsView: View {
                     .listRowInsets(EdgeInsets())   // 좌우 여백은 List 자체에 줌
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+                    // 마지막 카드가 화면에 들어오면 10개 더 — 기록이 수백 개여도 처음엔 10개만 만든다.
+                    .onAppear {
+                        if r.id == page.last?.id, shownCount < all.count { shownCount += Self.page }
+                    }
                 }
             }
         }
+        // 필터·정렬이 바뀌면 처음 10개부터 다시 — 안 그러면 새 목록이 통째로 그려진다.
+        .onChange(of: selectedDay) { _, _ in shownCount = Self.page }
+        .onChange(of: sort) { _, _ in shownCount = Self.page }
+        .onChange(of: sortAsc) { _, _ in shownCount = Self.page }
         .listStyle(.plain)
         .listRowSpacing(10)          // 카드 간 여백 — 행 밖이라 삭제 버튼 높이가 카드와 정확히 일치
         .padding(.horizontal, 20)    // 좌우 여백을 List 에 줘서 행 폭 = 카드 폭
@@ -399,10 +412,16 @@ struct RecCalendar: View {
     private func startOfMonth(_ date: Date) -> Date {
         cal.date(from: cal.dateComponents([.year, .month], from: date)) ?? date
     }
+    // ⚠️ `.buttonStyle(.plain)` 이 **필수**다. List 행 안에 기본 스타일 Button 이 여럿 있으면
+    //    SwiftUI 가 행 전체를 한 덩어리로 잡아 개별 탭이 먹지 않는다 — 전달·다음달이 눌리지
+    //    않던 원인이 이것이었다(2026-08-27). 같은 이유로 sortBar 버튼에도 붙어 있다.
+    //    `contentShape` 는 아이콘 여백까지 손가락이 닿게 한다.
     private func navButton(_ icon: String, _ t: Theme, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             Image(systemName: icon).font(.kakao(size: 13, weight: .semibold))
-                .foregroundStyle(t.muted).frame(width: 32, height: 28)
+                .foregroundStyle(t.muted).frame(width: 40, height: 32)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
