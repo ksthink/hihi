@@ -133,6 +133,11 @@ struct MapView: UIViewRepresentable {
         // 위치 점 5m 거리 필터 — 기본값(kCLDistanceFilterNone)은 1~3m GPS 지터까지 전부 점으로
         // 전달돼 가만히 있어도 점이 계속 떠다닌다(등반 트래킹 ClimbStore 와 같은 5m 정책, 2026-07-26).
         mv.locationManager.setDistanceFilter?(5)
+        // 기울이기(피치) 봉인 — 두 손가락 세로 드래그로 지도가 눕는 것을 막는다(웹 maxPitch: 0 대응).
+        // 등산 중 손이 미끄러지면 의도치 않게 눕고, 지형은 hillshade(평면 음영)뿐이라 눕혀도
+        // 능선이 솟지 않는다 — 얻는 것 없이 방향감각만 잃는다(사용자 결정 2026-08-19).
+        // 회전은 그대로 둔다 — 나침반 추적(followWithHeading)이 bearing 을 쓰므로 끄면 안 된다.
+        mv.isPitchEnabled = false
         applyStyle(mv)
         return mv
     }

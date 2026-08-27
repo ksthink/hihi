@@ -125,8 +125,15 @@ const map = new maplibregl.Map({
   // 6 미만이면 지명 필터(min_zoom 6: 부산·인천·대구…)가 정수 줌 5에서 평가돼 광역시가 사라짐.
   // 가로 경계가 폰 화면 폭에 맞는 z5.5까지 축소가 풀리는 것을 여기서 차단.
   minZoom: 6,
-  localIdeographFontFamily: "'MonaS12', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace"
+  localIdeographFontFamily: "'MonaS12', 'Apple SD Gothic Neo', 'Malgun Gothic', monospace",
+  // 기울이기(피치) 봉인 — 두 손가락 세로 드래그로 지도가 눕는 것을 막는다.
+  // 등산 중 손이 미끄러지면 의도치 않게 눕고, 지금 지형은 hillshade(평면 음영)뿐이라
+  // 눕혀도 능선이 솟지 않는다 — 얻는 것 없이 방향감각만 잃는다(사용자 결정 2026-08-19).
+  // 회전(나침반 모드)은 그대로 둔다 — 그건 bearing 이라 피치와 별개다.
+  maxPitch: 0
 });
+// 제스처 자체도 끈다. maxPitch 만으로는 손가락이 먹히지 않을 뿐 계속 반응한다.
+map.touchPitch.disable();
 window.__map = map; // 디버그·헤드리스 테스트 훅 (모듈 스코프라 밖에서 접근 불가)
 // 초기 load 발생 여부 — isStyleLoaded() 는 타일 로딩 중 false 라 이 플래그로 판별
 let mapLoadFired = false;
@@ -160,7 +167,7 @@ map.setPadding({ top: 0, right: 0, bottom: SHEET_PAD, left: 0 });
 // (bottom 코너는 나중에 추가한 컨트롤이 위로 쌓임 → 나침반을 위, 현재위치를 아래로)
 const geolocate = new maplibregl.GeolocateControl({ trackUserLocation: true });
 map.addControl(geolocate, "bottom-right");
-map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: true }), "bottom-right");
+map.addControl(new maplibregl.NavigationControl({ showZoom: false, showCompass: true, visualizePitch: false }), "bottom-right");
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: "metric" }), "bottom-left");
 
 // 화이트/다크 토글 — MapLibre 컨트롤 버튼(나침반과 동일 프레임), 나침반 위에 배치
