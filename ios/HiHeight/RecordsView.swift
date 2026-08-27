@@ -150,7 +150,7 @@ struct RecordsView: View {
         .background(t.bg)
     }
 
-    // 목록 꼬리표 — 더 있으면 `...`, 다 봤으면 `-`.
+    // 목록 꼬리표 — 더 있으면 `...`, 다 봤으면 `- ©hihi`.
     //
     // ⚠️ **화면에 들어왔다고 더 불러오지 않는다.** 예전엔 마지막 카드의 onAppear 로 늘렸는데,
     //    첫 10개가 화면을 다 못 채우면 연쇄로 터져 한 번에 전부 로드됐다(사용자 지적 2026-08-27).
@@ -159,7 +159,7 @@ struct RecordsView: View {
     @ViewBuilder
     private func tail(_ total: Int, _ t: Theme) -> some View {
         let more = shownCount < total
-        Text(more ? "..." : "-")
+        Text(more ? "..." : "- ©hihi")
             .font(.system(size: 12, design: .monospaced))
             .foregroundStyle(t.muted)
             .frame(maxWidth: .infinity)
