@@ -348,18 +348,18 @@ function make(theme, baseMode) {
   // 비어 있고, ExploreView 가 받은 좌표를 MapView 가 채운다.
   style.sources["air-station"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
   style.layers.push(
+    // 지름 22 — 통풍 기호 세 줄이 읽히는 최소 크기다(18 에서는 얼룩으로 뭉개졌다).
     { id: "air-station", type: "circle", source: "air-station",
-      paint: { "circle-radius": 9, "circle-color": tc.casing,
+      paint: { "circle-radius": 11, "circle-color": tc.casing,
                "circle-stroke-color": tc.line, "circle-stroke-width": 1.8 } },
     { id: "air-station-mark", type: "symbol", source: "air-station",
-      // ⚠️ 기호는 **번들 글리프에 있는 문자만** 쓸 수 있다. ㎛(U+339B)는 MonaS12 에 없어
-      //    두부가 된다 — ㎍(U+338D)는 있고, ㎍/㎥ 라는 단위와도 맞는다.
-      layout: { "text-field": "㎍", "text-font": ["MonaS12 Bold"], "text-size": 9,
-                "text-allow-overlap": true, "text-ignore-placement": true },
-      paint: { "text-color": tc.line } },
+      // 그림은 런타임에 등록한다(AirIcon.image → style.setImage "air-station-mark").
+      // ⚠️ 등록을 빠뜨리면 아이콘만이 아니라 **레이어가 통째로** 안 그려진다(POI 아이콘과 같은 함정).
+      layout: { "icon-image": "air-station-mark",
+                "icon-allow-overlap": true, "icon-ignore-placement": true } },
     { id: "air-station-label", type: "symbol", source: "air-station",
       layout: { "text-field": ["get", "label"], "text-font": ["MonaS12 Regular"],
-                "text-size": 11, "text-offset": [0, 1.3], "text-anchor": "top" },
+                "text-size": 11, "text-offset": [0, 1.5], "text-anchor": "top" },
       paint: { "text-color": tc.line, "text-halo-color": tc.casing, "text-halo-width": 1.6 } },
   );
 

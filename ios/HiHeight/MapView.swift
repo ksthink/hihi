@@ -212,6 +212,7 @@ struct MapView: UIViewRepresentable {
         private var recTrackKey = ""        // 마지막 반영한 기록 트랙 식별 (중복 갱신·재fit 방지)
         private var recCursorKey = ""       // 마지막 반영한 고도 프로필 커서 지점 (중복 갱신 방지)
         private var airStationKey = ""      // 마지막 반영한 측정소 좌표 (중복 갱신 방지)
+        private var desiredAir: AirQuality?  // 스타일 재로드 뒤 다시 꽂기 위한 마지막 값
         private var overlapKey = ""         // 마지막 반영한 겹침 구간 식별 (중복 갱신 방지)
         // 스타일 재로드(테마·지도유형 전환) 직후 즉시 재주입할 원본 — 다음 updateUIView 를
         // 기다리면 트리거가 우연한 상태 변화뿐이라 루트가 수 초간 사라진다(2026-07-26 실기).
@@ -439,6 +440,13 @@ struct MapView: UIViewRepresentable {
         func registerHereIcon(on style: MLNStyle) {
             let ink = dark ? UIColor(white: 0.949, alpha: 1) : UIColor(white: 0.067, alpha: 1)
             style.setImage(HereIcon.image(ink: ink, casing: dark ? .black : .white), forName: "here")
+        }
+
+        // 측정소 핀 안의 통풍 기호 등록 — air-station-mark 레이어가 참조하는 이름.
+        // ⚠️ 빠뜨리면 아이콘만이 아니라 레이어가 통째로 안 그려진다(POI 아이콘과 같은 함정).
+        func registerAirIcon(on style: MLNStyle) {
+            let ink = dark ? UIColor(white: 0.949, alpha: 1) : UIColor(white: 0.067, alpha: 1)
+            style.setImage(AirIcon.image(ink: ink), forName: "air-station-mark")
         }
 
         // 코스 번호 배지 이미지 등록 — 웹 makeBadge 대응. 미선택=badge-N, 선택=badge-N-sel(반전).
@@ -802,6 +810,7 @@ struct MapView: UIViewRepresentable {
         // 대기질 측정소 핀 — 지금 값을 준 한 곳만(웹 app.js showAirStation 과 같다).
         // 이름을 함께 얹는다: 핀만 있으면 지도 위 정체불명의 점이 된다.
         func setAirStation(_ air: AirQuality?, on mv: MLNMapView) {
+            desiredAir = air                 // 키 비교보다 먼저 — 재로드 때 이 값으로 되살린다
             guard let style = mv.style,
                   let src = style.source(withIdentifier: "air-station") as? MLNShapeSource else { return }
             let key = air.flatMap { a -> String? in
@@ -867,9 +876,14 @@ struct MapView: UIViewRepresentable {
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             registerBadges(on: style)            // 코스 번호 배지 이미지(테마색) 등록
             registerPOIIcons(on: style)          // POI 아이콘(전철역·주차장·사찰 등) 등록
+            registerAirIcon(on: style)           // 측정소 핀 통풍 기호(테마색) 등록
             registerHereIcon(on: style)          // 등반 중 내 위치 픽토그램(테마색) 등록
             if let d = desired { applyOverlay(d, on: mapView) }
             setCourseEnds(desiredCourse, on: mapView)
+            // ⚠️ 측정소 핀도 키를 리셋해야 한다. 스타일이 재로드되면 소스가 비는데 키는 남아 있어
+            //    setAirStation 이 "이미 반영했다"며 건너뛰고, 테마를 바꾸면 핀이 사라졌다(2026-08-27).
+            airStationKey = ""
+            setAirStation(desiredAir, on: mapView)
             courseNosKey = ""                    // 스타일 재로드 시 배지 위치 재주입 강제
             setCourseNos(desiredCourses, on: mapView)
             applyTrailSelection(desiredCourse?.name, on: mapView)   // 선택 코스 강조 재적용(스타일 재로드)

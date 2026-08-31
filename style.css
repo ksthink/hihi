@@ -581,14 +581,21 @@ footer .warn { margin-top: 6px; }
 
 /* 대기질 측정소 핀 — 지금 값을 준 **한 곳만** 찍는다.
    시설 계열이라 원형 배지로 둔다(POIIcons 의 역·헬기장과 같은 규칙). */
+/* 측정소 핀 — 통풍 기호(바람 세 줄). 원본 woods.co.kr icon_category_air_purifier.svg 를
+   그대로 마스크로 쓴다. **앱 AirIcon.swift 와 같은 좌표**이니 한쪽을 고치면 다른 쪽도 볼 것.
+   지름 22 — 20 에서는 세 줄이 얼룩으로 뭉갰다. 색은 마스크 위에 var(--text) 로 칠하므로
+   다크/라이트 전환에 자바스크립트가 끼어들지 않는다(현재위치 인물과 같은 방식). */
 .air-stn-pin {
-  width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
+  width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
   background: var(--elevated); border: 1.6px solid var(--text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: var(--text); line-height: 1;
 }
-.air-stn-pin::after { content: "㎍"; }   /* 네이티브 핀과 같은 기호(gen-style.mjs air-station-mark) */
+.air-stn-pin::after {
+  content: ""; width: 14px; height: 11px; background: var(--text);
+  -webkit-mask: var(--air-icon) center / contain no-repeat;
+  mask: var(--air-icon) center / contain no-repeat;
+}
 
 /* 측정소 팝업의 예보 — 6일을 세로로 쌓으면 팝업이 지도를 덮는다. 가로로 넘겨 본다. */
 .air-fc-title { font-size: 12px; font-weight: 700; margin: 10px 0 6px; }

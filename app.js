@@ -87,6 +87,9 @@ document.documentElement.dataset.theme = theme;
 // 현재위치 인물 실루엣 — style.css 가 var(--here) 를 마스크로 쓰고 색은 var(--text) 로 칠한다.
 // 한 번만 넣으면 되는 이유: 마스크에 색이 없어 테마 전환에 자바스크립트가 끼어들 필요가 없다.
 document.documentElement.style.setProperty("--here", hereMaskUrl());
+document.documentElement.style.setProperty("--air-icon", 'url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20viewBox%3D%2740.31%20113.8%20232.79%20184.27%27%3E%3Cg%20fill%3D%27none%27%20stroke%3D%27black%27%20stroke-width%3D%2718%27%20stroke-linecap%3D%27round%27%20stroke-miterlimit%3D%2710%27%3E%3Cpath%20d%3D%27M69.13,166.1h66.19a22.84,22.84,0,1,0-21.86-29.48%27/%3E%3Cpath%20d%3D%27M143.15,258.17A30.89,30.89,0,1,0,174,227.29H69.13%27/%3E%3Cpath%20d%3D%27M49.31,196.8H227.1a37,37,0,1,0-37-37%27/%3E%3C/g%3E%3C/svg%3E")');
+// 측정소 핀 통풍 기호 — style.css 가 var(--air-icon) 을 마스크로 쓰고 색은 var(--text) 로 칠한다.
+// 원본 woods.co.kr icon_category_air_purifier.svg, 앱은 AirIcon.swift 가 같은 좌표로 그린다.
 
 function trailColors() {
   return theme === "dark"
