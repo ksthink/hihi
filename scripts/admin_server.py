@@ -95,7 +95,9 @@ def git_version():
             return ""
 
     v = {"commit": git("rev-parse", "--short", "HEAD"),
-         "date": git("log", "-1", "--format=%cd", "--date=format:%Y-%m-%d %H:%M"),
+         # format-local — 커밋에 기록된 오프셋이 아니라 **서버 시간대(KST)**로 환산해 보여준다.
+         # `format:` 을 쓰면 EC2(UTC 시절)에서 만든 커밋이 계속 9시간 이르게 표시된다.
+         "date": git("log", "-1", "--format=%cd", "--date=format-local:%Y-%m-%d %H:%M"),
          "subject": git("log", "-1", "--format=%s"),
          # admin_data/ 가 추적 대상이라 관리자 작업 후엔 dirty 가 뜬다 — pull 충돌 예고.
          "dirty": bool(git("status", "--porcelain"))}
