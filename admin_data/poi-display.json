@@ -10,8 +10,8 @@
   "버스정류장": {
    "zoom": 14,
    "icon": true,
-   "size": 8,
-   "bold": false
+   "size": 12,
+   "bold": true
   },
   "사찰": {
    "zoom": 13.5,
@@ -22,7 +22,7 @@
   "편의시설": {
    "zoom": 14,
    "icon": true,
-   "size": 8,
+   "size": 12,
    "bold": false
   },
   "학교": {
