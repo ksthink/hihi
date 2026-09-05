@@ -203,16 +203,22 @@
   </section>
 
   <!-- ── 등반 기록 · 진단 (지도 불필요 — 전체 폭) ── -->
-  <!-- climb_records + track.meta(배터리·GPS 요약). 서버가 service_role 로 조회한다(/api/records). -->
+  <!-- climb_records + track.meta(배터리·GPS 요약). 서버가 service_role 로 조회한다(/api/records).
+       ⚠️ 예전 부제는 "백그라운드 GPS 의 정확도 설정별 비교"였으나 실데이터와 맞지 않아 고쳤다
+       (2026-08-20): 유효 기록 대부분이 화면 켠 전경 상태였고, gps_mode 는 전 세션 Best 한 종류였다.
+       소모를 실제로 가르는 축은 화면 비중과 기기다 — BatteryMode.swift 주석의 "네비 모드 42~65%/h"와 같은 값. -->
   <section id="records-view" hidden>
     <div id="rv-head">
-      <h2>등반 기록 <span class="dim">백그라운드 GPS 의 시간당 배터리 소모 — 정확도 설정별 비교</span></h2>
+      <h2>등반 기록 <span class="dim">등반 중 실측 배터리 소모 — 화면(전경) 비중·배터리 모드별. GPS 는 전 세션 1Hz Best 고정이라 변수가 아니다</span></h2>
       <div class="row">
         <button id="rec-reload">새로고침</button>
         <button id="rec-dl">xlsx 내려받기</button>
         <span id="rec-state" class="dim"></span>
       </div>
     </div>
+    <!-- 필터·KPI·요약차트·목록 — 모두 admin.js 가 그린다(필터 선택지는 데이터에서 나온다) -->
+    <div id="rec-filters"></div>
+    <div id="rec-kpi"></div>
     <div id="rec-summary"></div>
     <div id="rec-list"></div>
   </section>

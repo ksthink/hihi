@@ -431,8 +431,55 @@ button.active { background: #111; color: #fff; }
   gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
 }
 #rv-head h2 { margin: 0; }
+/* 다른 전체 폭 탭(큐레이션·시트)과 같은 스크롤·여백 규칙 — 이게 없으면 표가 화면 밖으로 넘친다 */
+#records-view { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 16px 20px 40px; }
+
+/* 필터 바 — 선택지는 데이터에서 나온다(admin.js renderRecFilters) */
+#rec-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rec-f { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #666; }
+.rec-f select { font: inherit; font-size: 12px; padding: 3px 6px; }
+.rec-fclear { font: inherit; font-size: 12px; padding: 4px 10px; }
+
+/* KPI 한 줄 — 스크롤하지 않고도 "몇 건 중 몇 건, 평균 얼마"가 보이게 */
+.rec-kpi {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 28px;
+  border: 1px solid #e3e3e3; border-radius: 10px; background: #fafafa;
+  padding: 12px 18px; margin-bottom: 16px;
+}
+.rec-kpi > div { display: flex; flex-direction: column; gap: 2px; }
+.rec-kpi b { font-size: 20px; font-weight: 700; line-height: 1.1; }
+.rec-kpi .rec-unit { font-size: 12px; font-weight: 400; color: #666; }
+.rec-kpi small { font-size: 11px; color: #888; }
+.rec-kpi-skip { margin-left: auto; font-size: 11.5px; color: #888; text-align: right; }
+
 #rec-summary { margin-bottom: 16px; }
-#rec-summary .rec-tbl { width: auto; min-width: 320px; }
+#rec-summary .rec-tbl { width: auto; min-width: 280px; }
+/* 차트는 나란히 — 모드별·GPS별·전경비중별을 한 화면에서 대조해야 의미가 있다 */
+.rec-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px 28px; }
+.rec-card { min-width: 0; }
+.rec-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.6; }
+
+/* 측정 오차 표기 — 값과 함께 보이되 값을 가리지 않게 */
+.rec-err { font-size: 11px; color: #999; font-weight: 400; }
+/* 오차가 값보다 큰 수치 = "측정됐다"고 읽히면 안 되는 값 */
+.rec-shaky { color: #aaa; }
+.rec-shaky b { font-weight: 400; }
+.rec-devline {
+  margin: -6px 0 12px; font-size: 12px; color: #555;
+}
+.rec-devline b { font-weight: 700; }
+/* 비교군이 하나뿐이라 접어 둔 차트 */
+.rec-fold > summary {
+  cursor: pointer; font-size: 13px; color: #666; padding: 6px 0;
+  list-style-position: outside;
+}
+.rec-fold > summary b { color: #111; }
+.rec-fold[open] > summary { margin-bottom: 6px; }
+.rec-banner {
+  margin: -6px 0 16px; padding: 9px 14px; font-size: 12px; line-height: 1.7;
+  border: 1px solid #e6d5a8; background: #fdf8ec; border-radius: 8px; color: #6b5518;
+}
+
 .rec-tbl {
   width: 100%; border-collapse: collapse; font-size: 13px;
 }
@@ -445,7 +492,34 @@ button.active { background: #111; color: #fff; }
 .rec-tbl .warn { color: #c33; }
 .rec-h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
 .rec-chart { width: 100%; max-width: 540px; height: auto; display: block; margin-bottom: 10px; }
+.rec-charts .rec-chart { max-width: none; }
 .rec-skip { margin: 6px 0 0; font-size: 11px; }
+
+/* 목록 — 자체 스크롤 상자여야 헤더 고정(sticky)이 먹는다 */
+.rec-scroll {
+  overflow: auto; max-height: calc(100vh - 360px); min-height: 220px;
+  border: 1px solid #e3e3e3; border-radius: 10px;
+}
+.rec-scroll .rec-tbl th {
+  position: sticky; top: 0; z-index: 2;
+  background: #fafafa; opacity: 1; color: #666;
+  border-bottom: 1px solid #ddd;
+}
+.rec-sortable th { cursor: pointer; user-select: none; }
+.rec-sortable th:hover { color: #111; }
+.rec-sortable th.sorted { color: #111; font-weight: 700; }
+/* 앞 두 열(시작·코스) 고정 — 가로로 밀어도 어느 기록인지 잃지 않게.
+   왼쪽 오프셋이 1열 폭과 맞아야 하므로 폭을 값으로 못 박는다. */
+.rec-scroll .rec-tbl th:nth-child(1), .rec-scroll .rec-tbl td:nth-child(1) {
+  position: sticky; left: 0; width: 156px; min-width: 156px; background: #fff; z-index: 1;
+}
+.rec-scroll .rec-tbl th:nth-child(2), .rec-scroll .rec-tbl td:nth-child(2) {
+  position: sticky; left: 156px; background: #fff; z-index: 1;
+  box-shadow: 1px 0 0 #e3e3e3;
+}
+.rec-scroll .rec-tbl th:nth-child(1) { background: #fafafa; z-index: 3; }
+.rec-scroll .rec-tbl th:nth-child(2) { background: #fafafa; z-index: 3; }
+.rec-scroll .rec-tbl tbody tr:hover td:nth-child(-n+2) { background: #f1f1f1; }
 
 /* ── 시트 탭 — 산 메타·스팟 일괄 편집 ── */
 #sheet-view { flex: 1 1 auto; min-width: 0; overflow-y: auto; padding: 16px 20px 40px; }

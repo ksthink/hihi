@@ -1087,10 +1087,19 @@ function setMountainVisible(on) {
 // ── 등반 기록 · 진단 ──────────────────────────────────────────────────────
 // climb_records 는 RLS 가 "본인 것만"이라 브라우저에서 직접 못 읽는다 — 서버(/api/records)가
 // service_role 로 대신 조회한다. track.meta 는 iOS 앱이 기록한 배터리·GPS 요약(schema.sql 참조).
-const REC = { rows: [] };
+//
+// 화면 구성: 필터 → KPI 한 줄 → 요약 차트 3장 → 정렬 가능한 목록.
+// 요약은 "지금 필터에 걸린 기록"만으로 다시 계산된다 — 표와 그래프가 서로 다른 모집단을
+// 말하면 진단이 아니라 착시가 된다.
+const REC = {
+  rows: [],
+  sort: { key: "when", dir: -1 },                    // 기본: 최근 순
+  filter: { device: "", build: "", bat: "", fg: "" },
+};
 
 // 등반 배터리 모드(IOS.md §7-5) — meta.bat_mode 원값 → 표시 라벨.
 const BAT_MODE_LABEL = { normal: "일반", saver: "절전", max: "최대절전" };
+const BAT_MODE_ORDER = { normal: 0, saver: 1, max: 2 };
 
 const escHtml = (s) => String(s ?? "").replace(/[&<>"]/g,
   (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -1105,17 +1114,15 @@ function drainRate(r) {
   return (m.bat_start - m.bat_end) / h;
 }
 
-async function loadRecords() {
-  $("rec-state").textContent = "불러오는 중…";
-  try {
-    REC.rows = await api("/records?limit=300");
-    renderRecords();
-    $("rec-state").textContent = `${REC.rows.length}건`;
-  } catch (e) {
-    $("rec-state").textContent = "실패: " + e.message;
-    $("rec-summary").innerHTML = "";
-    $("rec-list").innerHTML = "";
-  }
+// iOS 가 주는 배터리 잔량의 눈금(%p). 실데이터 13건이 전부 5의 배수였다(2026-08-20 확인).
+const BAT_STEP = 5;
+
+// %/h 의 최대 측정 오차. 시작·끝 잔량이 각각 ±STEP/2 로 반올림되므로 소모량 오차는 최대 ±STEP,
+// 이를 시간으로 나누면 그대로 증폭된다 — 12분 세션이면 ±25 %/h 로, 값 자체보다 커진다.
+// ⚠️ 이 값을 숨기면 "63.7 %/h" 가 측정된 사실처럼 보인다. 짧은 세션에서는 사실이 아니다.
+function drainErr(r) {
+  const h = (r.duration_s || 0) / 3600;
+  return h > 0 ? BAT_STEP / h : null;
 }
 
 // %/h 집계에서 빠진 사유. 무엇이 빠졌는지 보이지 않으면 남은 데이터가 전부인 줄 착각한다.
@@ -1128,7 +1135,80 @@ function excludeReason(r) {
   return null;
 }
 
+// 전경(화면 켜짐) 비중 구간 — 소모율의 최대 교란 변수라 필터축이자 비교축으로 함께 쓴다.
+// 같은 구간 정의를 필터와 그래프가 공유해야 "필터로 좁힌 것"과 "그래프에서 본 것"이 일치한다.
+const FG_BUCKETS = [
+  { key: "lo",  label: "전경 20% 미만", short: "<20%",  test: (x) => x < 0.2 },
+  { key: "mid", label: "전경 20~50%",   short: "20~50%", test: (x) => x >= 0.2 && x < 0.5 },
+  { key: "hi",  label: "전경 50% 이상", short: "≥50%",  test: (x) => x >= 0.5 },
+];
+const fgBucket = (x) => (x == null ? null : FG_BUCKETS.find((b) => b.test(x)) || null);
+
 const avgOf = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+
+// 시간가중(pooled) 평균 — 총 소모%p ÷ 총 시간. 11분 세션과 27분 세션을 같은 무게로 평균하면
+// 짧은 세션의 잡음이 결과를 지배한다(2026-08-20: 단순평균 37.4 vs 시간가중 34.7).
+// 이 계산에는 "시간당 환산" 증폭이 끼어들 자리가 없다 — 실제 쓴 양을 실제 걸린 시간으로 나눌 뿐.
+const pooled = (pts) => {
+  const H = pts.reduce((s, p) => s + p.h, 0);
+  return H > 0 ? pts.reduce((s, p) => s + p.drop, 0) / H : null;
+};
+// 잔량이 BAT_STEP 단위로 반올림될 때 소모량 1건의 표준편차(균등분포 두 번의 차).
+const BAT_SD = Math.SQRT2 * BAT_STEP / Math.sqrt(12);
+// 시간가중 평균의 표본오차(1σ). 건수가 늘수록 줄어든다 — 개별 최대오차와는 다른 값이다.
+const pooledErr = (pts) => {
+  const H = pts.reduce((s, p) => s + p.h, 0);
+  return H > 0 ? (BAT_SD * Math.sqrt(pts.length)) / H : null;
+};
+
+// 기록 1건 → 화면이 쓰는 파생값. 필터·정렬·그래프가 전부 이 모양을 본다.
+function derive(r) {
+  const m = r.meta || null;
+  const hasPhase = m && m.fg_s !== undefined;
+  const tot = hasPhase ? (m.fg_s || 0) + (m.bg_s || 0) : 0;
+  const h = (r.duration_s || 0) / 3600;
+  return {
+    r, m,
+    h,
+    drop: m && !m.charged && m.bat_start >= 0 && m.bat_end >= 0 ? m.bat_start - m.bat_end : null,
+    rate: drainRate(r),
+    err: drainRate(r) == null ? null : drainErr(r),
+    // 오차가 값만큼 크면 "얼마나 먹었는지"를 말할 수 없다 — 평균에는 넣되 흐리게 표시한다.
+    shaky: drainRate(r) != null && drainErr(r) >= Math.abs(drainRate(r)),
+    skip: excludeReason(r),
+    fgRatio: tot > 0 ? (m.fg_s || 0) / tot : null,
+    device: (m && m.device) || "",
+    build: m && m.build ? String(m.build) : "",
+    batMode: m && m.bat_mode ? m.bat_mode : "",
+    batLabel: m && m.bat_mode ? BAT_MODE_LABEL[m.bat_mode] || m.bat_mode : "",
+    gpsMode: (m && m.gps_mode) || "",
+  };
+}
+
+function matchFilter(d) {
+  const f = REC.filter;
+  if (f.device && d.device !== f.device) return false;
+  if (f.build && d.build !== f.build) return false;
+  if (f.bat && d.batMode !== f.bat) return false;
+  if (f.fg) {
+    const b = fgBucket(d.fgRatio);
+    if (!b || b.key !== f.fg) return false;
+  }
+  return true;
+}
+
+async function loadRecords() {
+  $("rec-state").textContent = "불러오는 중…";
+  try {
+    REC.rows = await api("/records?limit=300");
+    renderRecFilters();
+    renderRecords();
+    $("rec-state").textContent = `${REC.rows.length}건`;
+  } catch (e) {
+    $("rec-state").textContent = "실패: " + e.message;
+    for (const id of ["rec-filters", "rec-kpi", "rec-summary", "rec-list"]) $(id).innerHTML = "";
+  }
+}
 
 // started_at 은 timestamptz 라 Supabase 가 UTC(+00:00)로 준다. 문자열을 그대로 자르면
 // KST 와 9시간 어긋난다 — 11:17 저장분이 02:17 로 보였다(2026-07-30 발견).
@@ -1144,16 +1224,49 @@ function fmtKst(iso) {
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 }
 
-// 그룹별 %/h 분포 — 개별 점 + 평균선(SVG 직접 생성, 라이브러리 의존 없음).
+// ── 필터 바 ──
+// 선택지는 전체 데이터에서 뽑는다(필터를 걸어도 선택지가 사라지지 않게).
+function renderRecFilters() {
+  const all = REC.rows.map(derive);
+  const uniq = (get) => [...new Set(all.map(get).filter(Boolean))].sort();
+  const sel = (id, label, opts, cur) =>
+    `<label class="rec-f"><span>${escHtml(label)}</span>
+       <select data-recf="${id}">
+         <option value="">전체</option>
+         ${opts.map((o) => `<option value="${escHtml(o.v)}"${o.v === cur ? " selected" : ""}>${escHtml(o.t)}</option>`).join("")}
+       </select></label>`;
+
+  $("rec-filters").innerHTML =
+    sel("device", "기기", uniq((d) => d.device).map((v) => ({ v, t: v })), REC.filter.device) +
+    sel("build", "빌드", uniq((d) => d.build).sort((a, b) => (+a || 0) - (+b || 0)).map((v) => ({ v, t: "b" + v })), REC.filter.build) +
+    sel("bat", "배터리 모드", uniq((d) => d.batMode)
+      .sort((a, b) => (BAT_MODE_ORDER[a] ?? 9) - (BAT_MODE_ORDER[b] ?? 9))
+      .map((v) => ({ v, t: BAT_MODE_LABEL[v] || v })), REC.filter.bat) +
+    sel("fg", "전경 비중", FG_BUCKETS.map((b) => ({ v: b.key, t: b.label })), REC.filter.fg) +
+    `<button id="rec-fclear" class="rec-fclear">필터 해제</button>`;
+
+  for (const s of $("rec-filters").querySelectorAll("select")) {
+    s.onchange = () => { REC.filter[s.dataset.recf] = s.value; renderRecords(); };
+  }
+  $("rec-fclear").onclick = () => {
+    REC.filter = { device: "", build: "", bat: "", fg: "" };
+    renderRecFilters();
+    renderRecords();
+  };
+}
+
+// 그룹별 %/h 분포 — 개별 점 + 오차 막대 + 평균선(SVG 직접 생성, 라이브러리 의존 없음).
 // ⚠️ 평균 막대를 쓰지 않는다: 표본이 2~3건일 때 막대는 없는 확신을 만든다.
 //    점을 그대로 찍어야 "3건이 12~26 으로 흩어져 있다"가 눈에 들어온다.
+// groups: [{ key, points: [{ v, err, shaky }] }]
 function dotPlot(groups, unit = "%/h") {
   const W = 540, H = 220, L = 48, R = 16, T = 16, B = 34;
-  const all = groups.flatMap((g) => g.values);
-  if (!all.length) return "";
-  const yMax = Math.max(10, Math.ceil(Math.max(...all) * 1.15));
+  const pts = groups.flatMap((g) => g.points);
+  if (!pts.length) return "";
+  // 축은 오차 막대 끝까지 담아야 한다 — 막대가 잘리면 오차가 작아 보인다.
+  const yMax = Math.max(10, Math.ceil(Math.max(...pts.map((p) => p.v + (p.err || 0))) * 1.1));
   const cx = (i) => L + ((i + 0.5) * (W - L - R)) / groups.length;
-  const cy = (v) => H - B - (v / yMax) * (H - T - B);
+  const cy = (v) => H - B - (Math.max(0, Math.min(v, yMax)) / yMax) * (H - T - B);
   const ticks = [0, yMax / 2, yMax];
 
   const axis = ticks.map((t) =>
@@ -1163,140 +1276,287 @@ function dotPlot(groups, unit = "%/h") {
 
   const body = groups.map((g, i) => {
     const x = cx(i);
-    const mean = avgOf(g.values);
-    const thin = g.values.length < 3;   // 표본 부족 — 평균선을 흐리게
+    const vals = g.points.map((p) => p.v);
+    const mean = pooled(g.points);   // 단순평균이 아니라 시간가중 — 표와 같은 값이어야 한다
+    const thin = vals.length < 3;   // 표본 부족 — 평균선을 흐리게
     // 지터는 인덱스 기반(결정적) — 새로고침마다 점이 튀지 않게. 한 줄에 최대 5개씩
     // 중심 대칭으로 벌린다(평균선 중앙과 점 무리의 중심이 어긋나지 않게).
-    const lane = Math.min(g.values.length - 1, 4) / 2;
-    const dots = g.values.map((v, j) =>
-      `<circle cx="${(x + ((j % 5) - lane) * 5).toFixed(1)}" cy="${cy(v).toFixed(1)}" r="3.4" fill="#111" fill-opacity="0.75"/>`
-    ).join("");
-    return `${dots}
+    const lane = Math.min(vals.length - 1, 4) / 2;
+    const marks = g.points.map((p, j) => {
+      const px = +(x + ((j % 5) - lane) * 7).toFixed(1);
+      const bar = p.err
+        ? `<line x1="${px}" y1="${cy(p.v - p.err).toFixed(1)}" x2="${px}" y2="${cy(p.v + p.err).toFixed(1)}"
+                 stroke="#111" stroke-opacity="0.28" stroke-width="1.5"/>`
+        : "";
+      // 오차가 값보다 큰 점은 속을 비운다 — 채운 점과 섞이면 "측정됐다"로 읽힌다.
+      const dot = p.shaky
+        ? `<circle cx="${px}" cy="${cy(p.v).toFixed(1)}" r="3.2" fill="#fff" stroke="#111" stroke-opacity="0.5"/>`
+        : `<circle cx="${px}" cy="${cy(p.v).toFixed(1)}" r="3.4" fill="#111" fill-opacity="0.75"/>`;
+      return bar + dot;
+    }).join("");
+    return `${marks}
       <line x1="${x - 26}" y1="${cy(mean)}" x2="${x + 26}" y2="${cy(mean)}"
             stroke="#111" stroke-width="2" stroke-opacity="${thin ? 0.3 : 1}"/>
       <text x="${x}" y="${cy(mean) - 8}" text-anchor="middle" font-size="11"
             font-weight="700" fill="#111" fill-opacity="${thin ? 0.45 : 1}">${mean.toFixed(1)}</text>
       <text x="${x}" y="${H - B + 15}" text-anchor="middle" font-size="11" fill="#111">${escHtml(g.key)}</text>
-      <text x="${x}" y="${H - B + 27}" text-anchor="middle" font-size="9" fill="#999">n=${g.values.length}${thin ? " 표본부족" : ""}</text>`;
+      <text x="${x}" y="${H - B + 27}" text-anchor="middle" font-size="9" fill="#999">n=${vals.length}${thin ? " 표본부족" : ""}</text>`;
   }).join("");
 
   return `<svg class="rec-chart" viewBox="0 0 ${W} ${H}" role="img">
-    <text x="4" y="12" font-size="10" fill="#999">${escHtml(unit)}</text>
+    <text x="4" y="12" font-size="10" fill="#999">${escHtml(unit)} · 가로선 = 시간가중 평균 · 세로 막대 = 측정 오차, 빈 점 = 오차가 값보다 큼</text>
     ${axis}${body}
   </svg>`;
 }
 
+// 분포표 — 평균만 보여주지 않는다(표본이 적을 때 평균은 위험하다).
+const pooledHours = (pts) => `${pts.reduce((s, p) => s + p.h, 0).toFixed(2)}h`;
+
+function groupTable(gs, head) {
+  return `<table class="rec-tbl"><thead><tr>
+      <th>${escHtml(head)}</th>
+      <th title="시간가중 평균 — 총 소모%p ÷ 총 시간. 짧은 세션이 결과를 지배하지 않는다">가중평균</th>
+      <th title="시간가중 평균의 표본오차(1σ) — 개별 기록의 최대오차와는 다른 값">± 표본오차</th>
+      <th>최소~최대</th><th>표본</th></tr></thead><tbody>${
+    gs.map((g) => {
+      const vals = g.points.map((p) => p.v);
+      const mn = Math.min(...vals), mx = Math.max(...vals);
+      const mean = pooled(g.points), err = pooledErr(g.points);
+      const shaky = g.points.filter((p) => p.shaky).length;
+      return `<tr><td>${escHtml(g.key)}</td><td><b>${mean.toFixed(1)} %/h</b></td>
+        <td class="${err >= Math.abs(mean) ? "warn" : "dim"}">±${err.toFixed(1)}</td>
+        <td class="dim">${mn.toFixed(1)} ~ ${mx.toFixed(1)}</td>
+        <td>${vals.length}건 <span class="dim">${pooledHours(g.points)}</span>${vals.length < 3 ? ' <span class="warn">표본부족</span>' : ""}${
+          shaky ? ` <span class="warn" title="오차가 값보다 큰 기록">오차초과 ${shaky}</span>` : ""}</td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+
+// 최소제곱 직선 — 전경 비중이 소모율을 얼마나 밀어 올리는지 거칠게 본다.
+// 교란 변수를 통제하지 않은 단순 회귀라 "추정"이라고만 말한다(결론으로 쓰지 말 것).
+function fgTrend(pairs) {
+  if (pairs.length < 6) return null;
+  const xs = pairs.map((p) => p.x), ys = pairs.map((p) => p.y);
+  const mx = avgOf(xs), my = avgOf(ys);
+  const sxx = xs.reduce((s, x) => s + (x - mx) ** 2, 0);
+  if (sxx < 1e-6) return null;
+  const sxy = pairs.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0);
+  const b = sxy / sxx;
+  return { at0: my - b * mx, at1: my + b * (1 - mx), n: pairs.length };
+}
+
+// 차트 한 장 = 제목 + 점 그래프 + 분포표. 셋을 묶어야 카드 단위로 나란히 놓인다.
+// 비교축인데 그룹이 하나뿐이면 비교가 성립하지 않는다 — 접어 두고 이유를 적는다.
+// 두 종류 이상 쌓이면 자동으로 펴진다(수동 플래그를 두지 않는 이유).
+const chartCard = (title, groups, head, note = "") => {
+  const body = `${dotPlot(groups)}${groupTable(groups, head)}${note}`;
+  if (groups.length >= 2) {
+    return `<section class="rec-card"><h3 class="rec-h3">${escHtml(title)}</h3>${body}</section>`;
+  }
+  const only = groups.length ? groups[0].key : "—";
+  return `<section class="rec-card"><details class="rec-fold">
+      <summary><b>${escHtml(title)}</b> — ${escHtml(String(only))} 한 종류뿐이라 비교 불가</summary>
+      ${body}
+    </details></section>`;
+};
+
+// ── 목록 열 정의 ──
+// 헤더·셀·정렬키를 한 곳에서 정의한다(열을 옮길 때 셋이 어긋나지 않게).
+const mins = (s) => Math.round((s || 0) / 60);
+const REC_COLS = [
+  { key: "when", label: "시작", val: (d) => d.r.started_at || "",
+    td: (d) => escHtml(fmtKst(d.r.started_at)) },
+  { key: "course", label: "코스", val: (d) => d.r.course_name || "",
+    td: (d) => `${escHtml(d.r.course_name || "—")}<span class="dim"> ${escHtml(d.r.mountain_id || "")}</span>` },
+  { key: "dist", label: "거리", val: (d) => d.r.distance_km,
+    td: (d) => (d.r.distance_km != null ? d.r.distance_km.toFixed(2) : "—") + "km" },
+  { key: "dur", label: "시간", val: (d) => d.r.duration_s,
+    td: (d) => d.r.duration_s
+      ? `${Math.floor(d.r.duration_s / 3600)}:${String(Math.floor(d.r.duration_s % 3600 / 60)).padStart(2, "0")}` : "—" },
+  // §7-5 — meta v4 부터. 모드별 %/h 비교의 축이라 요약 그래프도 이 값으로 묶는다.
+  { key: "batmode", label: "모드", title: "등반 배터리 모드 — 일반/절전/최대절전 (IOS.md §7-5)",
+    val: (d) => (d.batMode ? BAT_MODE_ORDER[d.batMode] ?? 9 : null),
+    td: (d) => escHtml(d.batLabel || "—") },
+  { key: "bat", label: "배터리", val: (d) => (d.m && d.m.bat_start >= 0 ? d.m.bat_start : null),
+    td: (d) => !d.m ? "—" : d.m.charged ? "충전 중" : d.m.bat_start < 0 ? "미측정"
+      : `${d.m.bat_start}→${d.m.bat_end}%` },
+  // 저전력: low_power(시작 시점)만으로는 "잔량이 떨어져 중간에 켜진" 경우를 놓쳐 lpm 을 쓴다.
+  { key: "lpm", label: "저전력", title: "세션 중 1회라도 저전력 모드",
+    val: (d) => (!d.m || d.m.lpm === undefined ? null : d.m.lpm ? 1 : 0),
+    td: (d) => !d.m || d.m.lpm === undefined ? "—" : d.m.lpm ? '<span class="warn">ON</span>' : "OFF" },
+  { key: "rate", label: "%/h", title: "시간당 배터리 소모 ± 최대 측정 오차 — 클릭하면 이 열로 정렬",
+    val: (d) => d.rate,
+    td: (d) => d.rate == null ? `<span class="dim" title="집계 제외">—</span>`
+      : `<span class="${d.shaky ? "rec-shaky" : ""}"${d.shaky
+            ? ' title="오차가 값보다 큽니다 — 세션이 짧아 배터리 5%p 눈금이 그대로 증폭됐습니다"' : ""
+          }><b>${d.rate.toFixed(1)}</b><span class="rec-err"> ±${d.err.toFixed(0)}</span></span>` },
+  // 전경/배경: 소모에서 화면 기여분과 순수 GPS 기여분을 가르는 열쇠.
+  { key: "fg", label: "전경/배경", title: "전경(화면 켜짐) / 배경 누적 — 정렬은 전경 비중 기준",
+    val: (d) => d.fgRatio,
+    td: (d) => !d.m || d.m.fg_s === undefined ? "—"
+      : `${mins(d.m.fg_s)} / ${mins(d.m.bg_s)}분<span class="dim"> ${d.fgRatio != null ? Math.round(d.fgRatio * 100) + "%" : ""}</span>` },
+  { key: "gps", label: "GPS 수준", val: (d) => d.gpsMode, td: (d) => escHtml(d.gpsMode || "—") },
+  { key: "fixes", label: "GPS 지점", title: "수신한 위치 fix 개수(괄호는 유실)",
+    val: (d) => (d.m ? d.m.fixes : null),
+    td: (d) => !d.m ? "—" : `${d.m.fixes}${d.m.fixes_dropped ? ` <span class="warn">(-${d.m.fixes_dropped})</span>` : ""}` },
+  { key: "acc", label: "평균정확도", val: (d) => (d.m && d.m.acc_avg >= 0 ? d.m.acc_avg : null),
+    td: (d) => d.m && d.m.acc_avg >= 0 ? `±${d.m.acc_avg}m` : "—" },
+  { key: "build", label: "빌드", cls: "dim", val: (d) => (d.build ? +d.build : null),
+    td: (d) => d.build ? "b" + escHtml(d.build) : "—" },
+  { key: "device", label: "기기", cls: "dim", val: (d) => d.device, td: (d) => escHtml(d.device || "—") },
+  { key: "os", label: "OS", cls: "dim", val: (d) => (d.m && d.m.os) || "", td: (d) => escHtml((d.m && d.m.os) || "—") },
+  { key: "points", label: "트랙", val: (d) => d.r.points, td: (d) => `${d.r.points}점` },
+  { key: "user", label: "사용자", cls: "dim", val: (d) => d.r.user_id || "",
+    td: (d) => escHtml((d.r.user_id || "").slice(0, 8)) },
+];
+
+// 값 없음은 방향과 무관하게 항상 뒤로 — "—" 가 위에 몰리면 정렬이 쓸모없어진다.
+function sortRows(rows) {
+  const col = REC_COLS.find((c) => c.key === REC.sort.key) || REC_COLS[0];
+  const dir = REC.sort.dir;
+  return rows.slice().sort((a, b) => {
+    const x = col.val(a), y = col.val(b);
+    const nx = x == null || x === "", ny = y == null || y === "";
+    if (nx || ny) return nx && ny ? 0 : nx ? 1 : -1;
+    if (typeof x === "number" && typeof y === "number") return (x - y) * dir;
+    return String(x).localeCompare(String(y), "ko") * dir;
+  });
+}
+
 function renderRecords() {
-  // 요약 — 소모율 분포를 두 축으로 본다.
-  //  ① GPS 정확도 모드별 (정확도를 낮추면 실제로 덜 먹는가)
-  //  ② 등반 배터리 모드별 (IOS.md §7-5 — 일반/절전/최대절전이 실제로 차이를 만드는가)
-  const byGps = new Map();
-  const byMode = new Map();
+  const all = REC.rows.map(derive);
+  const view = all.filter(matchFilter);
+  const filtered = view.length !== all.length;
+
+  // ── KPI — "몇 건 중 몇 건이 집계에 들어갔고 평균이 얼마인가"를 맨 위 한 줄로.
+  const rates = view.map((d) => d.rate).filter((v) => v != null);
   const skipped = new Map();
+  for (const d of view) if (d.rate == null) {
+    const why = d.skip || "기타";
+    skipped.set(why, (skipped.get(why) || 0) + 1);
+  }
+  const shakyN = view.filter((d) => d.shaky).length;
+  const kpi = (v, label) => `<div><b>${v}</b><small>${escHtml(label)}</small></div>`;
+
+  // 기기별로 나눈다 — 기기가 최대 교란 변수다(2026-08-20: 소모 70%p 전부가 iPhone13,1 한 대).
+  // 서로 다른 기기를 한 평균에 넣으면 그 값은 어느 기기의 것도 아니다.
+  const valid = view.filter((d) => d.rate != null);
+  const byDev = new Map();
+  for (const d of valid) {
+    const k = d.device || "기기 미상";
+    if (!byDev.has(k)) byDev.set(k, []);
+    byDev.get(k).push({ v: d.rate, err: d.err, shaky: d.shaky, h: d.h, drop: d.drop });
+  }
+  const devs = [...byDev.entries()].sort((a, b) => b[1].length - a[1].length);
+  const mixed = devs.length > 1;
+  const pts = valid.map((d) => ({ v: d.rate, err: d.err, shaky: d.shaky, h: d.h, drop: d.drop }));
+  const meanRate = pts.length ? pooled(pts) : null;
+  const meanErr = pts.length ? pooledErr(pts) : null;
+  // 표본오차가 값에 육박하면 평균 자체를 신뢰할 수 없다 — 숫자를 흐리게 내린다.
+  const weak = meanRate != null && meanErr >= Math.abs(meanRate);
+  $("rec-kpi").innerHTML =
+    `<div class="rec-kpi">
+       ${kpi(filtered ? `${view.length}<span class="dim"> / ${all.length}</span>` : all.length,
+            filtered ? "필터 적용 / 전체 기록" : "기록")}
+       ${kpi(rates.length, "집계 유효")}
+       ${kpi(meanRate == null ? "—"
+              : mixed ? `<span class="rec-shaky">기기 혼합</span>`
+              : `<span class="${weak ? "rec-shaky" : ""}">${meanRate.toFixed(1)}</span> <span class="rec-unit">%/h</span>`,
+            mixed ? `${devs.length}개 기기 — 아래 기기별로 볼 것` : "시간가중 평균 소모")}
+       ${kpi(meanErr != null ? `<span class="${weak ? "warn" : ""}">±${meanErr.toFixed(1)}</span>` : "—", "표본오차(1σ)")}
+       ${kpi(rates.length ? `${Math.min(...rates).toFixed(1)} ~ ${Math.max(...rates).toFixed(1)}` : "—", "최소~최대")}
+       <div class="rec-kpi-skip">${
+         skipped.size
+           ? `집계 제외 ${view.length - rates.length}건 — ` +
+             [...skipped.entries()].map(([k, n]) => `${escHtml(k)} ${n}`).join(" · ")
+           : "제외된 기록 없음"
+       }</div>
+     </div>${
+       devs.length
+         ? `<p class="rec-devline">기기별 시간가중 소모 — ${devs.map(([k, ps]) =>
+              `<b>${escHtml(k)}</b> ${pooled(ps).toFixed(1)} %/h <span class="dim">(${ps.length}건 · ${pooledHours(ps)})</span>`
+            ).join(" · ")}</p>`
+         : ""
+     }${
+       shakyN
+         ? `<p class="rec-banner">⚠ 집계 ${rates.length}건 중 <b>${shakyN}건은 오차가 값보다 큽니다</b> —
+              배터리 잔량이 ${BAT_STEP}%p 단위라 짧은 세션에서는 눈금 하나가 시간당 값으로 증폭됩니다.
+              소모율을 판단하려면 <b>1시간 이상</b>(오차 ±${BAT_STEP} 이하) 기록이 필요합니다.</p>`
+         : ""
+     }`;
+
+  // ── 요약 — 소모율 분포를 세 축으로 본다.
+  //  ① 등반 배터리 모드별 (IOS.md §7-5 — 일반/절전/최대절전이 실제로 차이를 만드는가)
+  //  ② GPS 정확도 모드별 (정확도를 낮추면 실제로 덜 먹는가)
+  //  ③ 전경 비중대별 (①②의 차이가 사실은 화면 켜 둔 시간 차이는 아닌가)
+  const byMode = new Map(), byGps = new Map(), byFg = new Map();
+  const fgPairs = [];
   const push = (map, key, v) => {
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(v);
   };
-  for (const r of REC.rows) {
-    const v = drainRate(r);
-    if (v == null) {
-      const why = excludeReason(r) || "기타";
-      skipped.set(why, (skipped.get(why) || 0) + 1);
-      continue;
-    }
-    push(byGps, r.meta.gps_mode || "?", v);
-    if (r.meta.bat_mode) push(byMode, BAT_MODE_LABEL[r.meta.bat_mode] || r.meta.bat_mode, v);
+  for (const d of view) {
+    if (d.rate == null) continue;
+    // h·drop 을 함께 넣어야 그래프·표의 평균이 시간가중으로 계산된다(빠뜨리면 pooled 가 null).
+    const pt = { v: d.rate, err: d.err, shaky: d.shaky, h: d.h, drop: d.drop };
+    push(byGps, d.gpsMode || "?", pt);
+    if (d.batLabel) push(byMode, d.batLabel, pt);
+    const b = fgBucket(d.fgRatio);
+    // 추정선에는 오차초과 점을 넣지 않는다 — 눈금 잡음에 기울기가 끌려간다.
+    if (b) { push(byFg, b.short, pt); if (!d.shaky) fgPairs.push({ x: d.fgRatio, y: d.rate }); }
   }
-  const toGroups = (map) => [...map.entries()].map(([key, values]) => ({ key, values }));
-  const groups = toGroups(byGps);
-  const modeGroups = toGroups(byMode);
-  const skipNote = skipped.size
-    ? `<p class="dim rec-skip">집계 제외 ${[...skipped.entries()].map(([k, n]) => `${k} ${n}건`).join(" · ")}</p>`
-    : "";
+  // 전경 구간은 데이터에 있는 순서가 아니라 정의된 순서(<20% → ≥50%)로 세운다.
+  const toGroups = (map, order) => {
+    const gs = [...map.entries()].map(([key, points]) => ({ key, points }));
+    return order ? gs.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key)) : gs;
+  };
+  const modeGroups = toGroups(byMode, ["일반", "절전", "최대절전"]);
+  const gpsGroups = toGroups(byGps);
+  const fgGroups = toGroups(byFg, FG_BUCKETS.map((b) => b.short));
 
-  // 분포표 — 평균만 보여주지 않는다(표본이 적을 때 평균은 위험하다).
-  const table = (gs, head) =>
-    `<table class="rec-tbl"><thead><tr><th>${head}</th><th>평균</th><th>최소~최대</th><th>표본</th></tr></thead><tbody>${
-      gs.map((g) => {
-        const mn = Math.min(...g.values), mx = Math.max(...g.values);
-        return `<tr><td>${escHtml(g.key)}</td><td><b>${avgOf(g.values).toFixed(1)} %/h</b></td>
-          <td class="dim">${mn.toFixed(1)} ~ ${mx.toFixed(1)}</td>
-          <td>${g.values.length}건${g.values.length < 3 ? ' <span class="warn">표본부족</span>' : ""}</td></tr>`;
-      }).join("")}</tbody></table>`;
+  const trend = fgTrend(fgPairs);
+  const trendNote = trend
+    ? `<p class="dim rec-note">거친 선형 추정(n=${trend.n}, 교란 변수 미통제):
+         화면을 전혀 켜지 않으면 <b>${trend.at0.toFixed(1)} %/h</b>,
+         계속 켜 두면 <b>${trend.at1.toFixed(1)} %/h</b>.</p>`
+    : `<p class="dim rec-note">전경/배경이 기록되고 <b>오차를 넘지 않는</b> 표본이 6건 이상 모이면
+         화면 기여분 추정을 함께 보여줍니다(현재 ${fgPairs.length}건).</p>`;
 
-  const modeBlock = modeGroups.length
-    ? `<h3 class="rec-h3">등반 배터리 모드별 시간당 소모</h3>${dotPlot(modeGroups)}${table(modeGroups, "배터리 모드")}`
-    : "";
+  const cards = [
+    modeGroups.length ? chartCard("등반 배터리 모드별 시간당 소모", modeGroups, "배터리 모드") : "",
+    gpsGroups.length ? chartCard("GPS 모드별 시간당 소모", gpsGroups, "GPS 모드") : "",
+    fgGroups.length ? chartCard("전경 비중대별 시간당 소모", fgGroups, "전경 비중", trendNote) : "",
+  ].join("");
 
-  $("rec-summary").innerHTML = groups.length
-    ? `${modeBlock}
-       <h3 class="rec-h3">GPS 모드별 시간당 배터리 소모</h3>
-       ${dotPlot(groups)}
-       ${table(groups, "GPS 모드")}${skipNote}`
-    : `<p class="dim">아직 측정 가능한 기록이 없습니다 — 실기기에서 10분 이상, 충전하지 않고 등반한 기록이 필요합니다.</p>${skipNote}`;
+  $("rec-summary").innerHTML = gpsGroups.length
+    ? `<div class="rec-charts">${cards}</div>`
+    : `<p class="dim">${filtered
+        ? "이 필터에 해당하는 측정 가능한 기록이 없습니다 — 필터를 풀어 보세요."
+        : "아직 측정 가능한 기록이 없습니다 — 실기기에서 10분 이상, 충전하지 않고 등반한 기록이 필요합니다."}</p>`;
 
-  // 목록
-  const rows = REC.rows.map((r) => {
-    const m = r.meta;
-    const rate = drainRate(r);
-    const when = fmtKst(r.started_at);   // UTC → KST (문자열 자르기 금지)
-    const dur = r.duration_s ? `${Math.floor(r.duration_s / 3600)}:${String(Math.floor(r.duration_s % 3600 / 60)).padStart(2, "0")}` : "—";
-    const bat = !m ? "—"
-      : m.charged ? "충전 중"
-      : m.bat_start < 0 ? "미측정"
-      : `${m.bat_start}→${m.bat_end}%`;
-    // GPS — 수준(정확도 설정 모드)과 지점 수(수신한 위치 fix 개수, 유실은 경고로)를 분리
-    const gpsMode = m ? escHtml(m.gps_mode) : "—";
-    const gpsFix = !m ? "—"
-      : `${m.fixes}${m.fixes_dropped ? ` <span class="warn">(-${m.fixes_dropped})</span>` : ""}`;
-    const acc = m && m.acc_avg >= 0 ? `±${m.acc_avg}m` : "—";
-    // 환경 — meta v2 부터. 빌드·기기·OS 를 각각의 열로 분리
-    const build = m && m.build ? `b${escHtml(m.build)}` : "—";
-    const device = m && m.device ? escHtml(m.device) : "—";
-    const osVer = m && m.os ? escHtml(m.os) : "—";
-    // §7-4 두 열 — meta v3 부터.
-    // 저전력: low_power(시작 시점)만으로는 "잔량이 떨어져 중간에 켜진" 경우를 놓쳐 lpm 을 쓴다.
-    // 전경/배경: 소모에서 화면 기여분과 순수 GPS 기여분을 가르는 열쇠.
-    const lpm = !m || m.lpm === undefined ? "—"
-      : m.lpm ? '<span class="warn">ON</span>' : "OFF";
-    const mins = (s) => Math.round((s || 0) / 60);
-    const phase = !m || m.fg_s === undefined ? "—"
-      : `${mins(m.fg_s)} / ${mins(m.bg_s)}분`;
-    // §7-5 — meta v4 부터. 모드별 %/h 비교의 축이라 요약 그래프도 이 값으로 묶는다.
-    const batMode = !m || !m.bat_mode ? "—" : BAT_MODE_LABEL[m.bat_mode] || escHtml(m.bat_mode);
-    return `<tr>
-      <td>${escHtml(when)}</td>
-      <td>${escHtml(r.course_name || "—")}<span class="dim"> ${escHtml(r.mountain_id || "")}</span></td>
-      <td>${r.distance_km != null ? r.distance_km.toFixed(2) : "—"}km</td>
-      <td>${dur}</td>
-      <td>${batMode}</td>
-      <td>${bat}</td>
-      <td>${lpm}</td>
-      <td>${rate != null ? `<b>${rate.toFixed(1)}</b>` : "—"}</td>
-      <td class="dim">${phase}</td>
-      <td>${gpsMode}</td>
-      <td>${gpsFix}</td>
-      <td>${acc}</td>
-      <td class="dim">${build}</td>
-      <td class="dim">${device}</td>
-      <td class="dim">${osVer}</td>
-      <td>${r.points}점</td>
-      <td class="dim">${escHtml((r.user_id || "").slice(0, 8))}</td>
-    </tr>`;
+  // ── 목록 — 헤더 클릭 정렬 + 헤더·앞 두 열 고정.
+  const head = REC_COLS.map((c) => {
+    const on = REC.sort.key === c.key;
+    const arrow = on ? (REC.sort.dir > 0 ? " ▲" : " ▼") : "";
+    return `<th data-sk="${c.key}" class="${on ? "sorted" : ""}"${c.title ? ` title="${escHtml(c.title)}"` : ""}>${escHtml(c.label)}${arrow}</th>`;
   }).join("");
-  $("rec-list").innerHTML = REC.rows.length
-    ? `<table class="rec-tbl"><thead><tr>
-         <th>시작</th><th>코스</th><th>거리</th><th>시간</th>
-         <th title="등반 배터리 모드 — 일반/절전/최대절전 (IOS.md §7-5)">모드</th>
-         <th>배터리</th>
-         <th title="세션 중 1회라도 저전력 모드">저전력</th>
-         <th>%/h</th><th title="전경(화면 켜짐) / 배경 누적">전경/배경</th>
-         <th>GPS 수준</th><th>GPS 지점</th><th>평균정확도</th>
-         <th>빌드</th><th>기기</th><th>OS</th><th>트랙</th><th>사용자</th>
-       </tr></thead><tbody>${rows}</tbody></table>`
-    : `<p class="dim">기록이 없습니다.</p>`;
-}
+  const body = sortRows(view).map((d) =>
+    `<tr>${REC_COLS.map((c) => `<td${c.cls ? ` class="${c.cls}"` : ""}>${c.td(d)}</td>`).join("")}</tr>`
+  ).join("");
 
+  $("rec-list").innerHTML = view.length
+    ? `<div class="rec-scroll"><table class="rec-tbl rec-sortable">
+         <thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
+    : `<p class="dim">${filtered ? "이 필터에 해당하는 기록이 없습니다." : "기록이 없습니다."}</p>`;
+
+  for (const th of $("rec-list").querySelectorAll("th[data-sk]")) {
+    th.onclick = () => {
+      const k = th.dataset.sk;
+      // 같은 열을 다시 누르면 방향만 뒤집는다. 새 열은 큰 값부터(진단은 "많이 먹은 것"부터 본다).
+      REC.sort = REC.sort.key === k ? { key: k, dir: -REC.sort.dir } : { key: k, dir: -1 };
+      renderRecords();
+    };
+  }
+}
 $("rec-reload").onclick = loadRecords;
 $("rec-dl").onclick = () => {
   const tok = adminToken ? `?token=${encodeURIComponent(adminToken)}` : "";
