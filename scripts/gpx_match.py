@@ -320,6 +320,8 @@ def _max_offset(path, ref):
 
 
 # ── 매칭 본체 ──
+# ⚠️ 미사용(2026-09-05~) — 업로드는 `match_gpx_upload` 이 원본 그대로 처리한다.
+#    구간망 스냅 알고리즘과 그동안 쌓인 임계값 주석(계양산 사례 등)을 잃지 않으려고 남겨 둔다.
 def match(code, raw, tau=25.0, detour=1.6, fname=""):
     """→ dict(lines, segments, report, gpx_name)"""
     gpx_pts, gpx_name = parse_track(raw, fname)
@@ -445,16 +447,27 @@ def match(code, raw, tau=25.0, detour=1.6, fname=""):
 
 
 def match_raw(raw, fname=""):
-    """구간망이 없는 산(수동 등록) — GPX 원본을 스냅 없이 그대로 코스로.
+    """업로드 트랙 → 코스. 좌표를 **한 점도 바꾸지 않는다**.
+
     trk 우선 파싱(성긴 rte 요약선 겹침 방지) + trkseg 경계로만 파트 분리 →
-    MultiLineString 반환(끊긴 세그먼트만 분리, 한 세그 안의 성긴 점은 이어 그림).
-    각 파트는 리샘플·스무딩만 적용. match 와 동일 스키마."""
+    끊긴 세그먼트만 분리하고, 한 세그 안의 성긴 점은 그대로 이어 그린다.
+
+    ⚠️ 예전에 여기 있던 리샘플(5m)·스무딩(win=5)·반올림(round 6 ≈ 11cm 격자)을 뺐다 —
+       리샘플은 원본 점을 버리고 새 점을 만들고, 스무딩은 각 점을 이웃 평균으로 밀어낸다
+       (굽은 곳에서 실측 2m 안팎). 셋 다 "파일에 있는 좌표 그대로"가 아니다.
+       연속 중복점만 제거한다 — 같은 점이 이어지면 선이 아니라 오류다."""
     segs, gpx_name = parse_track_segments(raw, fname)
     lines = []
     for seg in segs:
-        coords = _dedupe([tuple(p) for p in smooth(resample(seg))])
+        # 완전히 같은 좌표가 연달아 있을 때만 뒤엣것을 버린다(길이 0 선분 방지).
+        # ⚠️ `_dedupe`(0.5m 임계)를 쓰지 않는다 — 정지 중 기록된 0.5m 이내 점도
+        #    파일에 있는 점이다. 임계 제거는 "원본 그대로"가 아니다(2026-09-05).
+        coords = []
+        for q in ((float(x), float(y)) for x, y in seg):
+            if not coords or coords[-1] != q:
+                coords.append(q)
         if len(coords) >= 2:
-            lines.append([[round(x, 6), round(y, 6)] for x, y in coords])
+            lines.append([[x, y] for x, y in coords])
     if not lines:
         raise ValueError("트랙 좌표가 2개 미만")
     total_km = sum(_polyline_km([tuple(p) for p in ln]) for ln in lines)
@@ -467,7 +480,8 @@ def match_raw(raw, fname=""):
         "gpx_name": gpx_name,
         "report": {"matched_ratio": 0.0, "distance_km": round(total_km, 2),
                    "max_dev_m": 0.0, "fallbacks": [], "raw_passthrough": True,
-                   "parts": len(lines)},
+                   "verbatim": True, "parts": len(lines),
+                   "points": sum(len(ln) for ln in lines)},
         "preview_raw": fc(None),
         "preview_matched": fc("gpx"),
     }
@@ -546,10 +560,17 @@ def compute_stats(lines, dem, gpx_track=None):
 
 
 # ── admin_server 진입점 ──
-def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
-    # 산림청 구간망(mountain/<code>/)이 있는 산만 스냅, 없으면(수동 등록) 원본 그대로.
-    has_net = os.path.isdir(os.path.join(pl.ROOT, "mountain", code))
-    m = match(code, raw, tau, detour, upload_name) if has_net else match_raw(raw, upload_name)
+def match_gpx_upload(code, draft, raw, upload_name=""):
+    """업로드한 좌표를 **그대로** 코스로 만든다. 스냅·리샘플·스무딩·반올림 없음.
+
+    2026-09-05: 구간망 매칭을 업로드 경로에서 뺐다. 산림청 구간망이 실제 등산로와
+    어긋나는 산에서 매칭이 트랙을 엉뚱하게 옮겨 놓았기 때문 —
+    가리왕산제1코스에서 들머리 534m 지점에 **461m 직선 점프 + 173° 급반전**이 생겼다
+    (graph 런과 gpx 런을 번갈아 잇는 스티칭 결함). 정상~1.15km 는 원본과 0.4m 이내로
+    일치했으므로 매칭 자체가 늘 나쁜 것은 아니지만, 옵션으로 두면 어느 코스가 어느
+    경로로 들어왔는지 알 수 없어진다 — 업로드는 한 가지 동작만 한다.
+    ⚠️ 예전 매칭기(`match`)는 아래에 남아 있으나 **업로드에서 호출하지 않는다**."""
+    m = match_raw(raw, upload_name)
     dem = _dem_for([draft["mountain"]["bbox"], _course_bbox(m["lines"])])
     # GPX 에 고도가 있으면 그걸 우선(네이버·카카오 export·실측 녹화), 없으면 DEM.
     gtrack, esrc = None, "dem"
@@ -576,7 +597,9 @@ def match_gpx_upload(code, draft, raw, tau, detour, upload_name=""):
         "desc": None, "kind": "운영자 큐레이션",
         "status": "draft",
         "source": {"type": "gpx", "gpx_file": f"gpx/{fname}",
-                   "matched_ratio": m["report"]["matched_ratio"]},
+                   "matched_ratio": m["report"]["matched_ratio"],
+                   # 원본 그대로 저장한 코스 — 목록 배지가 "매칭 0%" 로 오독되지 않게 구분한다
+                   **({"verbatim": True} if m["report"].get("verbatim") else {})},
         "segments": m["segments"],
         "lines": m["lines"],
         "computed": computed,

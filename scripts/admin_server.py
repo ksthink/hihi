@@ -1230,11 +1230,10 @@ class AdminHandler(BaseHandler):
                 d = draft_store.load(code)
                 if not d:
                     raise FileNotFoundError(f"{code} 초안 없음")
-                tau = float((q.get("tau") or [25])[0])
-                detour = float((q.get("detour") or [1.6])[0])
+                # 업로드 좌표는 언제나 그대로 저장한다 — 스냅 옵션(tau·detour)은 없앴다.
                 upload_name = (q.get("name") or [""])[0]  # 원본 파일명 — 포맷 판별·보존용
                 raw = self._body()
-                return self._json(gpx_match.match_gpx_upload(code, d, raw, tau, detour, upload_name))
+                return self._json(gpx_match.match_gpx_upload(code, d, raw, upload_name))
             if len(rest) == 3 and rest[0] == "courses" and rest[2] == "recompute" \
                     and method == "POST":
                 import gpx_match

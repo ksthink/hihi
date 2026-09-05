@@ -531,7 +531,10 @@ function renderCourses() {
     li.className = (c.id === S.selCourse ? "sel " : "") + (c.status === "ready" ? "" : "off");
     li.dataset.id = c.id;
     // 출처 배지는 GPX 일치율만 (품질 신호) — 기존/수작업/자동 표기는 정보 가치가 없어 생략
-    const src = c.source?.type === "gpx" ? `매칭 ${Math.round((c.source.matched_ratio ?? 0) * 100)}%` : null;
+    // 새 업로드는 전부 원본 좌표. 배지는 예전 구간망 매칭본을 가려내는 용도로만 남긴다.
+    const src = c.source?.type !== "gpx" ? null
+      : c.source.verbatim ? "원본 좌표"
+      : `<span class="warn">구간망 매칭본 ${Math.round((c.source.matched_ratio ?? 0) * 100)}%</span>`;
     const k = c.computed || {};
     li.innerHTML = `
       <div class="c-head">
@@ -645,6 +648,11 @@ function selectCourse(id, fit) {
 
 // ── GPX 업로드/매칭 ──
 // 1개 = 기존 미리보기 흐름 / 여러 개·폴더 = 일괄 등록 (비공개로 추가, 파일별 결과 리포트)
+// 업로드 엔드포인트 URL — 낱개 미리보기와 폴더 일괄 등록이 같은 URL 을 쓰게 한다.
+// 서버는 언제나 파일의 좌표를 그대로 저장한다(스냅·리샘플·스무딩 없음) — 옵션은 없다.
+const gpxUploadUrl = (fname) =>
+  `/mountains/${S.code}/gpx?name=${encodeURIComponent(fname || "")}`;
+
 async function handleTrackFiles(fileList) {
   const EXTS = [".gpx", ".geojson", ".json", ".zip", ".shp"];
   const files = [...fileList]
@@ -669,13 +677,13 @@ async function handleTrackFiles(fileList) {
     const f = files[i];
     rep.textContent = `일괄 등록 중… ${i + 1}/${files.length} — ${f.name}`;
     try {
-      const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(f.name)}`, {
+      const r = await api(gpxUploadUrl(f.name), {
         method: "POST", headers: { "Content-Type": "application/octet-stream" },
         body: await f.arrayBuffer(),
       });
       S.draft.courses.push(r.course);
       ok++;
-      const q = r.report.raw_passthrough ? "원본 그대로" : `매칭 ${Math.round((r.report.matched_ratio ?? 0) * 100)}%`;
+      const q = `원본 ${r.report.points}점`;
       results.push(`✓ ${f.name} → ${r.course.name} · ${q} · ${r.report.distance_km}km`);
     } catch (err) {
       results.push(`<span class="warn">✗ ${f.name} — ${err.message}</span>`);
@@ -712,7 +720,7 @@ async function runMatch() {
   $("gpx-report").hidden = false;
   $("gpx-report").textContent = "매칭 중…";
   try {
-    const r = await api(`/mountains/${S.code}/gpx?name=${encodeURIComponent(S.gpx.name || "")}`, {
+    const r = await api(gpxUploadUrl(S.gpx.name), {
       method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: S.gpx.data,
     });
     S.gpx.candidate = r.course;
@@ -722,19 +730,12 @@ async function runMatch() {
     // 고도 출처 — 실측 녹화(GPS)·GPX 자체값(네이버 등 export)·지형(DEM) 샘플링.
     const esLabel = { gps: "고도 실측GPS", gpx: "고도 GPX값", dem: "고도 지형DEM" }[rep.elev_src] || "고도 지형DEM";
     const es = ` · <span class="dim">${esLabel}</span>`;
-    if (rep.raw_passthrough) {
-      // 산림청 구간망 없는 산(수동 등록) — GPX 원본을 그대로 코스로 사용
-      const parts = (rep.parts ?? 1) > 1
-        ? `<div class="dim">끊긴 ${rep.parts}개 구간을 분리(직선 연결 없음)</div>` : "";
-      $("gpx-report").innerHTML =
-        `<div>GPX 원본 그대로 사용 <span class="dim">(구간망 없는 산 — 스냅 없음)</span></div>${rep.distance_km}km · ↑${rep.ascent}m${es}${parts}`;
-    } else {
-      const fb = rep.fallbacks.length
-        ? `<div class="warn">구간망 밖 ${rep.fallbacks.length}곳 (GPX 원 좌표 유지): ${rep.fallbacks.map((f) => f.km + "km").join(", ")}</div>`
-        : "<div>전 구간 구간망 매칭 ✓</div>";
-      $("gpx-report").innerHTML =
-        `매칭률 <b>${Math.round(rep.matched_ratio * 100)}%</b> · ${rep.distance_km}km · ↑${rep.ascent}m${es} · 최대이탈 ${Math.round(rep.max_dev_m)}m ${fb}`;
-    }
+    // 업로드는 언제나 원본 그대로 — 매칭률·이탈 같은 표시가 더는 존재하지 않는다.
+    const parts = (rep.parts ?? 1) > 1
+      ? `<div class="dim">끊긴 ${rep.parts}개 구간을 분리(직선 연결 없음)</div>` : "";
+    $("gpx-report").innerHTML =
+      `<div><b>원본 좌표 그대로</b> <span class="dim">— ${rep.points}점 전부 파일 값 (스냅·리샘플·스무딩 없음)</span></div>` +
+      `${rep.distance_km}km · ↑${rep.ascent}m${es}${parts}`;
     $("gpx-actions").hidden = false;
     // 모든 파트(LineString·MultiLineString)를 감싸도록 화면 맞춤
     const all = [];
