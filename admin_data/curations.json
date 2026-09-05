@@ -1,39 +1,4 @@
 {
  "version": 1,
- "curations": [
-  {
-   "id": "cu-1djv017i",
-   "title": "러닝러닝 테스트",
-   "items": [
-    {
-     "type": "course",
-     "code": "900000003",
-     "name": "아인쌤 러닝코스",
-     "mountain": "아인쌤",
-     "sub": "길냥이와 핫둘핫둘",
-     "title": "아인쌤의 러닝코스",
-     "desc": "고양~야호.",
-     "logo": "© 하이하잇",
-     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/900000003.jpg"
-    },
-    {
-     "type": "course",
-     "code": "900000002",
-     "name": "대림도-신도림",
-     "mountain": "테스트",
-     "sub": "북악산",
-     "desc": "광화문 거리가 한눈에",
-     "logo": "© 하이하잇",
-     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/111100101.webp"
-    },
-    {
-     "type": "free",
-     "code": "free-116bfe66",
-     "url": "https://keep.google.com/u/0/#home",
-     "logo": "© 하이하잇",
-     "img": "https://pub-cfc2302f77a446c1a0fdff6d0ae4e451.r2.dev/images/mountains/free-116bfe66.gif"
-    }
-   ]
-  }
- ]
+ "curations": []
 }
