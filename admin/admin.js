@@ -159,7 +159,8 @@ map.on("styledata", () => {
 
 function ensureEditorLayers() {
   if (map.getSource("spots")) return;
-  for (const id of ["contours", "network", "courses", "spots", "gpx-raw", "gpx-matched"])
+  for (const id of ["contours", "network", "courses", "course-ends", "spots",
+                    "gpx-raw", "gpx-matched"])
     map.addSource(id, { type: "geojson", data: EMPTY });
 
   // 등고선 (앱과 동일 스키마: idx 0=50m 보조 / 1=100m 주곡선) — 편집 레이어 아래 배경
@@ -192,6 +193,7 @@ function ensureEditorLayers() {
   map.addLayer({ id: "courses-hit", type: "line", source: "courses",
     paint: { "line-color": "#000", "line-opacity": 0.001, "line-width": 14 } });
 
+
   // GPX 미리보기: 원본(점선) / 매칭 결과(그래프=실선, gpx-fallback=대시)
   map.addLayer({ id: "gpx-raw-line", type: "line", source: "gpx-raw",
     paint: { "line-color": "#888", "line-width": 1.6, "line-dasharray": [1.5, 2] } });
@@ -202,6 +204,27 @@ function ensureEditorLayers() {
   map.addLayer({ id: "gpx-match-gpx", type: "line", source: "gpx-matched",
     filter: ["==", ["get", "src"], "gpx"],
     paint: { "line-color": "#111", "line-width": 4, "line-dasharray": [1.2, 1.2] } });
+
+  // 출발·도착 — 선택한 코스, 또는 업로드 미리보기 중인 코스에.
+  // 앱(app.js `course-ends`)과 같은 모양이라 관리자에서 본 대로 앱에 나온다.
+  // ⚠️ 코스는 MultiLineString 이고 파트 순서가 곧 진행 방향이다 — 첫 파트의 첫 점이 출발,
+  //    마지막 파트의 끝 점이 도착. 방향은 업로드한 GPX 의 점 순서를 그대로 따르므로
+  //    (예: 정상에서 내려오며 기록한 트랙은 정상이 "출발"이 된다) 바로잡으려면
+  //    코스 목록의 시점↔종점 뒤집기를 쓴다 — lines 를 뒤집고 통계를 재계산한다.
+  map.addLayer({ id: "course-ends-dots", type: "circle", source: "course-ends",
+    paint: {
+      "circle-radius": 5,
+      "circle-color": ["case", ["==", ["get", "kind"], "start"], "#111111", "#ffffff"],
+      "circle-stroke-color": ["case", ["==", ["get", "kind"], "start"], "#ffffff", "#111111"],
+      "circle-stroke-width": 2,
+    } });
+  map.addLayer({ id: "course-ends-labels", type: "symbol", source: "course-ends",
+    layout: {
+      "text-field": ["get", "label"], "text-font": ["MonaS12 Bold"],
+      "text-size": 9.5, "text-offset": [0, 1.1], "text-anchor": "top",
+      "text-allow-overlap": true,
+    },
+    paint: { "text-color": "#111", "text-halo-color": "#fff", "text-halo-width": 1.6 } });
 
   // 정상(▲)·장소(점+라벨) — 자동 시드(100대 API) + 수동 큐레이션 (스팟 섹션에서 편집)
   map.addLayer({ id: "spot-peak", type: "symbol", source: "spots",
@@ -512,6 +535,27 @@ function renumberCourses() {
   return changed;
 }
 
+// 시종점 2점 — 앱 `endsFC` 와 라벨 문구를 맞춘다(관리자에서 본 대로 앱에 나오게).
+function endsFC(lines) {
+  const parts = (lines || []).filter((ln) => ln && ln.length);
+  if (!parts.length) return EMPTY;
+  const first = parts[0], last = parts[parts.length - 1];
+  return { type: "FeatureCollection", features: [
+    { type: "Feature", geometry: { type: "Point", coordinates: first[0] },
+      properties: { kind: "start", label: "출발" } },
+    { type: "Feature", geometry: { type: "Point", coordinates: last[last.length - 1] },
+      properties: { kind: "end", label: "도착" } },
+  ] };
+}
+
+// 업로드 미리보기 중이면 그 코스의 시종점을, 아니면 목록에서 선택한 코스의 시종점을 보여준다.
+// (미리보기가 우선 — 지금 지도에 굵게 그려진 선이 그것이다.)
+function courseEndsFC() {
+  if (S.gpx?.candidate) return endsFC(S.gpx.candidate.lines);
+  const c = (S.draft?.courses || []).find((x) => x.id === S.selCourse);
+  return c ? endsFC(c.lines) : EMPTY;
+}
+
 function courseFC() {
   return { type: "FeatureCollection", features: (S.draft?.courses || []).map((c) => ({
     type: "Feature",
@@ -522,6 +566,7 @@ function courseFC() {
 
 function renderCourses() {
   if (map.getSource("courses")) map.getSource("courses").setData(courseFC());
+  if (map.getSource("course-ends")) map.getSource("course-ends").setData(courseEndsFC());
   const cs = S.draft.courses;
   $("course-count").textContent = `(${cs.filter((c) => c.status === "ready").length}/${cs.length} 공개)`;
   const ul = $("course-list");
@@ -629,6 +674,7 @@ function commitCourseOrder() {
 // 선택 표시만 갱신 (목록 DOM 은 재생성하지 않음 — 이름 입력 포커스가 죽지 않도록)
 function updateCourseSelection() {
   if (map.getSource("courses")) map.getSource("courses").setData(courseFC());
+  if (map.getSource("course-ends")) map.getSource("course-ends").setData(courseEndsFC());
   document.querySelectorAll("#course-list li").forEach((li) =>
     li.classList.toggle("sel", li.dataset.id === S.selCourse));
 }
@@ -726,6 +772,7 @@ async function runMatch() {
     S.gpx.candidate = r.course;
     map.getSource("gpx-raw").setData(r.preview.raw);
     map.getSource("gpx-matched").setData(r.preview.matched);
+    map.getSource("course-ends").setData(courseEndsFC());   // 미리보기 코스의 출발·도착
     const rep = r.report;
     // 고도 출처 — 실측 녹화(GPS)·GPX 자체값(네이버 등 export)·지형(DEM) 샘플링.
     const esLabel = { gps: "고도 실측GPS", gpx: "고도 GPX값", dem: "고도 지형DEM" }[rep.elev_src] || "고도 지형DEM";
@@ -754,6 +801,8 @@ async function runMatch() {
 
 function clearGpxPreview() {
   for (const s of ["gpx-raw", "gpx-matched"]) map.getSource(s)?.setData(EMPTY);
+  // 미리보기를 걷으면 시종점도 선택 코스 기준으로 되돌린다(미리보기 것이 남지 않게).
+  map.getSource("course-ends")?.setData(courseEndsFC());
   $("gpx-report").hidden = true;
   $("gpx-actions").hidden = true;
   $("gpx-file").value = "";
@@ -1003,7 +1052,8 @@ $("prod-del").onclick = async () => {
   $("cur-mnt").textContent = "산을 선택하세요";
   $("cur-mnt").classList.remove("on");
   showSub("list");
-  for (const s of ["contours", "network", "courses", "spots"]) map.getSource(s)?.setData(EMPTY);
+  for (const s of ["contours", "network", "courses", "course-ends", "spots"])
+    map.getSource(s)?.setData(EMPTY);
   refreshList();
   alert(`"${nm}" 삭제 완료 — 카탈로그 ${r.catalog_deleted ? "1행" : "없음"}, R2 파일 ${r.r2_deleted ?? 0}개, 초안 ${r.draft_removed ? "제거" : "없음"}`
     + (r.unpublish_error ? `\n⚠ 배포본 삭제 오류: ${r.unpublish_error}` : "")
