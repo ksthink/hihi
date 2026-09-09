@@ -41,6 +41,7 @@ struct ExploreView: View {
     @StateObject private var packs = PackStore.shared    // 오프라인 팩 다운로드/설치 상태
     @StateObject private var net = NetworkMonitor.shared  // 온라인/오프라인 — 하이브리드 base 전환
     @State private var deletePackTarget: Mountain?        // 저장된 지도 삭제 확인 대상
+    @State private var dlConfirm: Mountain?               // 지도 다운 확인 창 대상 — 웹은 있는데 앱만 없었다
     @State private var dlLoginHint = false                // 지도 다운 — 비로그인 시 로그인 안내
     @State private var showEndConfirm = false             // 등반 종료 오터치 방지 확인 팝업
     @State private var showNav = false                    // 내비(지도 없는 방향·거리 화면)
@@ -331,6 +332,27 @@ struct ExploreView: View {
             if let a = air { AirStationSheet(air: a) }
         }
         // 100m 이하 짧은 등반 — 저장 여부 확인(저장=기존대로, 취소=저장 않고 종료).
+        // 지도 다운 확인 — 등반 탭의 권유 창과 **같은 창**을 쓴다(무시 버튼만 없다).
+        .overlay {
+            if let m = dlConfirm {
+                PackPromptView(
+                    mountainName: m.name,
+                    sizeText: m.packSizeText,
+                    message: "오프라인에서도 지도를 볼 수 있게\n기기에 저장합니다.",
+                    downloading: packs.downloadingCode == m.id,
+                    progress: packs.progress,
+                    status: packs.status,
+                    onSave: {
+                        Task {
+                            if await packs.download(m.id, version: m.pack_version) {
+                                await auth.saveDownloadedPack(m.id)
+                            }
+                            dlConfirm = nil          // 성공이든 실패든 닫는다 — 실패는 버튼 상태로 남는다
+                        }
+                    },
+                    onCancel: { dlConfirm = nil })
+            }
+        }
         .overlay {
             if showShortConfirm {
                 ShortClimbConfirmView(
@@ -1005,7 +1027,7 @@ struct ExploreView: View {
             Button {
                 if auth.email == nil { dlLoginHint = true; return }   // 로그인 필수
                 dlLoginHint = false
-                Task { if await packs.download(m.id, version: m.pack_version) { await auth.saveDownloadedPack(m.id) } }
+                dlConfirm = m       // 바로 받지 않는다 — 셀룰러에서 예고 없이 수 MB 를 쓰게 하지 않는다
             } label: {
                 Text("지도 다운").font(.kakao(size: 13, weight: .medium)).foregroundStyle(t.onAccent)
                     .padding(.horizontal, 12).padding(.vertical, 6)
