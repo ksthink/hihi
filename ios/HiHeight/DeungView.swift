@@ -61,7 +61,9 @@ struct DeungView: View {
             if showPackPrompt, let m = catalog.selected {
                 PackPromptView(
                     mountainName: m.name,
+                    courseName: climb.course?.name,
                     sizeText: m.packSizeText,
+                    extraNote: "등반 중 배터리 절약에도 도움이 됩니다.",
                     downloading: packs.downloadingCode == m.id,
                     progress: packs.progress,
                     status: packs.status,

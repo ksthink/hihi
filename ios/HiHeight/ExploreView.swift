@@ -337,8 +337,8 @@ struct ExploreView: View {
             if let m = dlConfirm {
                 PackPromptView(
                     mountainName: m.name,
+                    courseName: climb.course?.name,
                     sizeText: m.packSizeText,
-                    message: "오프라인에서도 지도를 볼 수 있게\n기기에 저장합니다.",
                     downloading: packs.downloadingCode == m.id,
                     progress: packs.progress,
                     status: packs.status,

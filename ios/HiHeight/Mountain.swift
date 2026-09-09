@@ -16,11 +16,11 @@ struct Mountain: Identifiable, Decodable, Equatable {
     let pack_version: Int?   // 팩 버전(배포마다 +1) — 저장된 지도 업데이트 여부 판단
     let pack_size_kb: Int?   // 팩 용량 — 다운로드 확인 창에 미리 알린다(웹 app.js 와 같은 출처)
 
-    /// "약 2.9MB" — 웹 app.js 와 **같은 표기**(KB→MB, 소수 첫째 자리). 값이 없으면 nil 이라
-    /// 호출부가 문구 자체를 빼도록 한다. 0 도 없는 것으로 본다(발행 전 산은 0 으로 들어온다).
+    /// "2.9MB" — 웹 app.js 와 같은 계산(KB→MB, 소수 첫째 자리). 값이 없으면 nil 이라
+    /// 호출부가 용량 줄 자체를 빼도록 한다. 0 도 없는 것으로 본다(발행 전 산은 0 으로 들어온다).
     var packSizeText: String? {
         guard let kb = pack_size_kb, kb > 0 else { return nil }
-        return String(format: "약 %.1fMB", Double(kb) / 1024)
+        return String(format: "%.1fMB", Double(kb) / 1024)
     }
 
     var coordinate: CLLocationCoordinate2D {
