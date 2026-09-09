@@ -8,6 +8,7 @@ import SwiftUI
 // 창이 사라지면 아무 일도 일어나지 않는 것처럼 보인다.
 struct PackPromptView: View {
     let mountainName: String
+    var sizeText: String? = nil          // "약 2.9MB" — 없으면 용량 줄을 통째로 뺀다
     var downloading: Bool = false
     var progress: Double = 0
     var status: String = ""
@@ -31,6 +32,15 @@ struct PackPromptView: View {
                     .font(.kakao(size: 13)).foregroundStyle(t.muted)
                     .multilineTextAlignment(.center).lineSpacing(2)
                     .padding(.top, 8).padding(.horizontal, 20)
+
+                // 용량은 **누르기 전에** 알려야 한다 — 셀룰러에서 수 MB 를 예고 없이 받게 하지 않는다.
+                // 웹 app.js 와 같은 문구. 카탈로그에 값이 없으면 이 줄 자체가 없다.
+                if let size = sizeText {
+                    Text("지도 용량이 클 수 있어요 (\(size)).\nWi-Fi 상태에서 진행해 주세요.")
+                        .font(.kakao(size: 12)).foregroundStyle(t.muted)
+                        .multilineTextAlignment(.center).lineSpacing(2)
+                        .padding(.top, 6).padding(.horizontal, 20)
+                }
 
                 if !mountainName.isEmpty {
                     Text(mountainName)

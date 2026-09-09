@@ -23,7 +23,7 @@ final class CatalogStore: ObservableObject {
     func load() async {
         guard var comps = URLComponents(string: "\(Config.supabaseURL)/rest/v1/mountains") else { return }
         comps.queryItems = [
-            .init(name: "select", value: "id,name,center,zoom,bbox,elev,region,famous,lists,sort_order,published,pack_version"),
+            .init(name: "select", value: "id,name,center,zoom,bbox,elev,region,famous,lists,sort_order,published,pack_version,pack_size_kb"),
             .init(name: "published", value: "eq.true"),
             .init(name: "order", value: "sort_order,name"),
         ]

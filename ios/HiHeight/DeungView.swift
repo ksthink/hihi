@@ -61,6 +61,7 @@ struct DeungView: View {
             if showPackPrompt, let m = catalog.selected {
                 PackPromptView(
                     mountainName: m.name,
+                    sizeText: m.packSizeText,
                     downloading: packs.downloadingCode == m.id,
                     progress: packs.progress,
                     status: packs.status,
