@@ -1,24 +1,35 @@
 # 하이하잇 (HiHeight) — 프로젝트 지침
 
-MapLibre GL JS + PMTiles 기반 **대한민국 등산 웹앱**. 흑백(라이트/다크)·오프라인 지향.
-로컬 정적 서버 + PMTiles CORS 프록시(`scripts/serve.py`, 포트 8890)로 구동.
+**대한민국 등산 앱.** 흑백(라이트/다크)·오프라인 지향.
+iOS 네이티브(SwiftUI + MapLibre Native)가 **본체**이고, 웹(MapLibre GL JS + PMTiles)은
+관리자·발행 도구이자 UI 스펙 레퍼런스다.
+
+- **iOS 앱**: `ios/HiHeight/` — 45개 파일 7,664줄, 실기기 빌드 329 운용(2026-09-09 기준).
+- **웹 앱**: `app.js`·`index.html`·`style.css` — 사용자 기능은 앱이 앞섰고, 웹은 교차 검증용.
+- **관리자·발행**: `admin/` + `scripts/*.py`. EC2 에서 `hiheight-admin.service`(포트 8890,
+  `scripts/admin_server.py`)가 앱·관리자·발행 API 를 함께 서빙한다. `scripts/serve.py` 는 구 정적 서버.
 
 ## 개발 로드맵 (중요)
-- **웹에서 ~80%까지** 현재 형태로 설계·개발한다.
-- **이후는 맥북 로컬에서 iOS 네이티브로 완성**한다 (권장: MapLibre Native iOS + SwiftUI).
-- iOS 이식 계획서(단일 기준): **`IOS.md`** (v2, 2026-07-13 — 구 `~/.claude/plans/moonlit-rolling-tulip.md` 대체).
+- **이식은 끝났다.** "웹 80% → 이후 iOS" 단계는 2026-09-09 기준 이미 지났다.
+  앱이 계획서에 없던 기능(대기질·내비 방위 고리·일출일몰 등)까지 갖고 있다.
+- **앱 현황·잔여 작업의 단일 기준: `IOS.md` §0.** (§1~§13 은 2026-07-13 계획서로 보존 — 이력)
+- **역할 분담**: 맥북 = iOS 개발(유일. EC2 엔 Xcode 툴체인 없음).
+  EC2 = 관리자 콘솔·발행 파이프라인·데이터(실데이터와 R2·Supabase 가 여기 있어야 검증된다).
+- ⚠️ EC2 에서 관리자·데이터를 고치면 **앱 쪽 대응이 생긴다.** 발견 즉시 `IOS.md` §0 의
+  "맥북 백로그"에 적어 둔다 — 그건 맥북에서만 갚을 수 있다.
 
-## 필수 규칙 — iOS 네이티브 이식을 항상 염두에 둘 것
-웹 개발 요청을 처리할 때 **항상 iOS 네이티브 앱 이식을 전제로** 판단한다.
-네이티브 이식에 걸림돌이 될 수 있는 선택을 도입하거나 발견하면 **진행 전 반드시 질문하거나 고지**한다.
+## 필수 규칙 — 웹·앱 계약을 항상 함께 볼 것
+웹과 앱이 **같은 데이터 계약**(팩 규격 `packs/<산코드>/` 4파일, routes/spots properties,
+config JSON 3종, 트랙 포맷, Supabase 스키마)을 공유한다. 한쪽만 바꾸면 반드시 어긋난다.
 
-특히 아래를 경계한다 (발견 시 대안 제시 + 고지):
-- **CDN 하드 의존**: `maplibre-gl`·`pmtiles` ESM, `protomaps.github.io` 글리프 폰트 → 네이티브에선 로컬 번들 필요.
-- **CORS 프록시 의존**(`serve.py`) → 네이티브는 로컬 PMTiles range 접근이라 불필요. 프록시 전제 설계 피하기.
-- **브라우저 전용 API**: `localStorage`(→UserDefaults), `location.hash`(지도 상태), `Blob`/`URL.createObjectURL` 다운로드, `matchMedia`, DOM 드래그 시트.
-- **웹 전용 UI 패턴**: HTML/CSS 레이아웃 가정(SwiftUI 로 재작성됨). 시뮬레이터 목업 크롬은 폐기 대상.
-- **스텁 기능**: 등반 GPS 트래킹·기록 영속화는 네이티브에서 새로 구현(CoreLocation/백그라운드 위치/SwiftData).
-- **데이터/라이선스**: OSM(ODbL 표시+share-alike), Protomaps, 산림청, SRTM 저작자표시. 한국 정밀지도 국외반출 규제 유의.
+- **계약을 바꾸면 웹·iOS 양쪽 반영을 전제로만 진행**하고, `IOS.md` 를 먼저 갱신한다.
+- **관리자에서 만든 데이터가 곧 앱 화면이다.** 좌표·표시설정·큐레이션 변경은 앱에 그대로 나간다
+  (예: 2026-09-05 GPX 원본 좌표 전환 → 앱이 그리는 선이 바뀜).
+- **로직이 두 벌인 곳을 조심한다** — 대기질은 `scripts/admin_server.py`·`api/air.js`·`air.js`
+  세 곳에 같은 권역 로직이 있다. 한쪽만 고치면 조용히 어긋난다.
+- **데이터/라이선스**: OSM(ODbL 표시+share-alike), Protomaps, 산림청, 국립공원공단,
+  Copernicus DEM, 기상청 저작자표시. 한국 정밀지도 국외반출 규제 유의.
+  ⚠️ **산림청·국립공원공단·기상청 표기가 아직 웹·앱 어디에도 없다**(`IOS.md` §0 남은 일 1번).
 
 ## 작업일지 규칙
 사용자가 **"작업일지 작성"** 이라고 요청하면 `WORKLOG.md` 에 기록한다:
