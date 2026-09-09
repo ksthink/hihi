@@ -19,6 +19,7 @@ draft.json 스키마:
   publish: { pack_version, published_at, pack_size_kb }
 """
 import json
+import math
 import os
 import tempfile
 import uuid
@@ -165,6 +166,69 @@ def new_manual_draft(code, name, center, elev=None, region=None, margin=0.03):
         "spots": spots,
         "publish": None,
     }
+
+
+# bbox 자동 맞춤 — 발행이 이 상자만 보고 DEM·등고선·기저타일을 뽑는다(publish_pack).
+# 수동 등록 산은 중심 ±0.03°(≈5×7km) 로 시작하므로 국립공원급 산을 올리면 지도가 잘린다.
+# 코스는 등록 뒤에 올라오니 "등록 시점에 크기를 묻는" 방식으로는 맞출 수 없다.
+BBOX_PAD_KM = 1.0      # 코스 바깥 여유 — 들머리 주변이 지도 끝에 붙지 않게
+BBOX_GRID = 0.01       # 스냅 격자(≈1km). ⚠️ 이게 없으면 코스를 하나 더 올릴 때마다
+                       #    bbox 가 미세하게 흔들려 기저 타일을 매번 다시 뽑는다
+                       #    (publish_pack 은 tiles_bbox 가 같을 때만 재사용한다).
+BBOX_MIN_SPAN = 0.06   # 최소 한 변 — 코스가 짧아도 지도가 손바닥만 해지지 않게.
+                       # ⚠️ **넓힐 때만** 적용한다. 소급하면 산림청 원본 bbox 가 이보다
+                       #    작은 산(덕숭산 0.05°)까지 건드려 기저 타일을 다시 뽑게 된다.
+
+
+def content_points(draft):
+    """코스 좌표 + 살아 있는 스팟 좌표 — bbox 가 반드시 담아야 하는 점들."""
+    pts = [p for c in draft.get("courses", []) for ln in c.get("lines", []) for p in ln]
+    pts += [s["coord"] for s in draft.get("spots", [])
+            if s.get("coord") and not s.get("deleted")]
+    return pts
+
+
+def fit_bbox(draft):
+    """코스·스팟을 담도록 bbox 를 **넓히기만** 한다. 좁히지 않는 이유는 두 가지 —
+    운영자가 일부러 넓혀 둔 지도를 되돌리면 안 되고, 좁히면 이미 발행한 팩보다
+    범위가 줄어 기저 타일을 다시 뽑아야 한다. 변화가 없으면 기존 리스트를 그대로 돌려준다.
+
+    반환: (bbox, changed)"""
+    cur = list(draft["mountain"]["bbox"])
+    pts = content_points(draft)
+    if not pts:
+        return cur, False
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    # ⚠️ 판정에는 여유를 쓰지 않는다. 여유까지 넣어 비교하면 콘텐츠가 이미 잘 들어가 있는
+    #    산도 가장자리에 가깝다는 이유로 한 칸씩 넓어지고, 그때마다 기저 타일을 다시 뽑는다
+    #    (실측: 북한산·가리왕산·덕숭산 셋 다 그렇게 됐다). 여유는 "넓힐 때 얼마나"에만 쓴다.
+    if (cur[0] <= min(xs) and cur[1] <= min(ys)
+            and max(xs) <= cur[2] and max(ys) <= cur[3]):
+        return cur, False        # 이미 담고 있다 — 최소 한 변도 여기서는 따지지 않는다
+
+    lat = draft["mountain"]["center"][1]
+    dlat = BBOX_PAD_KM / 111.0
+    dlon = BBOX_PAD_KM / max(1e-6, 111.0 * math.cos(math.radians(lat)))
+    want = [min(xs) - dlon, min(ys) - dlat, max(xs) + dlon, max(ys) + dlat]
+    # 넓히기만 — 기존 상자와 합집합
+    box = [min(cur[0], want[0]), min(cur[1], want[1]),
+           max(cur[2], want[2]), max(cur[3], want[3])]
+
+    # 바깥으로 격자 스냅. ⚠️ 나눗셈 결과를 그대로 floor 하면 안 된다 —
+    #    37.3/0.01 이 3729.999… 라 37.29 로 한 칸 새어 나간다. 먼저 반올림해 정수를 만든다.
+    g = BBOX_GRID
+    lo = lambda v: math.floor(round(v / g, 6)) * g
+    hi = lambda v: math.ceil(round(v / g, 6)) * g
+    box = [lo(box[0]), lo(box[1]), hi(box[2]), hi(box[3])]
+    # 최소 한 변 보장 — 중심을 유지한 채 벌린다
+    for i, j in ((0, 2), (1, 3)):
+        if box[j] - box[i] < BBOX_MIN_SPAN - 1e-9:
+            mid = (box[i] + box[j]) / 2
+            box[i] = lo(mid - BBOX_MIN_SPAN / 2)
+            box[j] = hi(mid + BBOX_MIN_SPAN / 2)
+    box = [round(v, 3) for v in box]
+    return box, box != cur
 
 
 def seed_auto_courses(draft, dem, max_courses=12, log=print):

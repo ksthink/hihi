@@ -270,11 +270,20 @@ function markDirty() {
 async function saveDraft() {
   if (!S.dirty || !S.code) return;
   try {
-    await api(`/mountains/${S.code}/draft`, {
+    const r = await api(`/mountains/${S.code}/draft`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(S.draft),
     });
     S.dirty = false;
+    // 서버가 코스·스팟을 담도록 지도 범위를 넓혔으면 로컬 초안에도 반영하고 알린다 —
+    // 안 그러면 다음 저장이 옛 bbox 를 되돌려 보내 매번 다시 넓히게 된다.
+    if (r?.bbox_changed && r.bbox) {
+      S.draft.mountain.bbox = r.bbox;
+      const km = (b) => `${((b[2] - b[0]) * 90).toFixed(1)}×${((b[3] - b[1]) * 111).toFixed(1)}km`;
+      $("save-state").textContent = `저장됨 ✓ · 지도 범위를 코스에 맞춰 넓혔습니다 (${km(r.bbox)})`;
+      $("save-state").className = "";
+      return;
+    }
     $("save-state").textContent = "저장됨 ✓";
     $("save-state").className = "";
   } catch (e) {

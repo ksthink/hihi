@@ -1205,8 +1205,14 @@ class AdminHandler(BaseHandler):
                     d = json.loads(self._body())
                     if d.get("mountain", {}).get("code") != code:
                         raise ValueError("mountain.code 불일치")
+                    # 코스·스팟이 지도 범위를 벗어나면 bbox 를 넓힌다(좁히지는 않는다).
+                    # 발행이 bbox 만 보고 DEM·등고선·기저타일을 뽑으므로, 이게 없으면
+                    # 큰 산은 배경이 잘린 채로 나간다. 넓어졌을 때만 알려 준다.
+                    box, changed = draft_store.fit_bbox(d)
+                    if changed:
+                        d["mountain"]["bbox"] = box
                     draft_store.save(code, d)
-                    return self._json({"ok": True})
+                    return self._json({"ok": True, "bbox": box, "bbox_changed": changed})
             if rest == ["network"] and method == "GET":
                 segs, _ = pl.load_forest_segments(code)
                 return self._json(pl.network_geojson(segs))
