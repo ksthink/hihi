@@ -6,6 +6,7 @@ import SwiftUI
 struct SplashView: View {
     let onFinished: () -> Void
     @Environment(\.colorScheme) private var scheme
+    @State private var hikerIn = false
     @State private var tagIn = false
     @State private var brandIn = false
     @State private var copyIn = false
@@ -17,6 +18,9 @@ struct SplashView: View {
             t.bg.ignoresSafeArea()
 
             VStack(spacing: 20) {
+                HikerWalk(cell: 5, tint: t.text)               // 걷는 등산가 (HikerSprite)
+                    .opacity(hikerIn ? 1 : 0)
+                    .padding(.bottom, 4)
                 Text("끊임없이 걷다, 오롯이 몰입하다")          // .sp-tag
                     .font(.kakao(size: 15, weight: .light)).foregroundStyle(t.muted)
                     .tracking(0.6)
@@ -49,6 +53,7 @@ struct SplashView: View {
         }
         .opacity(fadeOut ? 0 : 1)
         .task {
+            withAnimation(.easeOut(duration: 0.8)) { hikerIn = true }
             withAnimation(.easeOut(duration: 1).delay(0.25)) { tagIn = true }
             withAnimation(.easeOut(duration: 1).delay(1.15)) { brandIn = true }
             withAnimation(.easeOut(duration: 1).delay(1.6)) { copyIn = true }
