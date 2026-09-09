@@ -460,19 +460,26 @@ function ensureOverlays() {
 
   const ov = parkOverlays[currentPark] || {};
 
+  // 오버레이 **선**은 베이스맵 라벨 아래에 끼운다 (2026-09-09).
+  // beforeId 없이 addLayer 하면 맨 위로 올라가 등고선·코스 선이 지명 글자를 가로지른다.
+  // 오버레이 **심볼**(등고 라벨·코스 배지·스팟)은 계속 맨 위 = beforeId 없이 추가.
+  // ⚠️ ios/gen-style.mjs 의 belowLabels 와 짝이다. 한쪽만 고치면 웹·앱이 어긋난다.
+  const firstLabelId = (map.getStyle().layers.find((l) => l.type === "symbol") || {}).id;
+  const addBelowLabels = (spec) => map.addLayer(spec, firstLabelId);
+
   if (!map.getSource("contours")) {
     const cc = theme === "dark"
       ? { line: "#3a3a3a", label: "#8a8a8a", halo: "#000000" }
       : { line: "#c4bfb5", label: "#8a857c", halo: "#ffffff" };
     map.addSource("contours", { type: "geojson", data: ov.contours || EMPTY_FC });
     // 50m 보조 등고선 (확대 시)
-    map.addLayer({
+    addBelowLabels({
       id: "contour-line", type: "line", source: "contours", minzoom: 12.5,
       filter: ["==", ["get", "idx"], 0],
       paint: { "line-color": cc.line, "line-width": 0.5, "line-opacity": 0.5 }
     });
     // 100m 주 등고선
-    map.addLayer({
+    addBelowLabels({
       id: "contour-index", type: "line", source: "contours", minzoom: 10.5,
       filter: ["==", ["get", "idx"], 1],
       paint: { "line-color": cc.line, "line-width": 1.1, "line-opacity": 0.7 }
@@ -492,7 +499,7 @@ function ensureOverlays() {
   if (!map.getSource("trails")) {
     map.addSource("trails", { type: "geojson", data: trailCache[currentPark] || EMPTY_FC });
 
-    map.addLayer({
+    addBelowLabels({
       id: "trail-casing", type: "line", source: "trails",
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
@@ -500,20 +507,20 @@ function ensureOverlays() {
         "line-width": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 10]
       }
     });
-    map.addLayer({
+    addBelowLabels({
       id: "trail-line", type: "line", source: "trails",
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": c.line, "line-width": widthExpr }
     });
     // 선택된 코스 강조 레이어 (검정, 나머지 회색 위에 얹음)
-    map.addLayer({
+    addBelowLabels({
       id: "trail-hl", type: "line", source: "trails",
       layout: { "line-cap": "round", "line-join": "round" },
       filter: ["==", ["get", "name"], "__none__"],
       paint: { "line-color": c.line, "line-width": widthExpr }
     });
     // 클릭 히트 확장 — 실제 선(2~7px)은 모바일 탭이 못 맞춤. 넓은 투명 선이 탭을 받는다.
-    map.addLayer({
+    addBelowLabels({
       id: "trail-hit", type: "line", source: "trails",
       paint: { "line-color": "#000", "line-opacity": 0.001,
         "line-width": ["interpolate", ["linear"], ["zoom"], 11, 16, 16, 28] }

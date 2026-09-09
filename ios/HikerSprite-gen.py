@@ -138,14 +138,14 @@ def frame(t):
 def frames(n=8):
     return [frame(i/n) for i in range(n)]
 
-def png(fs, Z=10, pad=10, path='gen.png'):
+def png(fs, Z=10, pad=10, path='gen-preview.png'):
     ims=[Image.fromarray(np.where(np.array([[c=='#' for c in r] for r in f]),0,255)
          .astype('uint8')).resize((W*Z,H*Z), Image.NEAREST) for f in fs]
     sh=Image.new('L',((W*Z+pad)*len(ims)+pad, H*Z+2*pad),235)
     for i,g in enumerate(ims): sh.paste(g,(pad+i*(W*Z+pad),pad))
     sh.save(path)
 
-def gif(fs, Z=6, path='gen.gif', ms=110):
+def gif(fs, Z=6, path='gen-preview.gif', ms=110):
     ims=[Image.fromarray(np.where(np.array([[c=='#' for c in r] for r in f]),0,255)
          .astype('uint8')).resize((W*Z,H*Z), Image.NEAREST).convert('P') for f in fs]
     ims[0].save(path, save_all=True, append_images=ims[1:], duration=ms, loop=0)
@@ -211,10 +211,10 @@ struct HikerWalk: View {
 
 if __name__=='__main__':
     import sys, os
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))   # 미리보기를 스크립트 옆에 쓴다
     fs=frames(8)
     png(fs); gif(fs)
     if '--swift' in sys.argv:
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
         open(SWIFT_PATH,'w').write(swift(fs))
         print('찍어냄', SWIFT_PATH)
     print('ok', len(fs), f'{W}x{H}')

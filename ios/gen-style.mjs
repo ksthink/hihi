@@ -109,6 +109,15 @@ function make(theme, baseMode) {
   // Resources/glyphs/<fontstack>/<range>.pbf (폴더참조로 구조 보존 — project.yml).
   style.glyphs = "glyphs/{fontstack}/{range}.pbf";
 
+  // ── 오버레이 선은 베이스맵 라벨 **아래**에 넣는다 (2026-09-09) ──
+  // style.layers.push 로 뒤에 붙이면 등고선·코스 선이 지명 글자 위를 가로질러 못 읽는다.
+  // (실제로 "법왕대" 를 등고선이 관통했다.) 라벨은 베이스맵 심볼 레이어가 맨 위에서 그리고,
+  // 오버레이의 **심볼**(등고 라벨·코스 배지·스팟·측정소·현재위치)은 계속 맨 위로 push 한다.
+  // ⚠️ 선은 belowLabels, 심볼은 push — 섞으면 이 문제가 그대로 돌아온다.
+  let labelAt = style.layers.findIndex((l) => l.type === "symbol");
+  if (labelAt < 0) labelAt = style.layers.length;        // 라벨이 없는 스타일이면 맨 뒤
+  const belowLabels = (...ls) => { style.layers.splice(labelAt, 0, ...ls); labelAt += ls.length; };
+
   // ── S1 오버레이 검증: 등고선 3종 (팩 geojson) ──
   // buildStyle() 기저엔 없고 웹은 app.js:463-489 에서 별도 오버레이로 얹는다.
   // 동일 GL 표현식을 스타일 JSON 에 그대로 추가 → Native 가 NSExpression 변환 없이 렌더.
@@ -121,7 +130,7 @@ function make(theme, baseMode) {
     type: "geojson",
     data: `${BASE}/packs/${PACK}/contours.geojson`,
   };
-  style.layers.push(
+  belowLabels(
     // 50m 보조 등고선
     { id: "contour-line", type: "line", source: "contours", minzoom: 12.5,
       filter: ["==", ["get", "idx"], 0],
@@ -130,7 +139,9 @@ function make(theme, baseMode) {
     { id: "contour-index", type: "line", source: "contours", minzoom: 10.5,
       filter: ["==", ["get", "idx"], 1],
       paint: { "line-color": cc.line, "line-width": 1.1, "line-opacity": 0.7 } },
-    // 고도 라벨 (주 등고선)
+  );
+  style.layers.push(
+    // 고도 라벨 (주 등고선) — 심볼이므로 맨 위
     { id: "contour-label", type: "symbol", source: "contours", minzoom: 13.5,
       filter: ["==", ["get", "idx"], 1],
       layout: {
@@ -157,7 +168,7 @@ function make(theme, baseMode) {
   };
   // 코스 번호 배지 위치 — 코스당 중점 1개(웹 courseNoFC 대응). MapView 가 런타임에 채운다(course.mid).
   style.sources["course-nos"] = { type: "geojson", data: { type: "FeatureCollection", features: [] } };
-  style.layers.push(
+  belowLabels(
     { id: "trail-casing", type: "line", source: "trails",
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": tc.casing,
@@ -175,6 +186,8 @@ function make(theme, baseMode) {
     { id: "trail-hit", type: "line", source: "trails",
       paint: { "line-color": "#000000", "line-opacity": 0.001,
                "line-width": ["interpolate", ["linear"], ["zoom"], 11, 16, 16, 28] } },
+  );
+  style.layers.push(
     // 코스 번호 배지 — course-nos 포인트 소스(코스당 1개, 직립). 웹 course-no-badges 대응. app.js:563
     // 아이콘 badge-N(미선택)/badge-N-sel(선택)은 MapView 가 런타임 UIImage 로 등록·교체.
     { id: "course-no-badges", type: "symbol", source: "course-nos", minzoom: 10.5,

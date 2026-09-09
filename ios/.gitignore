@@ -20,3 +20,7 @@ HiHeight/Info.plist
 # 실기기/시뮬레이터 빌드 산출물(-derivedDataPath 지정 시)
 build-device/
 build-sim/
+
+# HikerSprite-gen.py 미리보기 산출물
+gen-preview.png
+gen-preview.gif
