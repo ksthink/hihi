@@ -3,7 +3,7 @@
  "mountain": {
   "code": "427700101",
   "name": "가리왕산",
-  "region": "강원도 정선군 정선읍 회동리",
+  "region": "강원 정선",
   "elev": 1562,
   "center": [
    128.555,
@@ -18,7 +18,8 @@
   ],
   "sort_order": 100,
   "famous": true,
-  "published": true
+  "published": true,
+  "lists": []
  },
  "courses": [
   {
