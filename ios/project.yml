@@ -65,6 +65,16 @@ targets:
         # iOS 26 Liquid Glass(플로팅 탭바·블러) opt-out — 배터리 절약 컨셉(글래스/블러 효과 배제).
         # 웹과 동일한 평평·불투명 하단 바 렌더.
         UIDesignRequiresCompatibility: true
+        # 지도 한글·한자도 번들 글리프 PBF(MonaS12Regular/Bold)로 그린다 — 기기 폰트로 그리지 않는다.
+        # ⚠️ 이 키가 **없으면** MapLibre Native 는 한글·한자를 번들 글리프가 아니라 **시스템 고딕**으로
+        #    그린다. 2026-07-14(813abb5) 부터 "네이티브는 PBF 로 그린다"고 알고 있었지만 실제로는
+        #    두 달간 시스템 고딕이었다(2026-09-17 발견).
+        # ⚠️ 문자열 "MonaS12"(기기 폰트로 그리기)는 시험해 보고 버렸다 —
+        #    ① 굵은 라벨이 굵게 안 나오고 ② 번들 ttf 가 한글+라틴 서브셋이라 한자가 시스템 폰트로 섞이며
+        #    ③ 영문·숫자(PBF)와 한글(기기 렌더)의 기준선이 어긋난다. false 는 셋 다 없다.
+        #    (그 경로는 과거 MonaS12 의 COLR 테이블로 CoreText 크래시가 났던 경로이기도 하다.)
+        # 반드시 불리언 false — 문자열 "false" 면 폰트 이름으로 읽혀 기기 렌더가 켜진다.
+        MLNIdeographicFontFamilyName: false
         # UI 폰트 — MonaS12 (웹과 동일, 한글+라틴 서브셋 ttf). Font+Kakao.swift 가 웨이트 매핑.
         UIAppFonts:
           - MonaS12.ttf          # Regular
