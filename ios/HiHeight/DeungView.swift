@@ -334,14 +334,7 @@ struct DeungView: View {
                                     .foregroundStyle(on ? t.bg.opacity(0.75) : t.muted)
                                     .monospacedDigit()
                             } else if updateAvailable(m) {
-                                // 선택 행에서는 accent 가 검정 배경에 묻히므로 버튼도 반전한다.
-                                Button { updateTarget = m } label: {
-                                    Text("업데이트").font(.kakao(size: 12, weight: .semibold))
-                                        .foregroundStyle(on ? t.text : t.onAccent)
-                                        .padding(.horizontal, 12).padding(.vertical, 6)
-                                        .background(on ? t.bg : t.accent, in: Capsule())
-                                }
-                                .buttonStyle(.plain)
+                                updatePill(on, t).hidden()     // 자리만 — 실제 버튼은 accessory(제스처 판 위)
                             }
                         }
                         .padding(12)
@@ -349,6 +342,17 @@ struct DeungView: View {
                         .background(on ? t.text : t.elevated, in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(on ? t.text : t.line))
                         .contentShape(Rectangle())
+                    } accessory: {
+                        // ⚠️ 버튼을 위 HStack 안에 두면 스와이프 행의 제스처 판이 터치를 가져가 안 눌린다.
+                        if packs.downloadingCode != m.id && updateAvailable(m) {
+                            // 누르는 영역을 알약보다 넉넉히(세로 50pt) — 작은 알약만으로는 빗나가면 행 탭이 된다.
+                            Button { updateTarget = m } label: {
+                                updatePill(on, t)
+                                    .padding(.vertical, 12).padding(.leading, 8).padding(.trailing, 12)
+                                    .contentShape(Rectangle())
+                            }
+                                .buttonStyle(.plain)
+                        }
                     }
                 }
             }
@@ -362,6 +366,14 @@ struct DeungView: View {
             // 업데이트 확인 — 예: 기존 팩 삭제 후 새 버전 다운로드(성공 시 설치 버전 기록 → 버튼 사라짐).
             // 업데이트 확인은 앱 UI 팝업(ConfirmPromptView)으로 — body 상단 overlay 에 있다.
         }
+    }
+
+    // [업데이트] 알약 — 선택 행에서는 accent 가 검정 배경에 묻히므로 반전한다.
+    private func updatePill(_ on: Bool, _ t: Theme) -> some View {
+        Text("업데이트").font(.kakao(size: 12, weight: .semibold))
+            .foregroundStyle(on ? t.text : t.onAccent)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(on ? t.bg : t.accent, in: Capsule())
     }
 
     // 카탈로그 버전 > 설치 버전이면 업데이트 대상. 버전 기록 이전에 받은 팩(nil)은 구버전(0) 취급

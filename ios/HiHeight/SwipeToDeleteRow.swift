@@ -17,22 +17,35 @@ import UIKit
 //    한 번 먹힌다. simultaneousGesture·minimumDistance 로는 이 경쟁 자체가 사라지지 않는다.
 //    UIKit 은 `gestureRecognizerShouldBegin` 에서 **시작 전에** 가려낼 수 있다 —
 //    세로 우세 터치면 우리 pan 이 아예 시작하지 않아 스크롤이 온전히 살아난다.
-struct SwipeToDeleteRow<Content: View>: View {
+struct SwipeToDeleteRow<Content: View, Accessory: View>: View {
     let onDelete: () -> Void
     var corner: CGFloat = 14        // 감싸는 카드와 같은 모서리 반경으로 맞춘다
     // 행 탭 — content 에 .onTapGesture 를 달지 말고 이리로 넘긴다.
     // 제스처를 UIKit 오버레이가 받으므로 SwiftUI 탭은 이 위에서 동작하지 않는다.
     var onTap: (() -> Void)?
     let content: Content
+    // 행 안의 **버튼**은 content 가 아니라 여기에 둔다.
+    // ⚠️ content 안에 Button 을 넣으면 제스처 오버레이(UIView)가 터치를 가져가 버튼은 영영 반응하지 않는다.
+    //    등반 탭 저장된 지도의 [업데이트] 버튼이 이렇게 한 달 넘게 죽어 있었다
+    //    (7/26 버튼 도입 → 8/07 da5263a UIKit 오버레이 도입으로 사망 → 9/17 발견).
+    // ⚠️ 버튼을 SwiftUI 레이어 순서상 오버레이 **위**에 얹는 것만으로는 안 된다(9/17 히트 테스트로 확인).
+    //    UIKit hitTest 는 SwiftUI z-순서가 아니라 실제 UIView 를 찾으므로 여전히 오버레이가 받는다.
+    //    그래서 accessory 가 차지한 영역을 재서, 오버레이 UIView 가 그 영역의 터치를 **통과**시킨다.
+    //    content 오른쪽 끝에 얹히고 카드와 함께 미끄러진다. 자리는 content 쪽에서 비워 둘 것.
+    let accessory: Accessory
+    @State private var accessoryFrame: CGRect = .zero   // 오버레이가 터치를 흘려보낼 영역(행 좌표)
+    private static var space: String { "swipe-row" }
 
     init(corner: CGFloat = 14,
          onDelete: @escaping () -> Void,
          onTap: (() -> Void)? = nil,
-         @ViewBuilder content: () -> Content) {
+         @ViewBuilder content: () -> Content,
+         @ViewBuilder accessory: () -> Accessory) {
         self.corner = corner
         self.onDelete = onDelete
         self.onTap = onTap
         self.content = content()
+        self.accessory = accessory()
     }
 
     @State private var offset: CGFloat = 0
@@ -57,6 +70,7 @@ struct SwipeToDeleteRow<Content: View>: View {
             content
                 .overlay {
                     RowGestures(
+                        passThrough: accessoryFrame,
                         onTap: {
                             if open { close() } else { onTap?() }   // 열려 있으면 먼저 닫는다
                         },
@@ -77,6 +91,14 @@ struct SwipeToDeleteRow<Content: View>: View {
                             }
                         })
                 }
+                .overlay(alignment: .trailing) {
+                    accessory.background(GeometryReader { g in
+                        Color.clear
+                            .onAppear { accessoryFrame = g.frame(in: .named(Self.space)) }
+                            .onChange(of: g.frame(in: .named(Self.space))) { _, v in accessoryFrame = v }
+                    })
+                }
+                .coordinateSpace(name: Self.space)             // 오버레이 UIView 좌표와 같은 기준
                 .offset(x: offset)
         }
     }
@@ -88,17 +110,27 @@ struct SwipeToDeleteRow<Content: View>: View {
     }
 }
 
+extension SwipeToDeleteRow where Accessory == EmptyView {
+    init(corner: CGFloat = 14,
+         onDelete: @escaping () -> Void,
+         onTap: (() -> Void)? = nil,
+         @ViewBuilder content: () -> Content) {
+        self.init(corner: corner, onDelete: onDelete, onTap: onTap, content: content) { EmptyView() }
+    }
+}
+
 // 행 제스처(가로 팬 + 탭)를 UIKit 인식기로 제공한다.
 // 탭까지 여기서 받는 이유: 오버레이가 터치를 먼저 가져가므로 SwiftUI 의 .onTapGesture 를
 // 카드 안에 두면 반응하지 않는다. 두 제스처를 한 곳에서 다뤄 우선순위도 명확해진다.
 private struct RowGestures: UIViewRepresentable {
+    var passThrough: CGRect = .zero          // 이 영역의 터치는 받지 않는다(행 안 버튼 자리)
     let onTap: () -> Void
     let onPan: (CGFloat) -> Void
     let onPanEnd: (CGFloat) -> Void
     let onPanCancel: () -> Void
 
-    func makeUIView(context: Context) -> UIView {
-        let v = UIView()
+    func makeUIView(context: Context) -> PassThroughView {
+        let v = PassThroughView()
         v.backgroundColor = .clear
         let pan = UIPanGestureRecognizer(target: context.coordinator,
                                          action: #selector(Coordinator.handlePan(_:)))
@@ -112,8 +144,18 @@ private struct RowGestures: UIViewRepresentable {
         return v
     }
 
-    func updateUIView(_ v: UIView, context: Context) {
+    func updateUIView(_ v: PassThroughView, context: Context) {
         context.coordinator.parent = self       // 클로저가 최신 상태를 잡도록 갱신
+        v.passThrough = passThrough
+    }
+
+    // 지정 영역에서는 "여기 없음"이라고 답해 hitTest 가 아래(SwiftUI 호스팅 뷰의 버튼)로 내려가게 한다.
+    final class PassThroughView: UIView {
+        var passThrough: CGRect = .zero
+        override func point(inside p: CGPoint, with e: UIEvent?) -> Bool {
+            if !passThrough.isEmpty && passThrough.contains(p) { return false }
+            return super.point(inside: p, with: e)
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
